@@ -7,6 +7,7 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/services/scu_auth_service.dart';
 import 'package:bugaoshan/services/ocr_service.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 
 class ScuLoginPage extends StatefulWidget {
   const ScuLoginPage({super.key});
@@ -52,16 +53,19 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
     final authProvider = getIt<ScuAuthProvider>();
     final credentials = await authProvider.getSavedCredentials();
     final autoLoginEnabled = await authProvider.isAutoLoginEnabled();
+    final effectiveAutoLogin = AppPlatform.supportsAutoLogin
+        ? autoLoginEnabled
+        : false;
     if (!mounted) return;
     if (credentials != null) {
       setState(() {
         _rememberPassword = true;
         _usernameCtrl.text = credentials['username']!;
         _passwordCtrl.text = credentials['password']!;
-        _autoLogin = autoLoginEnabled;
+        _autoLogin = effectiveAutoLogin;
       });
     } else {
-      setState(() => _autoLogin = autoLoginEnabled);
+      setState(() => _autoLogin = effectiveAutoLogin);
     }
   }
 
@@ -121,6 +125,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
 
     try {
       final authProvider = getIt<ScuAuthProvider>();
+      final effectiveAutoLogin = _autoLogin && AppPlatform.supportsAutoLogin;
       await authProvider.login(
         username: username,
         password: password,
@@ -130,7 +135,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
 
       if (_rememberPassword) {
         await authProvider.saveCredentials(username, password);
-        await authProvider.setAutoLogin(_autoLogin);
+        await authProvider.setAutoLogin(effectiveAutoLogin);
       } else {
         await authProvider.clearCredentials();
         await authProvider.setAutoLogin(false);
@@ -249,7 +254,9 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
             value: _rememberPassword,
             onChanged: (v) => setState(() {
               _rememberPassword = v ?? false;
-              if (!_rememberPassword) _autoLogin = false;
+              if (!_rememberPassword || !AppPlatform.supportsAutoLogin) {
+                _autoLogin = false;
+              }
             }),
           ),
           Text(l10n.rememberPassword),
@@ -260,7 +267,9 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
           children: [
             Checkbox(
               value: _autoLogin,
-              onChanged: (v) => setState(() => _autoLogin = v ?? false),
+              onChanged: AppPlatform.supportsAutoLogin
+                  ? (v) => setState(() => _autoLogin = v ?? false)
+                  : null,
             ),
             Text(l10n.autoLogin),
           ],

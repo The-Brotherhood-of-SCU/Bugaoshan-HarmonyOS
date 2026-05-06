@@ -207,12 +207,6 @@ class UpdateService {
   }) async {
     onStatus?.call('Downloading update...');
 
-    if (AppPlatform.isHarmony) {
-      onStatus?.call('Opening download page...');
-      await openLink(downloadUrl);
-      return;
-    }
-
     final client = http.Client();
     List<int> chunks;
     try {
@@ -247,6 +241,17 @@ class UpdateService {
     if (AppPlatform.isAndroid) {
       onStatus?.call('Installing...');
       await _installAndroid(chunks);
+      return;
+    }
+
+    if (AppPlatform.isHarmony) {
+      onStatus?.call('Installing...');
+      try {
+        await _installHarmony(version, chunks);
+      } on Object {
+        onStatus?.call('Opening download page...');
+        await openLink(downloadUrl);
+      }
       return;
     }
 
@@ -297,6 +302,15 @@ class UpdateService {
     final apkFile = File(apkPath);
     await apkFile.writeAsBytes(apkBytes);
     await _channel.invokeMethod('installApk', {'path': apkPath});
+  }
+
+  Future<void> _installHarmony(String version, List<int> hapBytes) async {
+    final tempDir = await getTemporaryDirectory();
+    final safeVersion = version.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
+    final hapPath = p.join(tempDir.path, 'bugaoshan_$safeVersion.hap');
+    final hapFile = File(hapPath);
+    await hapFile.writeAsBytes(hapBytes);
+    await _channel.invokeMethod('installHap', {'path': hapPath});
   }
 
   Future<void> _installWindows(

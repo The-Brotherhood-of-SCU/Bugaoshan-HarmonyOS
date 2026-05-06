@@ -24,6 +24,8 @@ class AppPlatform {
 
   static bool get supportsHomeWidget => isAndroid;
 
+  static bool get supportsAutoLogin => !isHarmony;
+
   static bool get supportsSystemCalendarImport => isAndroid || isHarmony;
 
   static bool get supportsInAppUpdate =>

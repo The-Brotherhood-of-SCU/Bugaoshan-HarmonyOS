@@ -158,6 +158,7 @@ class ScuAuthProvider extends ChangeNotifier {
   }
 
   Future<bool> isAutoLoginEnabled() async {
+    if (!AppPlatform.supportsAutoLogin) return false;
     final storage = SecureStorageProvider.instance;
     final value = await storage.read(key: _keyAutoLogin);
     return value == 'true';
@@ -165,11 +166,14 @@ class ScuAuthProvider extends ChangeNotifier {
 
   Future<void> setAutoLogin(bool enabled) async {
     final storage = SecureStorageProvider.instance;
-    await storage.write(key: _keyAutoLogin, value: enabled ? 'true' : 'false');
+    await storage.write(
+      key: _keyAutoLogin,
+      value: enabled && AppPlatform.supportsAutoLogin ? 'true' : 'false',
+    );
   }
 
   Future<bool> autoLogin() async {
-    if (AppPlatform.isHarmony) return false;
+    if (!AppPlatform.supportsAutoLogin) return false;
     if (!await isAutoLoginEnabled()) return false;
     if (isLoggedIn) return true;
 

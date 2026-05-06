@@ -102,6 +102,7 @@ class DatabaseService {
 
     // Load caches
     await _loadSchedulesCache();
+    await _ensureCurrentScheduleExists();
     await _loadCoursesCache();
   }
 
@@ -121,10 +122,7 @@ class DatabaseService {
     }
 
     await _loadSchedulesCache();
-    if (!_schedulesCache.any((schedule) => schedule.id == _currentScheduleId)) {
-      _currentScheduleId = _schedulesCache.first.id;
-      await prefs.setString(_keyCurrentScheduleId, _currentScheduleId);
-    }
+    await _ensureCurrentScheduleExists();
     await _loadCoursesCache();
   }
 
@@ -174,7 +172,8 @@ class DatabaseService {
       if (schedules.isEmpty) schedules.add(_defaultScheduleConfig());
 
       final currentId =
-          metadataBox.get(_keyCurrentScheduleId) as String? ?? schedules.first.id;
+          metadataBox.get(_keyCurrentScheduleId) as String? ??
+          schedules.first.id;
       _currentScheduleId = currentId;
       await _prefs!.setString(_keyCurrentScheduleId, currentId);
       await _saveSchedulesToPrefs(schedules);
@@ -334,6 +333,7 @@ class DatabaseService {
       final raw = _prefs!.getString(_keySchedules);
       if (raw == null || raw.isEmpty) {
         _schedulesCache = [_defaultScheduleConfig()];
+        await _saveSchedulesToPrefs(_schedulesCache);
         return;
       }
 
@@ -346,9 +346,14 @@ class DatabaseService {
               ),
             )
             .toList();
+        if (_schedulesCache.isEmpty) {
+          _schedulesCache = [_defaultScheduleConfig()];
+          await _saveSchedulesToPrefs(_schedulesCache);
+        }
       } catch (e) {
         debugPrint('Failed to load schedules from SharedPreferences: $e');
         _schedulesCache = [_defaultScheduleConfig()];
+        await _saveSchedulesToPrefs(_schedulesCache);
       }
       return;
     }
@@ -357,6 +362,45 @@ class DatabaseService {
     _schedulesCache = rows.map((row) {
       return ScheduleConfig.fromJson(_decodeJson(row['config_json'] as String));
     }).toList();
+    if (_schedulesCache.isEmpty) {
+      final defaultConfig = _defaultScheduleConfig();
+      await _db!.insert('schedules', {
+        'id': defaultConfig.id,
+        'config_json': _encodeJson(defaultConfig.toJson()),
+      });
+      _schedulesCache = [defaultConfig];
+    }
+  }
+
+  Future<void> _ensureCurrentScheduleExists() async {
+    if (_schedulesCache.any((schedule) => schedule.id == _currentScheduleId)) {
+      return;
+    }
+
+    _currentScheduleId = _schedulesCache.first.id;
+    if (_usePrefsBackend) {
+      await _prefs!.setString(_keyCurrentScheduleId, _currentScheduleId);
+      return;
+    }
+
+    final existing = await _db!.query(
+      'metadata',
+      where: 'key = ?',
+      whereArgs: [_keyCurrentScheduleId],
+    );
+    if (existing.isEmpty) {
+      await _db!.insert('metadata', {
+        'key': _keyCurrentScheduleId,
+        'value': _currentScheduleId,
+      });
+    } else {
+      await _db!.update(
+        'metadata',
+        {'value': _currentScheduleId},
+        where: 'key = ?',
+        whereArgs: [_keyCurrentScheduleId],
+      );
+    }
   }
 
   Future<void> _loadCoursesCache() async {
@@ -418,7 +462,9 @@ class DatabaseService {
     try {
       final list = json.decode(raw) as List<dynamic>;
       return list
-          .map((item) => Course.fromJson(Map<String, dynamic>.from(item as Map)))
+          .map(
+            (item) => Course.fromJson(Map<String, dynamic>.from(item as Map)),
+          )
           .toList();
     } catch (e) {
       debugPrint('Failed to load courses for schedule $scheduleId: $e');
@@ -426,7 +472,10 @@ class DatabaseService {
     }
   }
 
-  Future<void> _saveCoursesToPrefs(String scheduleId, List<Course> courses) async {
+  Future<void> _saveCoursesToPrefs(
+    String scheduleId,
+    List<Course> courses,
+  ) async {
     await _prefs!.setString(
       '$_prefsCoursesPrefix$scheduleId',
       json.encode(courses.map((course) => course.toJson()).toList()),
@@ -547,7 +596,9 @@ class DatabaseService {
   // ==================== Courses ====================
 
   List<Course> getCourses({String? scheduleId}) {
-    if (_usePrefsBackend && scheduleId != null && scheduleId != _currentScheduleId) {
+    if (_usePrefsBackend &&
+        scheduleId != null &&
+        scheduleId != _currentScheduleId) {
       return List.unmodifiable(_loadCoursesFromPrefs(scheduleId));
     }
 
@@ -627,7 +678,9 @@ class DatabaseService {
 
   Future<void> clearAllCourseData() async {
     if (_usePrefsBackend) {
-      final scheduleIds = _schedulesCache.map((schedule) => schedule.id).toList();
+      final scheduleIds = _schedulesCache
+          .map((schedule) => schedule.id)
+          .toList();
       for (final scheduleId in scheduleIds) {
         await _prefs!.remove('$_prefsCoursesPrefix$scheduleId');
       }
