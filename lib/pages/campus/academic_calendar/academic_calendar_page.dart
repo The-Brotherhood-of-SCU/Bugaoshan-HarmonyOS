@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/widgets/common/error_widgets.dart';
 import 'package:http/http.dart' as http;
 
@@ -136,10 +137,7 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage> {
 
   Widget _buildBody(AppLocalizations l10n) {
     if (_error != null && _entries.isEmpty) {
-      return RetryableErrorWidget(
-        message: _error!,
-        onRetry: _loadList,
-      );
+      return RetryableErrorWidget(message: _error!, onRetry: _loadList);
     }
 
     return Column(
@@ -183,11 +181,7 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage> {
   }
 
   Widget _buildImageList(AppLocalizations l10n) {
-    final isMobile =
-        !kIsWeb &&
-        defaultTargetPlatform != TargetPlatform.windows &&
-        defaultTargetPlatform != TargetPlatform.macOS &&
-        defaultTargetPlatform != TargetPlatform.linux;
+    final isMobile = !kIsWeb && AppPlatform.isMobile;
 
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),

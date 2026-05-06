@@ -4,8 +4,8 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/pages/home_page.dart';
 import 'package:bugaoshan/pages/wizard/wizard_page.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
+import 'package:bugaoshan/utils/theme_utils.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
-import 'package:system_theme/system_theme.dart';
 import 'l10n/app_localizations.dart';
 
 const _pageTransitionsTheme = PageTransitionsTheme(
@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
 
   ThemeData _buildTheme(Brightness brightness) {
     final seedColor = _appConfig.themeColorMode.value == ThemeColorMode.system
-        ? SystemTheme.accentColor.accent
+        ? currentSystemAccentColor()
         : _appConfig.themeColor.value;
     final baseTheme = ThemeData(
       colorScheme: ColorScheme.fromSeed(

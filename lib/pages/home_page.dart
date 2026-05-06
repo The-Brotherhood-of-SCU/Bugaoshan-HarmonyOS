@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
@@ -13,6 +10,7 @@ import 'package:bugaoshan/services/update_service.dart';
 import 'package:bugaoshan/services/widget_update_service.dart';
 import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/utils/dock_utils.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/widgets/dialog/eula_dialog.dart';
 
 class HomePage extends StatefulWidget {
@@ -114,7 +112,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _updateWidget() {
-    if (!kIsWeb && Platform.isAndroid) {
+    if (AppPlatform.supportsHomeWidget) {
       try {
         getIt<WidgetUpdateService>().updateWidgetData();
       } catch (_) {}

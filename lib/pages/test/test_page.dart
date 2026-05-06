@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import 'package:bugaoshan/injection/injector.dart';
@@ -11,6 +9,7 @@ import 'package:bugaoshan/pages/test/update_progress_state.dart';
 import 'package:bugaoshan/pages/test/update_result_notifier.dart';
 import 'package:bugaoshan/pages/test/wizard_reset_button.dart';
 import 'package:bugaoshan/providers/app_info_provider.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 import 'package:bugaoshan/services/update_service.dart';
 
@@ -26,8 +25,7 @@ class _TestPageState extends State<TestPage> {
   final _stableResult = UpdateResultNotifier();
   final _previewResult = UpdateResultNotifier();
 
-  bool get _supportsUpdate =>
-      Platform.isAndroid || Platform.isWindows || Platform.isLinux;
+  bool get _supportsUpdate => AppPlatform.supportsInAppUpdate;
 
   Future<void> _checkForUpdates() async {
     if (!_supportsUpdate) return;

@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'
+    if (dart.library.ohos) 'package:flutter_secure_storage_ohos/flutter_secure_storage_ohos.dart';
 
 abstract interface class SecureStorage {
   Future<String?> read({required String key});
@@ -14,16 +13,9 @@ abstract interface class SecureStorage {
 class SecureStorageProvider {
   const SecureStorageProvider._();
 
-  static final SecureStorage _instance = _isHarmony
-      ? _SharedPreferencesSecureStorage()
-      : const _FlutterSecureStorageAdapter();
+  static const SecureStorage _instance = _FlutterSecureStorageAdapter();
 
   static SecureStorage get instance => _instance;
-
-  static bool get _isHarmony {
-    if (kIsWeb) return false;
-    return defaultTargetPlatform.toString() == 'TargetPlatform.ohos';
-  }
 }
 
 class _FlutterSecureStorageAdapter implements SecureStorage {
@@ -48,25 +40,5 @@ class _FlutterSecureStorageAdapter implements SecureStorage {
   @override
   Future<void> delete({required String key}) {
     return _storage.delete(key: key);
-  }
-}
-
-class _SharedPreferencesSecureStorage implements SecureStorage {
-  Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
-
-  @override
-  Future<String?> read({required String key}) async {
-    return (await _prefs).getString(key);
-  }
-
-  @override
-  Future<void> write({required String key, required String? value}) async {
-    if (value == null) return delete(key: key);
-    await (await _prefs).setString(key, value);
-  }
-
-  @override
-  Future<void> delete({required String key}) async {
-    await (await _prefs).remove(key);
   }
 }

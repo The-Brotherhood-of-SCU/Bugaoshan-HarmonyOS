@@ -17,7 +17,7 @@ import 'package:bugaoshan/widgets/route/router_utils.dart';
 import 'package:bugaoshan/providers/set_theme_color_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:system_theme/system_theme.dart';
+import 'package:bugaoshan/utils/theme_utils.dart';
 
 class SoftwareSettingPage extends StatelessWidget {
   const SoftwareSettingPage({super.key});
@@ -156,9 +156,8 @@ class SoftwareSettingPage extends StatelessWidget {
                           }
                           if (appConfig.themeColorMode.value ==
                               ThemeColorMode.backgroundImage) {
-                            await SystemTheme.accentColor.load();
                             appConfig.themeColor.value =
-                                SystemTheme.accentColor.accent;
+                                await loadSystemAccentColor();
                           }
                         },
                         icon: const Icon(Icons.delete_outline),
@@ -332,5 +331,4 @@ class SoftwareSettingPage extends StatelessWidget {
       );
     }
   }
-
 }

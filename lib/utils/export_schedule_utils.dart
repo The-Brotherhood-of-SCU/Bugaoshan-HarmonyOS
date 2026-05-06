@@ -6,7 +6,9 @@ import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
 import 'package:bugaoshan/providers/export_schedule_provider.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 
 Future<void> showExportScheduleSheet(
   BuildContext context, {
@@ -60,7 +62,7 @@ Future<void> showExportScheduleSheet(
               title: Text(l10n.exportScheduleAsIcs),
               onTap: () => Navigator.of(sheetContext).pop(ExportAction.ics),
             ),
-            if (Platform.isAndroid)
+            if (AppPlatform.supportsSystemCalendarImport)
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 24),
                 leading: const Icon(Icons.event_available),
@@ -102,10 +104,10 @@ Future<void> showExportScheduleSheet(
 
       String? destinationPath;
       try {
-        destinationPath = await FilePicker.saveFile(
-          dialogTitle: l10n.exportScheduleAsIcsTo,
-          fileName: '$semesterName.ics',
+        destinationPath = await _saveIcsFile(
+          semesterName: semesterName,
           bytes: exportProvider.getIcsBytes(),
+          dialogTitle: l10n.exportScheduleAsIcsTo,
         );
       } on PlatformException catch (e) {
         debugPrint("[showExportScheduleSheet] failed to save file: $e");
@@ -161,4 +163,25 @@ Future<void> showExportScheduleSheet(
       }
       return;
   }
+}
+
+Future<String?> _saveIcsFile({
+  required String semesterName,
+  required Uint8List bytes,
+  required String dialogTitle,
+}) async {
+  if (!AppPlatform.isHarmony) {
+    return FilePicker.saveFile(
+      dialogTitle: dialogTitle,
+      fileName: '$semesterName.ics',
+      bytes: bytes,
+    );
+  }
+
+  final directory = await getApplicationDocumentsDirectory();
+  final exportDirectory = Directory('${directory.path}/exports');
+  await exportDirectory.create(recursive: true);
+  final file = File('${exportDirectory.path}/$semesterName.ics');
+  await file.writeAsBytes(bytes);
+  return file.path;
 }

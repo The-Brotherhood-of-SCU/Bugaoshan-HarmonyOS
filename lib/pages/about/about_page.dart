@@ -4,6 +4,7 @@ import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/app_info_provider.dart';
 import 'package:bugaoshan/services/update_service.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/utils/open_link.dart'
     show openDeveloperTeam, openProjectRepository;
 import 'package:bugaoshan/pages/about/release_notes_page.dart';
@@ -28,6 +29,10 @@ class _AboutPageState extends State<AboutPage> {
   Future<void> _checkForUpdates() async {
     if (_isCheckingUpdate) return;
     final localizations = AppLocalizations.of(context)!;
+    if (!AppPlatform.supportsInAppUpdate) {
+      await openProjectRepository();
+      return;
+    }
 
     appConfig.hasUpdateNotification.value = false;
     setState(() => _isCheckingUpdate = true);

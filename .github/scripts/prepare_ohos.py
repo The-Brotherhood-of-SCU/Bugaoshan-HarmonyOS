@@ -73,6 +73,14 @@ dependency_overrides:
     git:
       url: "https://gitcode.com/openharmony-sig/flutter_plus_plugins.git"
       path: "packages/package_info_plus/package_info_plus"
+  image_picker:
+    git:
+      url: "https://gitcode.com/openharmony-tpc/flutter_packages.git"
+      path: "packages/image_picker/image_picker"
+  image_picker_ohos:
+    git:
+      url: "https://gitcode.com/openharmony-tpc/flutter_packages.git"
+      path: "packages/image_picker/image_picker_ohos"
 """
 
 

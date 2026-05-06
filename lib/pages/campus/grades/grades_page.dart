@@ -1,10 +1,9 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/grades_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
 import 'scheme_scores_tab.dart';
@@ -34,9 +33,7 @@ class _GradesPageState extends State<GradesPage> {
       builder: (context, _) {
         final auth = getIt<ScuAuthProvider>();
 
-        final isDesktop =
-            !kIsWeb &&
-            (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+        final isDesktop = AppPlatform.isDesktop;
         final gradesProvider = getIt<GradesProvider>();
 
         return Scaffold(

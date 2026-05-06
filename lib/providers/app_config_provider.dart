@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Colors, Curve, Curves;
 import 'package:bugaoshan/utils/locale_utils.dart';
 import 'package:bugaoshan/utils/constants.dart';
+import 'package:bugaoshan/utils/theme_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:system_theme/system_theme.dart';
 
 //define key
 const String _keyLocale = 'locale';
@@ -187,7 +187,6 @@ class AppConfigProvider {
 
   Future<void> _switchToSystemColor() async {
     themeColorMode.value = ThemeColorMode.system;
-    await SystemTheme.accentColor.load();
-    themeColor.value = SystemTheme.accentColor.accent;
+    themeColor.value = await loadSystemAccentColor();
   }
 }
