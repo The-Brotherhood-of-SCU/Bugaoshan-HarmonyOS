@@ -27,11 +27,14 @@ flutter build apk --release
 # Build release for other platforms
 flutter build ios --release --no-codesign
 flutter build windows --release
+
+# Prepare HarmonyOS shell before building with Flutter-OH
+python3 .github/scripts/prepare_ohos.py
 ```
 
-**GitHub Actions release**: triggers on git tags matching `v*.*.*`; builds all 3 platforms and uploads to GitHub Releases.
+**GitHub Actions release**: triggers on git tags matching `v*.*.*`; builds Android, Windows, Linux, and HarmonyOS artifacts, then uploads them to GitHub Releases.
 
-**HarmonyOS build**: separate workflow dispatches to `TEMP-HOMO` repo for HarmonyOS APK builds.
+**HarmonyOS build**: uses the in-repo `ohos_shell/ohos` wrapper. `ohos_shell/lib`, `ohos_shell/assets`, `ohos_shell/pubspec.yaml`, and `ohos_shell/l10n.yaml` are generated from the root Flutter app by `.github/scripts/prepare_ohos.py`.
 
 ### Commit Convention
 

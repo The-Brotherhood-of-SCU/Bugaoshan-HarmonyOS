@@ -1,16 +1,20 @@
-# ohos_shell
+# HarmonyOS Shell
 
-A new Flutter project.
+This directory keeps the HarmonyOS/OpenHarmony native wrapper in `ohos/`.
 
-## Getting Started
+The Flutter app sources are not tracked here. They are generated from the repository root before a HarmonyOS build to avoid maintaining a stale duplicate copy of `lib/`, `assets/`, `pubspec.yaml`, and `l10n.yaml`.
 
-This project is a starting point for a Flutter application.
+## Local Build
 
-A few resources to get you started if this is your first Flutter project:
+Run these commands from the repository root after installing the Flutter-OH toolchain:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+python3 .github/scripts/prepare_ohos.py
+cd ohos_shell
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter gen-l10n
+flutter build hap --release
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+GitHub Actions runs the same preparation step in `.github/workflows/release.yml`.

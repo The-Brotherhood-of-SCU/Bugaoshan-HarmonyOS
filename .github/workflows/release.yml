@@ -178,6 +178,7 @@ jobs:
           if [[ -z "${VERSION}" ]]; then
             VERSION="${GITHUB_REF_NAME}"
           fi
+          VERSION="${VERSION#v}"
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout source
@@ -185,99 +186,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Prepare Flutter sources for OHOS
-        run: |
-          rsync -a --delete lib/ ohos_shell/lib/
-          rsync -a --delete assets/ ohos_shell/assets/
-          cp pubspec.yaml ohos_shell/pubspec.yaml
-          cp l10n.yaml ohos_shell/l10n.yaml
-
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path("ohos_shell/pubspec.yaml")
-          text = path.read_text(encoding="utf-8")
-          text = text.replace("sdk: ^3.10.4", "sdk: '>=3.9.0 <4.0.0'")
-          text = "\n".join(
-              line for line in text.splitlines()
-              if not line.lstrip().startswith("flutter_litert:")
-          ) + "\n"
-          path.write_text(text, encoding="utf-8")
-          PY
-
-          python3 - <<'PY'
-          from pathlib import Path
-          stub = """import 'dart:typed_data';
-
-          class OcrService {
-            static Future<void> init() async {}
-            static Future<void> dispose() async {}
-            static Future<String> performOcr(Uint8List imageBytes) async {
-              return '';
-            }
-          }
-          """
-          for service_dir in ("services", "serivces"):
-              path = Path("ohos_shell/lib") / service_dir / "ocr_service.dart"
-              path.parent.mkdir(parents=True, exist_ok=True)
-              path.write_text(stub, encoding="utf-8")
-          PY
-
-          if grep -q '^dependency_overrides:' ohos_shell/pubspec.yaml; then
-            echo "dependency_overrides already present, skipping."
-          else
-            cat <<'OVERRIDES' >> ohos_shell/pubspec.yaml
-
-          dependency_overrides:
-            shared_preferences:
-              git:
-                url: "https://gitcode.com/openharmony-tpc/flutter_packages.git"
-                path: "packages/shared_preferences/shared_preferences"
-            shared_preferences_ohos:
-              git:
-                url: "https://gitcode.com/openharmony-tpc/flutter_packages.git"
-                path: "packages/shared_preferences/shared_preferences_ohos"
-            shared_preferences_foundation:
-              git:
-                url: "https://gitcode.com/openharmony-tpc/flutter_packages.git"
-                path: "packages/shared_preferences/shared_preferences_foundation"
-            path_provider:
-              git:
-                url: "https://gitcode.com/openharmony-tpc/flutter_packages.git"
-                path: "packages/path_provider/path_provider"
-            path_provider_ohos:
-              git:
-                url: "https://gitcode.com/openharmony-tpc/flutter_packages.git"
-                path: "packages/path_provider/path_provider_ohos"
-            path_provider_foundation:
-              git:
-                url: "https://gitcode.com/openharmony-tpc/flutter_packages.git"
-                path: "packages/path_provider/path_provider_foundation"
-            url_launcher:
-              git:
-                url: "https://gitcode.com/openharmony-tpc/flutter_packages.git"
-                path: "packages/url_launcher/url_launcher"
-            url_launcher_ohos:
-              git:
-                url: "https://gitcode.com/openharmony-tpc/flutter_packages.git"
-                path: "packages/url_launcher/url_launcher_ohos"
-            flutter_secure_storage:
-              git:
-                url: "https://gitcode.com/openharmony-sig/fluttertpc_flutter_secure_storage.git"
-                path: "flutter_secure_storage"
-            flutter_secure_storage_ohos:
-              git:
-                url: "https://gitcode.com/openharmony-sig/fluttertpc_flutter_secure_storage.git"
-                path: "flutter_secure_storage_ohos"
-            flutter_secure_storage_platform_interface:
-              git:
-                url: "https://gitcode.com/openharmony-sig/fluttertpc_flutter_secure_storage.git"
-                path: "flutter_secure_storage_platform_interface"
-            package_info_plus:
-              git:
-                url: "https://gitcode.com/openharmony-sig/flutter_plus_plugins.git"
-                path: "packages/package_info_plus/package_info_plus"
-          OVERRIDES
-          fi
+      - name: Prepare OHOS shell
+        run: python3 .github/scripts/prepare_ohos.py
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -288,7 +198,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl xz-utils zip libgl1-mesa-dev rsync
+          sudo apt-get install -y curl xz-utils zip libgl1-mesa-dev
 
       - name: Setup OpenHarmony CLI tools
         uses: ErBWs/setup-ohos@v1

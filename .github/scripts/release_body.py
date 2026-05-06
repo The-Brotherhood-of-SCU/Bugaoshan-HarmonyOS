@@ -12,7 +12,7 @@ def main():
 - Android: [arm64 APK]({repo}/releases/download/v{version}/bugaoshan_{version}_arm64-v8a.apk)
 - Windows: [x64 Zip]({repo}/releases/download/v{version}/bugaoshan_{version}_windows_x64.zip)
 - Linux: [x64 Tar.gz]({repo}/releases/download/v{version}/bugaoshan_{version}_linux_x64.tar.gz)
-- Harmony鸿蒙: https://github.com/assumeengagetry/TEMP-HOMO/releases （需要自签名证书）
+- HarmonyOS: [unsigned HAP]({repo}/releases/download/v{version}/bugaoshan_{version}_ohos_unsigned.hap)（未签名，需自行签名后安装）
 
 > 💡 **Note**: 当前项目优先保障 Android 端的稳定与体验。 Windows,Linux,Harmony 版本可能存在部分兼容性或体验问题。
 

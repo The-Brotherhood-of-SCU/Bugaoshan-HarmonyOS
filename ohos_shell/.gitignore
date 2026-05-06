@@ -43,3 +43,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Generated from the root Flutter app by ../.github/scripts/prepare_ohos.py
+/lib/
+/assets/
+/pubspec.yaml
+/pubspec.lock
+/pubspec.yaml.bak
+/l10n.yaml
+/test/
+/.flutter-plugins-dependencies
