@@ -6,7 +6,6 @@ import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/services/scu_auth_service.dart';
-import 'package:bugaoshan/services/ocr_service.dart';
 import 'package:bugaoshan/utils/platform_utils.dart';
 
 class ScuLoginPage extends StatefulWidget {
@@ -33,9 +32,6 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
   @override
   void initState() {
     super.initState();
-    OcrService.init().catchError((e) {
-      debugPrint('OCR Init error: $e');
-    });
     _loadSaved();
     _loadCaptcha();
   }
@@ -45,7 +41,6 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     _captchaCtrl.dispose();
-    OcrService.dispose();
     super.dispose();
   }
 
@@ -73,27 +68,12 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
     setState(() => _captchaLoading = true);
     try {
       final captcha = await getIt<ScuAuthProvider>().service.fetchCaptcha();
-      String? recognizedText;
-      try {
-        final comma = captcha.captchaBase64.indexOf(',');
-        final raw = comma >= 0
-            ? captcha.captchaBase64.substring(comma + 1)
-            : captcha.captchaBase64;
-        final imageBytes = base64.decode(raw);
-        recognizedText = await OcrService.performOcr(imageBytes);
-      } catch (e) {
-        debugPrint('OCR error: $e');
-      }
 
       if (!mounted) return;
 
       setState(() {
         _captcha = captcha;
-        if (recognizedText != null && recognizedText.isNotEmpty) {
-          _captchaCtrl.text = recognizedText;
-        } else {
-          _captchaCtrl.clear();
-        }
+        _captchaCtrl.clear();
       });
     } catch (e) {
       debugPrint('Captcha load error: $e');
@@ -201,7 +181,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.asset('assets/scu.webp', fit: BoxFit.cover),
+          child: Image.asset('assets/scu.jpg', fit: BoxFit.cover),
         ),
       ),
       const SizedBox(height: 2),
@@ -294,7 +274,6 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _DisclaimerRow('· ${l10n.scuLoginDisclaimerPwd}'),
-          _DisclaimerRow('· ${l10n.scuLoginDisclaimerOcr}'),
           _DisclaimerRow('· ${l10n.scuLoginDisclaimerPrivacy}'),
         ],
       ),

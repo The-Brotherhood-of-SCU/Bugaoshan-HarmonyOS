@@ -1,5 +1,4 @@
-﻿import 'dart:async';
-import 'dart:io';
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -9,7 +8,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:bugaoshan/app.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/services/window_state_service.dart';
-import 'package:system_theme/system_theme.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
+import 'package:bugaoshan/utils/theme_utils.dart';
 
 Future<void> main() async {
   try {
@@ -25,7 +25,7 @@ Future<void> _initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb) {
     DartPluginRegistrant.ensureInitialized();
-    if (_isDesktopPlatform) {
+    if (AppPlatform.isDesktop) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }
@@ -34,18 +34,16 @@ Future<void> _initializeApp() async {
   await ensureBasicDependencies();
 
   // 桌面端记住窗口位置和大小，下次启动时恢复
-  if (!kIsWeb && _isDesktopPlatform) {
+  if (!kIsWeb && AppPlatform.isDesktop) {
     await WindowStateService.create(getIt<SharedPreferences>());
   }
 
   // 获取系统主题颜色
-  SystemTheme.fallbackColor = Colors.blue;
-  await SystemTheme.accentColor.load();
+  await loadSystemAccentColor();
 }
 
 bool get _isDesktopPlatform {
-  if (kIsWeb) return false;
-  return Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  return AppPlatform.isDesktop;
 }
 
 class _StartupErrorApp extends StatelessWidget {

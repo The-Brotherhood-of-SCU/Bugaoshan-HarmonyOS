@@ -13,8 +13,12 @@ const String dockIdNetworkDevice = 'network_device';
 const String dockIdBalanceQuery = 'balance_query';
 const String dockIdAcademicCalendar = 'academic_calendar';
 const String dockIdFitnessTest = 'fitness_test';
-const String dockIdNotice = 'notice';
-const String dockIdDownloadedAttachments = 'downloaded_attachments';
+
+const List<String> defaultVisibleDockIds = [
+  dockIdCourse,
+  dockIdCampus,
+  dockIdProfile,
+];
 
 const Duration kHttpTimeout = Duration(seconds: 15);
 

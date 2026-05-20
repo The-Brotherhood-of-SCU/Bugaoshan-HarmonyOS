@@ -1,10 +1,7 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
-import 'package:bugaoshan/models/campus_item_config.dart';
+import 'package:bugaoshan/models/dock_item_config.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/app_info_provider.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
@@ -12,6 +9,9 @@ import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/services/update_service.dart';
 import 'package:bugaoshan/services/widget_update_service.dart';
 import 'package:bugaoshan/utils/constants.dart';
+import 'package:bugaoshan/utils/dock_utils.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
+import 'package:bugaoshan/widgets/dialog/eula_dialog.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -29,7 +29,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// Only the page at [selectedIndex] is visible; others are kept alive.
   Widget _buildIndexedStack(List<String> visibleIds, int selectedIndex) {
     for (final id in visibleIds) {
-      _pageCache.putIfAbsent(id, () => campusItemConfigById(id).page());
+      _pageCache.putIfAbsent(id, () => buildDockPage(id));
     }
     // Clean up pages no longer visible
     _pageCache.keys
@@ -42,12 +42,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
+  bool _eulaChecked = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkForUpdateInBackground();
     _attemptAutoLogin();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_eulaChecked) {
+      _eulaChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkEulaAgreement();
+      });
+    }
+  }
+
+  Future<void> _checkEulaAgreement() async {
+    if (!mounted) return;
+    await ensureEulaAgreement(context);
   }
 
   Future<void> _attemptAutoLogin() async {
@@ -94,7 +112,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _updateWidget() {
-    if (!kIsWeb && Platform.isAndroid) {
+    if (AppPlatform.supportsHomeWidget) {
       try {
         getIt<WidgetUpdateService>().updateWidgetData();
       } catch (_) {}
@@ -198,7 +216,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     bool hasUpdate,
     AppLocalizations l10n,
   ) {
-    final config = campusItemConfigById(id);
+    final config = dockConfigById(id);
     final isProfile = id == dockIdProfile;
     return NavigationRailDestination(
       icon: isProfile
@@ -210,7 +228,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               child: Icon(config.selectedIcon),
             )
           : Icon(config.selectedIcon),
-      label: Text(config.dockLabel(l10n)),
+      label: Text(dockLabel(id, l10n)),
     );
   }
 
@@ -219,7 +237,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     bool hasUpdate,
     AppLocalizations l10n,
   ) {
-    final config = campusItemConfigById(id);
+    final config = dockConfigById(id);
     final isProfile = id == dockIdProfile;
     return NavigationDestination(
       icon: isProfile
@@ -231,7 +249,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               child: Icon(config.selectedIcon),
             )
           : Icon(config.selectedIcon),
-      label: config.dockLabel(l10n),
+      label: dockLabel(id, l10n),
     );
   }
 
