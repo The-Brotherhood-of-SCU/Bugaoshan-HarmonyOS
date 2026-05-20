@@ -11,64 +11,371 @@ on:
         required: false
         type: string
 
+env:
+  FLUTTER_OH_REPO: https://gitcode.com/openharmony-tpc/flutter_flutter.git
+  FLUTTER_OH_REF: oh-3.35.7-dev
+  FLUTTER_OH_VERSION: 3.35.8-ohos-0.0.3
+  FLUTTER_OH_DART_VERSION: 3.9.2
+  FLUTTER_OH_DEVTOOLS_VERSION: 2.48.0
+
 jobs:
   build-android:
-    uses: ./.github/workflows/build-android.yml
-    with:
-      version: ${{ github.event.inputs.version }}
-    secrets: inherit
+    name: Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch all tags
+        run: git fetch --tags --force
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2.18.0
+        with:
+          flutter-version: "3.41.6"
+          channel: "stable"
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Set up Python 3
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+      - name: Extract git metadata
+        id: git_meta
+        run: python .github/scripts/git_meta.py
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs || true
+      - name: Generate localizations
+        run: flutter gen-l10n
+      - name: Decode Keystore
+        run: |
+          mkdir -p android/keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/keystore/upload-keystore.jks
+      - name: Create key.properties
+        run: |
+          echo 'storePassword=${{ secrets.KEYSTORE_PASSWORD }}' > android/key.properties
+          echo 'keyPassword=${{ secrets.KEY_PASSWORD }}' >> android/key.properties
+          echo 'keyAlias=${{ secrets.KEY_ALIAS }}' >> android/key.properties
+          echo 'storeFile=../keystore/upload-keystore.jks' >> android/key.properties
+      - name: Build APK
+        run: |
+          flutter build apk --release --split-per-abi \
+            --obfuscate --split-debug-info=build/app/outputs/symbols \
+            --dart-define=GIT_TAG=${{ steps.git_meta.outputs.GIT_TAG }} \
+            --dart-define=GIT_COMMIT=${{ steps.git_meta.outputs.GIT_COMMIT }} \
+            --dart-define=GIT_COMMIT_DATE=${{ steps.git_meta.outputs.GIT_COMMIT_DATE }} \
+            --dart-define=BUILD_TIME=${{ steps.git_meta.outputs.BUILD_TIME }}
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/*.apk
 
   build-windows:
-    uses: ./.github/workflows/build-windows.yml
-    with:
-      version: ${{ github.event.inputs.version }}
-    secrets: inherit
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch all tags
+        run: git fetch --tags --force
+        shell: bash
+      - uses: subosito/flutter-action@v2.18.0
+        with:
+          flutter-version: "3.41.6"
+          channel: "stable"
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Set up Python 3
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+      - name: Extract git metadata
+        id: git_meta
+        run: python .github/scripts/git_meta.py
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs || true
+      - name: Generate localizations
+        run: flutter gen-l10n
+      - name: Build Windows
+        run: |
+          flutter build windows --release \
+            --dart-define=GIT_TAG=${{ steps.git_meta.outputs.GIT_TAG }} \
+            --dart-define=GIT_COMMIT=${{ steps.git_meta.outputs.GIT_COMMIT }} \
+            --dart-define=GIT_COMMIT_DATE=${{ steps.git_meta.outputs.GIT_COMMIT_DATE }} \
+            --dart-define=BUILD_TIME=${{ steps.git_meta.outputs.BUILD_TIME }}
+        shell: bash
+      - name: Archive Windows Release
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath windows-release.zip
+      - name: Upload Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: windows-release.zip
+
+  build-linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch all tags
+        run: git fetch --tags --force
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev
+      - uses: subosito/flutter-action@v2.18.0
+        with:
+          flutter-version: "3.41.6"
+          channel: "stable"
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Set up Python 3
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+      - name: Extract git metadata
+        id: git_meta
+        run: python .github/scripts/git_meta.py
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs || true
+      - name: Generate localizations
+        run: flutter gen-l10n
+      - name: Build Linux
+        run: |
+          flutter build linux --release \
+            --dart-define=GIT_TAG=${{ steps.git_meta.outputs.GIT_TAG }} \
+            --dart-define=GIT_COMMIT=${{ steps.git_meta.outputs.GIT_COMMIT }} \
+            --dart-define=GIT_COMMIT_DATE=${{ steps.git_meta.outputs.GIT_COMMIT_DATE }} \
+            --dart-define=BUILD_TIME=${{ steps.git_meta.outputs.BUILD_TIME }}
+      - name: Archive Linux Release
+        run: tar -czvf linux-release.tar.gz -C build/linux/x64/release/bundle .
+      - name: Upload Linux
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: linux-release.tar.gz
+
+  build-ohos:
+    name: HarmonyOS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version
+        id: ctx
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [[ -z "${VERSION}" ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare OHOS shell
+        run: python3 .github/scripts/prepare_ohos.py
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl xz-utils zip libgl1-mesa-dev
+
+      - name: Setup OpenHarmony CLI tools
+        uses: ErBWs/setup-ohos@v1
+        with:
+          version: latest
+          cache: true
+
+      - name: Clone Flutter-OH SDK
+        run: |
+          git clone \
+            --branch "${FLUTTER_OH_REF}" \
+            "${FLUTTER_OH_REPO}" \
+            "${HOME}/flutter_ohos"
+          git -C "${HOME}/flutter_ohos" fetch --tags --force
+          echo "${HOME}/flutter_ohos/bin" >> "${GITHUB_PATH}"
+
+      - name: Create Flutter version cache
+        run: |
+          FRAMEWORK_REVISION="$(git -C "${HOME}/flutter_ohos" rev-parse HEAD)"
+          FRAMEWORK_COMMIT_DATE="$(git -C "${HOME}/flutter_ohos" log -1 --date='format:%Y-%m-%d %H:%M:%S %z' --pretty=format:%cd)"
+          ENGINE_REVISION="$(cat "${HOME}/flutter_ohos/bin/internal/engine.version")"
+          FRAMEWORK_VERSION="$(git -C "${HOME}/flutter_ohos" tag --points-at HEAD | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(-ohos([-.][A-Za-z0-9]+)*)?$' | head -1 || true)"
+          if [[ -z "${FRAMEWORK_VERSION}" ]]; then
+            FRAMEWORK_VERSION="${FLUTTER_OH_VERSION}"
+          fi
+          mkdir -p "${HOME}/flutter_ohos/bin/cache"
+          export FRAMEWORK_VERSION FRAMEWORK_REVISION FRAMEWORK_COMMIT_DATE ENGINE_REVISION
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          data = {
+              "frameworkVersion": os.environ["FRAMEWORK_VERSION"],
+              "channel": "[user-branch]",
+              "repositoryUrl": os.environ["FLUTTER_OH_REPO"],
+              "frameworkRevision": os.environ["FRAMEWORK_REVISION"],
+              "frameworkCommitDate": os.environ["FRAMEWORK_COMMIT_DATE"],
+              "engineRevision": os.environ["ENGINE_REVISION"],
+              "engineCommitDate": None,
+              "engineContentHash": None,
+              "engineBuildDate": None,
+              "dartSdkVersion": os.environ["FLUTTER_OH_DART_VERSION"],
+              "devToolsVersion": os.environ["FLUTTER_OH_DEVTOOLS_VERSION"],
+              "flutterVersion": os.environ["FRAMEWORK_VERSION"],
+          }
+          path = Path(os.environ["HOME"]) / "flutter_ohos" / "bin" / "cache" / "flutter.version.json"
+          path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+          version_path = Path(os.environ["HOME"]) / "flutter_ohos" / "version"
+          version_path.write_text(os.environ["FRAMEWORK_VERSION"] + "\n", encoding="utf-8")
+          PY
+
+      - name: Create OHOS package.json
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path("ohos_shell/ohos/package.json")
+          data = {
+              "dependencies": {
+                  "flutter-hvigor-plugin": f"file:{os.environ['HOME']}/flutter_ohos/packages/flutter_tools/hvigor"
+              }
+          }
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Set Flutter-OH environment
+        run: |
+          echo "PUB_HOSTED_URL=https://pub.flutter-io.cn" >> "${GITHUB_ENV}"
+          echo "FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn" >> "${GITHUB_ENV}"
+          echo "FLUTTER_GIT_URL=${FLUTTER_OH_REPO}" >> "${GITHUB_ENV}"
+
+      - name: Flutter pub get
+        working-directory: ohos_shell
+        run: flutter pub get
+
+      - name: Generate code
+        working-directory: ohos_shell
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Generate localizations
+        working-directory: ohos_shell
+        run: flutter gen-l10n
+
+      - name: Verify OpenHarmony toolchain
+        working-directory: ohos_shell/ohos
+        run: |
+          command -v hvigorw
+          hvigorw -v
+
+      - name: Flutter doctor
+        working-directory: ohos_shell
+        run: flutter doctor -v
+
+      - name: Build unsigned HAP
+        working-directory: ohos_shell
+        run: |
+          set +e
+          flutter build hap --release 2>&1 | tee /tmp/flutter-build-hap.log
+          BUILD_EXIT=${PIPESTATUS[0]}
+          if [[ "${BUILD_EXIT}" -eq 0 ]]; then exit 0; fi
+          if grep -q '请通过DevEco Studio打开ohos工程后配置调试签名' /tmp/flutter-build-hap.log; then
+            echo "Unsigned-only build expected; continuing."
+            exit 0
+          fi
+          exit "${BUILD_EXIT}"
+
+      - name: Find and rename HAP
+        id: build
+        run: |
+          UNSIGNED_HAP="$(find ohos_shell -type f -name '*unsigned.hap' | sort | head -1)"
+          if [[ -z "${UNSIGNED_HAP}" ]]; then
+            UNSIGNED_HAP="$(find ohos_shell -type f -name '*.hap' ! -name '*signed*' | sort | head -1)"
+          fi
+          if [[ -z "${UNSIGNED_HAP}" ]]; then
+            echo "Unsigned HAP not found" >&2
+            tail -n 200 /tmp/flutter-build-hap.log >&2 || true
+            exit 1
+          fi
+          VERSION="${{ steps.ctx.outputs.version }}"
+          DEST="bugaoshan_${VERSION}_ohos_unsigned.hap"
+          cp "${UNSIGNED_HAP}" "${DEST}"
+          echo "hap=${DEST}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload HAP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ohos-hap
+          path: ${{ steps.build.outputs.hap }}
+          retention-days: 30
 
   release:
     name: Release
-    needs: [ build-android, build-windows ]
+    needs: [build-android, build-windows, build-linux, build-ohos]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name ==
-      'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Download APK
         uses: actions/download-artifact@v4
         with:
           name: android-apk
           path: android-apk
-
       - name: Download Windows
         uses: actions/download-artifact@v4
         with:
           name: windows-release
           path: windows-release
-
+      - name: Download Linux
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-release
+          path: linux-release
+      - name: Download HarmonyOS HAP
+        uses: actions/download-artifact@v4
+        with:
+          name: ohos-hap
+          path: ohos-hap
       - name: Set up Python 3
         uses: actions/setup-python@v3
         with:
           python-version: "3.12"
-
       - name: Get version and tags
         id: vars
         run: python .github/scripts/release_tags.py
         env:
           VERSION: ${{ github.event.inputs.version }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
-
       - name: Extract changelog
         id: changelog
         run: python .github/scripts/release_changelog.py
         env:
           VERSION: ${{ steps.vars.outputs.tag }}
-
       - name: Build release body
         id: release_body
         run: python .github/scripts/release_body.py
@@ -77,12 +384,12 @@ jobs:
           REPO: https://github.com/${{ github.repository }}
           CHANGELOG: ${{ steps.changelog.outputs.changelog }}
           PREV: ${{ steps.vars.outputs.prev }}
-
       - name: Prepare release files
         run: python .github/scripts/release_prepare.py
         env:
           VERSION: ${{ steps.vars.outputs.tag }}
-
+      - name: Copy HAP to release dir
+        run: cp ohos-hap/*.hap .
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -93,6 +400,7 @@ jobs:
             bugaoshan_*.apk
             bugaoshan_*.zip
             bugaoshan_*.tar.gz
+            bugaoshan_*.hap
           draft: false
           prerelease: ${{ contains(steps.vars.outputs.tag, '-') }}
           generate_release_notes: false

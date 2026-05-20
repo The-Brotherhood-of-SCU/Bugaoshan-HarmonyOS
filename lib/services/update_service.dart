@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:bugaoshan/models/release_info.dart';
+import 'package:bugaoshan/utils/open_link.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -53,9 +55,10 @@ class UpdateService {
 
   bool _assetMatchesPlatform(String assetName) {
     final name = assetName.toLowerCase();
-    if (Platform.isAndroid) return name.endsWith('.apk');
-    if (Platform.isWindows) return name.contains('windows');
-    if (Platform.isLinux) return name.contains('linux');
+    if (AppPlatform.isAndroid) return name.endsWith('.apk');
+    if (AppPlatform.isHarmony) return name.endsWith('.hap');
+    if (AppPlatform.isWindows) return name.contains('windows');
+    if (AppPlatform.isLinux) return name.contains('linux');
     return false;
   }
 
@@ -235,9 +238,20 @@ class UpdateService {
       throw UpdateCancelledException();
     }
 
-    if (Platform.isAndroid) {
+    if (AppPlatform.isAndroid) {
       onStatus?.call('Installing...');
       await _installAndroid(chunks);
+      return;
+    }
+
+    if (AppPlatform.isHarmony) {
+      onStatus?.call('Installing...');
+      try {
+        await _installHarmony(version, chunks);
+      } on Object {
+        onStatus?.call('Opening download page...');
+        await openLink(downloadUrl);
+      }
       return;
     }
 
@@ -271,9 +285,9 @@ class UpdateService {
     final currentExe = Platform.resolvedExecutable;
     final currentExeDir = File(currentExe).parent.path;
 
-    if (Platform.isWindows) {
+    if (AppPlatform.isWindows) {
       await _installWindows(extractDir, currentExeDir, currentExe);
-    } else if (Platform.isLinux) {
+    } else if (AppPlatform.isLinux) {
       await _installLinux(extractDir, currentExeDir, currentExe);
     } else {
       throw UnsupportedError('Unsupported platform');
@@ -288,6 +302,15 @@ class UpdateService {
     final apkFile = File(apkPath);
     await apkFile.writeAsBytes(apkBytes);
     await _channel.invokeMethod('installApk', {'path': apkPath});
+  }
+
+  Future<void> _installHarmony(String version, List<int> hapBytes) async {
+    final tempDir = await getTemporaryDirectory();
+    final safeVersion = version.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
+    final hapPath = p.join(tempDir.path, 'bugaoshan_$safeVersion.hap');
+    final hapFile = File(hapPath);
+    await hapFile.writeAsBytes(hapBytes);
+    await _channel.invokeMethod('installHap', {'path': hapPath});
   }
 
   Future<void> _installWindows(
