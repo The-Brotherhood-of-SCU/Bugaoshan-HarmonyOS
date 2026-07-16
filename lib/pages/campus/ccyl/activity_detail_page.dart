@@ -9,6 +9,7 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/ccyl_provider.dart';
 import 'package:bugaoshan/services/ccyl_service.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:photo_view/photo_view.dart';
 
 class ActivityDetailPage extends StatefulWidget {
@@ -381,14 +382,15 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.save_alt),
-              title: Text(l10n.saveImageToGallery),
-              onTap: () {
-                Navigator.pop(ctx);
-                _saveImageToGallery(context, imageUrl, l10n);
-              },
-            ),
+            if (!AppPlatform.isHarmony)
+              ListTile(
+                leading: const Icon(Icons.save_alt),
+                title: Text(l10n.saveImageToGallery),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _saveImageToGallery(context, imageUrl, l10n);
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.share),
               title: Text(l10n.share),

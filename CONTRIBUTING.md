@@ -14,6 +14,7 @@
 
 - [Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.x
 - [Dart SDK](https://dart.dev/get-dart) >= 3.x
+- HarmonyOS 使用 CPF Flutter 3.41.9，具体版本和环境配置见 [HarmonyOS 开发指南](docs/HARMONYOS.md)
 - [Nuget CLI](https://learn.microsoft.com/en-us/nuget/install-nuget-client-tools?tabs=windows#nugetexe-cli)  required by `flutter_inappwebview` (windows target)
 
 ### Pre-commit Hook
@@ -57,10 +58,21 @@ cd Bugaoshan
 flutter pub get
 
 # 运行代码生成（DI & 国际化）
-flutter pub run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 
 # 运行 App
 flutter run
+```
+
+HarmonyOS 构建：
+
+```bash
+# CI/编译验证，无需签名
+cp ohos/build-profile.json5.example ohos/build-profile.json5
+flutter build hap --debug --no-codesign
+
+# DevEco Studio 配置自动签名后运行真机
+flutter run --debug -d <device-id>
 ```
 
 ---

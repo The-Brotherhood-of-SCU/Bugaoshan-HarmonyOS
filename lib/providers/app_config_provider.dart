@@ -22,6 +22,7 @@ const String _keyHasUpdateNotification = 'hasUpdateNotification';
 const String _keyVisibleDockIds = 'visibleDockIds';
 const String _keyAcceptedEulaVersion = 'acceptedEulaVersion';
 const String _keyThemeColorMode = 'themeColorMode';
+const String _keyWidgetShowTomorrow = 'widget_show_tomorrow';
 const Curve appCurve = Curves.easeOutQuart;
 
 enum ThemeColorMode { system, backgroundImage, custom }
@@ -61,6 +62,7 @@ class AppConfigProvider {
   final ValueNotifier<int> acceptedEulaVersion = ValueNotifier<int>(0);
   final ValueNotifier<ThemeColorMode> themeColorMode =
       ValueNotifier<ThemeColorMode>(ThemeColorMode.system);
+  final ValueNotifier<bool> widgetShowTomorrow = ValueNotifier<bool>(false);
 
   void _loadLocale() {
     final localeString = _sharedPreferences.getString(_keyLocale);
@@ -95,6 +97,8 @@ class AppConfigProvider {
         _sharedPreferences.getInt(_keyAcceptedEulaVersion) ?? 0;
     themeColorMode.value = ThemeColorMode
         .values[_sharedPreferences.getInt(_keyThemeColorMode) ?? 0];
+    widgetShowTomorrow.value =
+        _sharedPreferences.getBool(_keyWidgetShowTomorrow) ?? false;
   }
 
   void _addSaveCallback() {
@@ -173,6 +177,12 @@ class AppConfigProvider {
     });
     themeColorMode.addListener(() {
       _sharedPreferences.setInt(_keyThemeColorMode, themeColorMode.value.index);
+    });
+    widgetShowTomorrow.addListener(() {
+      _sharedPreferences.setBool(
+        _keyWidgetShowTomorrow,
+        widgetShowTomorrow.value,
+      );
     });
   }
 

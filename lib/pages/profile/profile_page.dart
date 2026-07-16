@@ -3,7 +3,6 @@ import 'package:bugaoshan/providers/profile_labels_provider.dart';
 import 'package:bugaoshan/widgets/common/third_center.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/auth/scu_login_page.dart';
@@ -11,6 +10,7 @@ import 'package:bugaoshan/pages/profile/login_status_card.dart';
 import 'package:bugaoshan/pages/profile/profile_menu_card.dart';
 import 'package:bugaoshan/pages/profile/user_info_card.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
+import 'package:bugaoshan/providers/secure_storage_provider.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 
 const _keyUsername = 'scu_saved_username';
@@ -23,7 +23,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final _storage = const FlutterSecureStorage();
+  final _storage = SecureStorageProvider.instance;
   String? _username;
 
   late final ProfileLabelsProvider _labelsProvider;

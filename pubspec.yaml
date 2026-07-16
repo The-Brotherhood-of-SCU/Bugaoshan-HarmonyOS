@@ -3,7 +3,7 @@ description: Explore everything, all on the Bugaoshan.
 publish_to: none
 version: 1.0.0
 environment:
-  sdk: ^3.10.4
+  sdk: '>=3.11.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
@@ -11,35 +11,39 @@ dependencies:
   cupertino_icons: ^1.0.8
   get_it: ^9.2.0
   injectable: any
-  shared_preferences: any
+  shared_preferences: 2.5.4
   flutter_localizations:
     sdk: flutter
   intl: any
   flutter_colorpicker: any
-  url_launcher: any
-  package_info_plus: any
+  url_launcher: 6.3.2
+  package_info_plus: 9.0.0
   web: any
   async: any
   http: ^1.2.0
   hive_ce: ^2.19.3
-  sqflite: ^2.4.2
+  sqflite: 2.4.2
   sqflite_common_ffi: ^2.3.4
   path_provider: ^2.1.5
   path: ^1.9.0
   dart_sm: ^0.1.4
-  flutter_secure_storage: ^10.0.0
+  flutter_secure_storage: 9.2.4
+  flutter_secure_storage_ohos:
+    git:
+      url: https://gitcode.com/CPF-Flutter/fluttertpc_flutter_secure_storage.git
+      path: flutter_secure_storage_ohos
+      ref: cce5d69e25778d7e5550cb12a775f87eb072b2f2
   pub_semver: ^2.1.4
   archive: ^4.0.9
   os_type: ^0.2.2
   file_picker: ^11.0.2
   flutter_markdown_plus: ^1.0.7
-  image_picker: ^1.2.2
+  image_picker: 1.2.1
   window_manager: ^0.5.1
   system_theme: ^3.2.0
   google_fonts: ^8.1.0
-  share_plus: ^12.0.2
+  share_plus: 12.0.1
   gal: ^2.3.0
-  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:
@@ -71,3 +75,75 @@ flutter_launcher_icons:
     generate: true
     image_path: assets/icon.png
   image_path: assets/icon.png
+
+dependency_overrides:
+  shared_preferences:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/shared_preferences/shared_preferences
+      ref: a671ca01767309608b643587746e486c176107e3
+  shared_preferences_ohos:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/shared_preferences/shared_preferences_ohos
+      ref: a671ca01767309608b643587746e486c176107e3
+  path_provider:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/path_provider/path_provider
+      ref: 6d8bb79a3afae2fe5ccb7e90483fe8e4f9658e7c
+  path_provider_ohos:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/path_provider/path_provider_ohos
+      ref: 6d8bb79a3afae2fe5ccb7e90483fe8e4f9658e7c
+  url_launcher:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/url_launcher/url_launcher
+      ref: e27add0738061a32af1b9274c0ba020dea371dfb
+  url_launcher_ohos:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/url_launcher/url_launcher_ohos
+      ref: e27add0738061a32af1b9274c0ba020dea371dfb
+  image_picker:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/image_picker/image_picker
+      ref: 0a35ee2e5f710e6abb2ed521d558c0776213dd71
+  image_picker_ohos:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/image_picker/image_picker_ohos
+      ref: 0a35ee2e5f710e6abb2ed521d558c0776213dd71
+  package_info_plus:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_plus_plugins.git
+      path: packages/package_info_plus/package_info_plus
+      ref: b7b9e4ae49a3c3f540c62b0b703d50eac6496ef3
+  share_plus:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_plus_plugins.git
+      path: packages/share_plus/share_plus
+      ref: 5bef4632bccbd428f9a2e56bec96b3e9b6fe3c50
+  flutter_secure_storage:
+    git:
+      url: https://gitcode.com/CPF-Flutter/fluttertpc_flutter_secure_storage.git
+      path: flutter_secure_storage
+      ref: cce5d69e25778d7e5550cb12a775f87eb072b2f2
+  flutter_secure_storage_platform_interface:
+    git:
+      url: https://gitcode.com/CPF-Flutter/fluttertpc_flutter_secure_storage.git
+      path: flutter_secure_storage_platform_interface
+      ref: cce5d69e25778d7e5550cb12a775f87eb072b2f2
+  sqflite:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_sqflite.git
+      path: sqflite
+      ref: 8cc162bdd90adad2e8c8054b52fc14c1e86000ee
+  sqflite_ohos:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_sqflite.git
+      path: sqflite_ohos
+      ref: 8cc162bdd90adad2e8c8054b52fc14c1e86000ee

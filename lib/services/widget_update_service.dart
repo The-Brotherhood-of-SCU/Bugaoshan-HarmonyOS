@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -19,7 +19,7 @@ class WidgetUpdateService {
     Duration? debounceDuration,
     bool Function()? platformChecker,
   }) : _platformChecker =
-           platformChecker ?? (() => !kIsWeb && Platform.isAndroid) {
+           platformChecker ?? (() => AppPlatform.supportsHomeWidget) {
     _debounceDuration = debounceDuration ?? _debounceDuration;
   }
 
@@ -132,7 +132,7 @@ class WidgetUpdateService {
   }
 
   Future<bool> pinWidget(String size) async {
-    if (kIsWeb || !Platform.isAndroid) return false;
+    if (!AppPlatform.supportsHomeWidget) return false;
     try {
       final result = await _channel.invokeMethod<bool>('pinWidget', {
         'size': size,
@@ -145,7 +145,7 @@ class WidgetUpdateService {
   }
 
   Future<bool> isIgnoringBatteryOptimizations() async {
-    if (kIsWeb || !Platform.isAndroid) return false;
+    if (!AppPlatform.supportsHomeWidget) return false;
     try {
       final result = await _channel.invokeMethod<bool>(
         'isIgnoringBatteryOptimizations',
@@ -158,7 +158,7 @@ class WidgetUpdateService {
   }
 
   Future<bool> requestIgnoreBatteryOptimizations() async {
-    if (kIsWeb || !Platform.isAndroid) return false;
+    if (!AppPlatform.supportsHomeWidget) return false;
     try {
       final result = await _channel.invokeMethod<bool>(
         'requestIgnoreBatteryOptimizations',

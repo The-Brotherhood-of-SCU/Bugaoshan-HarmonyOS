@@ -42,10 +42,6 @@ Future<void> _initializeApp() async {
   await loadSystemAccentColor();
 }
 
-bool get _isDesktopPlatform {
-  return AppPlatform.isDesktop;
-}
-
 class _StartupErrorApp extends StatelessWidget {
   const _StartupErrorApp();
 

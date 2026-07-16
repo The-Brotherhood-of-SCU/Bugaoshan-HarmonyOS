@@ -43,7 +43,7 @@ class ScuAuthProvider extends ChangeNotifier {
   int? _loginTimestamp;
   String? _userRealname;
   String? _userNumber;
-  bool _isAutoLoggingIn = false;
+  final bool _isAutoLoggingIn = false;
   String? get accessToken => _accessToken;
   String? get userRealname => _userRealname;
   String? get userNumber => _userNumber;

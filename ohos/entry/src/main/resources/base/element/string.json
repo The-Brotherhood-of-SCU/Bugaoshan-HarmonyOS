@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Sichuan University campus assistant"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Bugaoshan campus assistant"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "不高山上"
+    }
+  ]
+}

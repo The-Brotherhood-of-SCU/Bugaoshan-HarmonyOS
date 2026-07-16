@@ -5,7 +5,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![License](https://img.shields.io/badge/License-AGPL3.0-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Android%20%7C%20Windows-blue)](https://flutter.dev)
+[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20HarmonyOS%20%7C%20Linux%20%7C%20Windows-blue)](https://flutter.dev)
 
 > 川大学生专属校园助手
 
@@ -49,6 +49,8 @@
 ## 📥 下载
 
 **前往 [Release 页面](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases) 下载最新版本**
+
+HarmonyOS 本地环境、签名和构建方法见 [HarmonyOS 开发指南](docs/HARMONYOS.md)。
 
 ---
 

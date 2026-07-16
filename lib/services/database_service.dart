@@ -8,7 +8,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:bugaoshan/models/course.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 
 const String _keyCurrentScheduleId = 'currentScheduleId';
 const String _keySchedules = 'schedules';
@@ -24,7 +23,8 @@ class DatabaseService {
   List<ScheduleConfig> _schedulesCache = [];
   List<Course> _coursesCache = [];
 
-  bool get _usePrefsBackend => AppPlatform.isHarmony;
+  // CPF's sqflite implementation keeps the database model consistent on OHOS.
+  bool get _usePrefsBackend => false;
 
   Future<void> init() async {
     if (_usePrefsBackend) {

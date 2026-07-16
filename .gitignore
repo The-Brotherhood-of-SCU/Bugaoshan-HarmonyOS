@@ -44,21 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Legacy TEMP-HOMO submodule checkout
-/ohos/
-
-# Generated HarmonyOS Flutter shell contents
-/ohos_shell/lib/
-/ohos_shell/assets/
-/ohos_shell/pubspec.yaml
-/ohos_shell/pubspec.lock
-/ohos_shell/pubspec.yaml.bak
-/ohos_shell/l10n.yaml
-/ohos_shell/test/
-/ohos_shell/.dart_tool/
-/ohos_shell/.flutter-plugins-dependencies
-/ohos_shell/build/
-
 #IDE
 .vscode/
 .codebuddy/

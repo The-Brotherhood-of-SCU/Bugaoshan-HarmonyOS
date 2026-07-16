@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:bugaoshan/pages/wizard/wizard_card.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/widgets/common/third_center.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
@@ -48,7 +47,7 @@ class FeaturesPage extends StatelessWidget {
           title: l10n.wizardFeatureProfile,
           description: l10n.wizardFeatureProfileDesc,
         ),
-        if (Platform.isAndroid) ...[
+        if (AppPlatform.supportsHomeWidget) ...[
           const SizedBox(height: 12),
           _FeatureCard(
             icon: Icons.widgets_outlined,

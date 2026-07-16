@@ -20,6 +20,7 @@ import 'package:bugaoshan/providers/set_theme_color_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:bugaoshan/utils/theme_utils.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 
 class SoftwareSettingPage extends StatelessWidget {
   const SoftwareSettingPage({super.key});
@@ -232,7 +233,7 @@ class SoftwareSettingPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (Platform.isAndroid) ...[
+                if (AppPlatform.supportsHomeWidget) ...[
                   const Divider(),
                   Align(
                     alignment: Alignment.centerLeft,
