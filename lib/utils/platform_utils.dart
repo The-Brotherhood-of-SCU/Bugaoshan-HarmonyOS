@@ -8,7 +8,11 @@ class AppPlatform {
 
   static bool get isHarmony => !kIsWeb && OS.isHarmony;
 
-  static bool get isAndroid => !kIsWeb && !isHarmony && Platform.isAndroid;
+  static bool get isAndroid {
+    if (kIsWeb || OS.isHarmony) return false;
+    return Platform.isAndroid ||
+        defaultTargetPlatform == TargetPlatform.android;
+  }
 
   static bool get isIOS => !kIsWeb && Platform.isIOS;
 
@@ -20,14 +24,12 @@ class AppPlatform {
 
   static bool get isDesktop => isWindows || isLinux || isMacOS;
 
-  static bool get isMobile => isAndroid || isIOS || isHarmony;
+  static bool get isMobile => isHarmony || isAndroid || isIOS;
 
   static bool get supportsHomeWidget => isAndroid;
 
-  static bool get supportsAutoLogin => !isHarmony;
-
-  static bool get supportsSystemCalendarImport => isAndroid || isHarmony;
+  static bool get supportsSystemCalendarImport => isHarmony || isAndroid;
 
   static bool get supportsInAppUpdate =>
-      isAndroid || isWindows || isLinux || isHarmony;
+      !isHarmony && (isAndroid || isWindows || isLinux);
 }

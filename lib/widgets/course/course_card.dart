@@ -3,11 +3,13 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 
 class CourseCard extends StatelessWidget {
   final Course course;
   final ScheduleConfig config;
   final int displayWeek;
+  final bool showAllWeeks;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
@@ -16,6 +18,7 @@ class CourseCard extends StatelessWidget {
     required this.course,
     required this.config,
     required this.displayWeek,
+    this.showAllWeeks = false,
     this.onTap,
     this.onLongPress,
   });
@@ -29,9 +32,11 @@ class CourseCard extends StatelessWidget {
       listenable: Listenable.merge([
         appConfig.colorOpacity,
         appConfig.courseCardFontSize,
+        appConfig.showLocation,
+        appConfig.showTeacherName,
       ]),
       builder: (context, _) {
-        final isActive = course.isActiveInWeek(displayWeek);
+        final isActive = showAllWeeks || course.isActiveInWeek(displayWeek);
         final color = isActive
             ? course.color.withValues(alpha: appConfig.colorOpacity.value)
             : _greyscale(course.color).withValues(alpha: 0.12);
@@ -41,26 +46,23 @@ class CourseCard extends StatelessWidget {
             ? Colors.black87
             : Colors.white;
         final fontSize = appConfig.courseCardFontSize.value;
-        final smallFontSize = fontSize - 1;
-        final details = <({IconData icon, String text, int preferredMaxLines})>[
-          if (config.showLocation && course.location.isNotEmpty)
-            (
-              icon: Icons.location_on_outlined,
-              text: course.location,
-              preferredMaxLines: 2,
-            ),
-          if (config.showTeacherName && course.teacher.isNotEmpty)
-            (
-              icon: Icons.person_outline,
-              text: course.teacher,
-              preferredMaxLines: 1,
-            ),
-          (
-            icon: Icons.calendar_today_outlined,
-            text: '${course.startWeek}-${course.endWeek}${l10n.week}',
-            preferredMaxLines: 1,
-          ),
-        ];
+        final smallFontSize = (fontSize * 0.85).clamp(8.0, 16.0);
+        final details =
+            <({String text, int preferredMaxLines, int renderMaxLines})>[
+              if (appConfig.showLocation.value && course.location.isNotEmpty)
+                (
+                  text: course.location,
+                  preferredMaxLines: 1,
+                  renderMaxLines: 4,
+                ),
+              if (appConfig.showTeacherName.value && course.teacher.isNotEmpty)
+                (text: course.teacher, preferredMaxLines: 1, renderMaxLines: 2),
+              (
+                text: l10n.weekRange(course.startWeek, course.endWeek),
+                preferredMaxLines: 1,
+                renderMaxLines: 4,
+              ),
+            ];
 
         return GestureDetector(
           onTap: onTap,
@@ -70,11 +72,13 @@ class CourseCard extends StatelessWidget {
               final height = constraints.maxHeight;
               final detailLineBudget = switch (height) {
                 < 56 => 0,
-                < 100 => 2,
-                _ => 4,
+                < 100 => 3,
+                _ => 5,
               };
               final visibleDetails =
-                  <({IconData icon, String text, int preferredMaxLines})>[];
+                  <
+                    ({String text, int preferredMaxLines, int renderMaxLines})
+                  >[];
               var usedDetailLines = 0;
               for (final detail in details) {
                 final nextUsedLines =
@@ -88,7 +92,7 @@ class CourseCard extends StatelessWidget {
               final titleMaxLines = 6;
 
               return ClipRRect(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppShapes.small),
                 child: Container(
                   decoration: BoxDecoration(
                     color: color,
@@ -101,35 +105,40 @@ class CourseCard extends StatelessWidget {
                   ),
                   padding: const EdgeInsets.all(4),
                   child: SizedBox.expand(
-                    child: SingleChildScrollView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isActive
-                                ? course.name
-                                : '${l10n.notThisWeek} ${course.name}',
-                            maxLines: titleMaxLines,
-                            style: TextStyle(
-                              fontSize: fontSize,
-                              color: textColor,
-                              height: 1.1,
-                              fontWeight: FontWeight.bold,
+                    child: ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(
+                        context,
+                      ).copyWith(scrollbars: false),
+                      child: SingleChildScrollView(
+                        physics: const NeverScrollableScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isActive
+                                  ? course.name
+                                  : '${l10n.notThisWeek} ${course.name}',
+                              maxLines: titleMaxLines,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontSize: fontSize,
+                                    color: textColor,
+                                    height: 1.1,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
-                          ),
-                          if (visibleDetails.isNotEmpty)
-                            const SizedBox(height: 2),
-                          ...visibleDetails.map(
-                            (detail) => _buildIconText(
-                              detail.icon,
-                              detail.text,
-                              smallFontSize,
-                              textColor,
-                              maxLines: detail.preferredMaxLines,
+                            if (visibleDetails.isNotEmpty)
+                              const SizedBox(height: 2),
+                            ...visibleDetails.map(
+                              (detail) => _buildIconText(
+                                detail.text,
+                                smallFontSize,
+                                textColor,
+                                maxLines: detail.renderMaxLines,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -143,21 +152,23 @@ class CourseCard extends StatelessWidget {
   }
 
   Widget _buildIconText(
-    IconData icon,
     String text,
     double fontSize,
     Color color, {
     int maxLines = 1,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Text(
-        text,
-        maxLines: maxLines,
-        style: TextStyle(
-          fontSize: fontSize,
-          color: color.withAlpha(230),
-          height: 1.1,
+    return Builder(
+      builder: (context) => Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Text(
+          text,
+          maxLines: maxLines,
+          softWrap: true,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontSize: fontSize,
+            color: color.withAlpha(230),
+            height: 1.1,
+          ),
         ),
       ),
     );

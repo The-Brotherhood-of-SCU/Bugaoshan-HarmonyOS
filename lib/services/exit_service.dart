@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:bugaoshan/utils/platform_utils.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 class ExitService {
@@ -12,6 +13,8 @@ class ExitService {
     await Future.delayed(Duration(milliseconds: 300));
     if (AppPlatform.isDesktop) {
       await windowManager.destroy();
+    } else if (AppPlatform.isHarmony) {
+      await SystemNavigator.pop();
     } else {
       exit(0);
     }

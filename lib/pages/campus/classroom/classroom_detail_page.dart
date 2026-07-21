@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/campus/models/classroom_model.dart';
 
@@ -43,10 +44,7 @@ class ClassroomDetailPage extends StatelessWidget {
   }
 
   Widget _buildInfoCard(BuildContext context, AppLocalizations l10n) {
-    final statusMap = <int, ClassroomPeriodStatus>{};
-    for (final slot in timeSlots) {
-      statusMap[slot.sessionstart] = slot.status;
-    }
+    final statusMap = classroomPeriodStatusMap(timeSlots);
 
     var freeCount = 0;
     var inClassCount = 0;
@@ -195,7 +193,7 @@ class ClassroomDetailPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppShapes.small),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -219,10 +217,7 @@ class ClassroomDetailPage extends StatelessWidget {
   }
 
   Widget _buildPeriodGrid(BuildContext context, AppLocalizations l10n) {
-    final statusMap = <int, ClassroomPeriodStatus>{};
-    for (final slot in timeSlots) {
-      statusMap[slot.sessionstart] = slot.status;
-    }
+    final statusMap = classroomPeriodStatusMap(timeSlots);
 
     return Column(
       children: List.generate(12, (i) {
@@ -284,7 +279,7 @@ class ClassroomDetailPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 4),
               decoration: BoxDecoration(
                 color: bgColor,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppShapes.small),
               ),
               child: Text(
                 periodLabel,

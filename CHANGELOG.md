@@ -5,90 +5,159 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+注意：本页的更新日志应当存放一些通俗显著的更新内容，而非技术更新或者内部优化，请勿搬运git log记录。
+
+本项目版本号规则：
+添加功能一般升级第二个版本号，小修改或者紧急修复bug则升级第三个版本号。小更新自由发布预览版，版本号不变，git tag为 `v{LatestVersion}-{PreviewName}` ，如 1.0.0 版本的预览版为： `v1.0.0-preview`
+
+
 ## [Unreleased]
+
+### Fixed
+- 修复课程表左侧时间标签可能换行的问题
+- 修复了一些小问题
+
+### Added
+- 添加互动校历镜像获取，减少网络影响
+- 【电费查询】页面增加用电趋势统计
+
+### Changed
+- 优化课表翻页手感，动画时间遵循设置
+- 自动更新：下载弹窗增加文件名
+- 只在安卓平台上显示切换图标选项
+- 将验证码识别从LiteRT切换为内置实现减小包体积、提高跨平台兼容性
+
+## [2.2.0] - 2026-07-13
+
+### Added
+- 正式加入iOS支持（仅为技术支持，但上架、TestFlight仍然需要苹果审核）
+- 考试安排支持导出到系统日历（iOS 可选目标日历，Android 通过系统导入）
+- 增加【志愿四川】支持
+- 互动校历重新设计，支持时间线互动模式/官方校历双模式查看
+- 教室查询增加节次范围筛选功能
+- 考试安排增加已过期状态显示
+
+### Changed
+- 修改软件默认图标并增加图标修改选项
+- 优化向导页面“导入课表”：如果已有课表，则显示已有课表
+- 课表显示设置（显示教师/教室/周末/非本周课程）从课表级别迁移为全局设置
+- 教室查询页面筛选栏优化为紧凑横向布局
+- 课程表样式预览增加示例课程和显示设置实时开关
+
+### Fixed
+- 安卓端更新时，会选择与设备匹配的架构
+- 多项底层修复：修复多账号数据串扰、认证稳定性修复、修复课表日期计算问题
+- 修复附件下载异常、电费房间删除后绑定错位、桌面小组件空课表状态
+
+## [2.1.1] - 2026-06-28
+
+### Fixed
+- 修复考表不显示今天未考科目的问题
+
+## [2.1.0] - 2026-06-23
+
+### Added
+- 教室列表增加「当前空闲」筛选
+
+### Fixed
+- 升级对话框不可滚动的问题
+- 课程卡片中较长的地点文本允许完整换行，并调整小字号
+- 修复校园网页面冷启动显示网络错误的问题
+
+### Changed
+- 底层统一加载错误组件，提供更一致的效果
+- 优化窄屏课表地点显示
+- 更新添加哈希校验，增强安全性
+
+## [2.0.1] - 2026-06-15
+
+### Fixed
+- 修复课表日期栏节假日标签在手机端与日期重叠的问题
+
+## [2.0.0] - 2026-06-14
+
+### Added
+- 课表为空时显示空状态页面，提供「导入课表」「新建课表」等快捷入口
+- 桌面端支持鼠标侧键 X1 返回上一页
+- 重构登录认证功能，大部分页面支持无感登录、自动刷新凭证
+- 增加始终使用最新版本（包括预览版）选项
+- 课表日期栏添加节假日节气标识
+- 添加班级课表查询功能，可查询各个年级和班级的课表
+- 添加考表查询功能，可查询考试信息
+- 支持启用Google Sans字体，支持系统的字体缩放、字体粗细调整
+- 校园页添加网格布局切换功能
+
+### Fixed
+- 修复课程编辑页在big screen模式下关闭后产生阴影的问题
+
+### Changed
+- 课程卡片与课表网格设置移入独立子页面，支持实时预览课表样式
+- 首次启动时不再自动创建默认课表
+- 彻底重构登录流程，减少登录耗时，优化登录体验
+- 课程表增加背景图片渐出动画
+- 优化设置页面
+
+## [1.2.0] - 2026-05-30
+
+### Added
+- 添加首次打开或更新后自动清理下载的 APK 安装包功能
+- 课表背景图渐变显示
+- 成绩统计添加自定义统计功能
+
+### Fixed
+- 修复小组件课程之间没有间隔的问题
+- 修复登录时单一认证节点无法使用导致全部功能无法使用的问题
+
+### Changed
+- 电费查询卡片刷新时避免高度弹动
+- 优化自动更新功能
+- 性能优化
+
+## [1.1.1] - 2026-05-24
+
+### Changed
+- 美化了一些页面
+- 部分查询页隐藏隐私信息
+
+## [1.1.0] - 2026-05-23
 
 ### Added
 - 添加体测页面夜间访问限制提示
-- 添加小组件夜间显示主题
+- 添加小组件夜间显示主题，增加滚动小组件课表的功能
 - 添加二课页面海报图片保存和分享功能
-- 在软件设置、向导页面添加安卓小组件功能
 - 添加教务系统通知、青春川大、党委学工部公告与附件下载功能
-- 通知公告统一入口页面，合并三个通知源为一个菜单页
-- WebView 加载失败时显示自定义错误页面，支持深色模式
-- 登录后自动恢复子系统（二课、培养方案）登录状态
-
-### Changed
-- 迁移 Share.shareXFiles 到 SharePlus.instance.share
-- 通知页面标题简化（教务处公告、党委学工部、青春川大）
-- conflictsWith 冲突检测从 O(n) 优化到 O(1)
-- 错放的 Provider 文件（TrainProgram、PlanCompletion）移到 lib/providers/
-- 提取重复的 session 过期检查、_parseJson 和 User-Agent 常量
-- 教务处通知页面拆分为多文件（HTTP 客户端、模型、渲染器、图片处理）
 
 ### Fixed
-- CCYL Token 从 SharedPreferences 迁移到 FlutterSecureStorage
-- 添加 15 秒 HTTP 超时，防止请求永久挂起
-- WebView 控制器在 dispose 时正确释放
-- bindSession 并发调用保护，避免重复 SSO 握手
-- POST 请求重试时正确复制 body 内容
-- 数据库删除操作添加事务包装
-- Course.fromJson / copyWith / _rowToCourse 添加 null safety
-- ScheduleConfig.fromJson 日期解析添加容错
-- showWeekend 默认值与构造函数一致
-- copyWith 中 timeSlots 防止引用别名
-- ScuAuthProvider.isExpired 在 timestamp 为 null 时正确返回 true
-- 登出时不再删除 auto-login 用户偏好设置
-- ThemeColorMode 枚举索引越界检查
-- BalanceQueryService json['data'] null 检查
-- CourseDetailSheet 在 Navigator.pop 前捕获 root context
-- CcylService 日志中移除 token 敏感信息
 - 桌面端分辨率变化后窗口出现在屏幕外的问题
 - 教务处通知表格渲染、链接解析、附件提取等多个问题
-
+- 修复部分类型设备上小组件样式显示问题
 
 ## [1.0.0] - 2026-05-06
 
-### ⬇️ 下载 (Downloads)
-
-- Android: [arm64 APK](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/download/v1.0.0/bugaoshan_1.0.0_arm64-v8a.apk)
-- Windows: [x64 Zip](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/download/v1.0.0/bugaoshan_1.0.0_windows_x64.zip)
-- Linux: [x64 Tar.gz](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/download/v1.0.0/bugaoshan_1.0.0_linux_x64.tar.gz)
-- HarmonyOS 鸿蒙: [unsigned HAP](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/download/v1.0.0/bugaoshan_1.0.0_ohos_unsigned.hap)（未签名，需自行签名后安装）
-
-> 💡 当前项目优先保障 Android 端的稳定与体验。Windows、Linux、HarmonyOS 版本可能存在部分兼容性或体验问题。
-
----
+### Fixed
+- 修复自动登录过程中，我的页面未展示登录状态导致可点击登录按钮的问题
+- 修复课表时间不对应的问题
+- 修复中文：'学术'->'学业'
+- 修复自定义 Dock 栏切换 tab / 横竖屏时页面状态丢失的问题
+- 余额查询页面加载失败时添加重试按钮
+- 修复电费余额查询单位显示错误（度数误标为元）(#37)
+- preview版本检查更新，总是显示有更新可用
 
 ### Added
-
 - 桌面端成绩页面添加刷新按钮
 - 添加校历查看功能
 - 主页添加校园卡余额、图书借阅量、网费余额等信息
 - 新增自定义 Dock 栏功能：可在设置中自由开关、排序底部导航栏项目
 - 支持将成绩、第二课堂、培养方案、教室查询等校园功能独立添加到 Dock 栏
-- 合规性更新，添加 EULA
+- 合规性更新，添加eula
 - 增加多种主题色取色功能：跟随系统主题色和背景图取色
-- **HarmonyOS 支持**：HAP 构建正式并入主仓库 CI，与 Android/Windows/Linux 同步发布
-
-### Fixed
-
-- 修复自动登录过程中我的页面未展示登录状态、可点击登录按钮的问题
-- 修复课表时间不对应的问题
-- 修复中文错别字：'学术' → '学业'
-- 修复自定义 Dock 栏切换 Tab / 横竖屏时页面状态丢失的问题
-- 余额查询页面加载失败时添加重试按钮
-- 修复电费余额查询单位显示错误（度数误标为元）(#37)
-- 修复 preview 版本检查更新始终显示有新版本的问题
 
 ### Changed
-
 - 调整课表布局，周日为第一天，对应教务处课表布局
 - 主页导航改为动态构建，按需创建页面，优化性能
 - 移除余额查询页面右下角浮动按钮
-- 优化布局，使用 1/3 高度（上空白:下空白 = 1:2）
-- Release APK 中分离调试信息，减小体积
-
-**Full diff:** [v0.10.0...v1.0.0](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/compare/v0.10.0...v1.0.0)
+- 优化布局，使用1/3高度（上空白:下空白=1:2）
+- 在release APK中分离调试信息，减小体积
 
 ## [0.10.0] - 2026-05-03
 
@@ -200,3 +269,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 发布工作流重构
 - 训练计划列表底部增加间距
 - 非移动平台隐藏刷新按钮
+
+

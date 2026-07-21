@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/ccyl_provider.dart';
-import 'package:bugaoshan/services/ccyl_service.dart';
+import 'package:bugaoshan/pages/campus/ccyl/models/ccyl_models.dart';
 import 'package:bugaoshan/pages/campus/ccyl/activity_detail_page.dart';
-import 'package:bugaoshan/widgets/common/error_widgets.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 class MyActivitiesTab extends StatefulWidget {
   const MyActivitiesTab({super.key});
@@ -17,7 +18,7 @@ class _MyActivitiesTabState extends State<MyActivitiesTab> {
   final _scrollController = ScrollController();
   List<CyclActivity> _activities = [];
   bool _loading = false;
-  String? _error;
+  LoadErrorType? _error;
   int _pageNum = 1;
   bool _hasMore = true;
 
@@ -69,11 +70,8 @@ class _MyActivitiesTabState extends State<MyActivitiesTab> {
     } catch (e) {
       debugPrint('My activities load error: $e');
       if (mounted) {
-        final hour = DateTime.now().hour;
         setState(() {
-          _error = (hour >= 0 && hour < 6)
-              ? 'campusNetworkRequiredAtNight'
-              : 'ccylActivityLoadFailed';
+          _error = campusNetworkErrorType(LoadErrorType.ccylActivityLoadFailed);
         });
       }
     } finally {
@@ -90,10 +88,7 @@ class _MyActivitiesTabState extends State<MyActivitiesTab> {
     final l10n = AppLocalizations.of(context)!;
 
     return _error != null
-        ? RetryableErrorWidget(
-            message: _getErrorMessage(l10n, _error!),
-            onRetry: _loadActivities,
-          )
+        ? RetryableErrorWidget(errorType: _error!, onRetry: _loadActivities)
         : _activities.isEmpty && !_loading
         ? Center(child: Text(l10n.noData))
         : RefreshIndicator(
@@ -115,17 +110,6 @@ class _MyActivitiesTabState extends State<MyActivitiesTab> {
               },
             ),
           );
-  }
-
-  String _getErrorMessage(AppLocalizations l10n, String errorKey) {
-    switch (errorKey) {
-      case 'ccylActivityLoadFailed':
-        return l10n.ccylActivityLoadFailed;
-      case 'campusNetworkRequiredAtNight':
-        return l10n.campusNetworkRequiredAtNight;
-      default:
-        return l10n.loadFailed;
-    }
   }
 }
 
@@ -150,7 +134,7 @@ class _MyActivityCard extends StatelessWidget {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppShapes.medium),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -236,7 +220,7 @@ class _MyActivityCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: _getStatusColor(activity.statusName),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppShapes.xs),
                     ),
                     child: Text(
                       activity.statusName ?? activity.status,

@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
@@ -9,18 +6,17 @@ import 'package:bugaoshan/pages/settings/add_widget/add_widget_page.dart';
 import 'package:bugaoshan/pages/settings/set_dock_page.dart';
 import 'package:bugaoshan/pages/settings/set_duration_page.dart';
 import 'package:bugaoshan/pages/settings/set_language_page.dart';
+import 'package:bugaoshan/pages/settings/set_app_icon_page.dart';
+import 'package:bugaoshan/pages/settings/set_course_style_page.dart';
+import 'package:bugaoshan/pages/settings/set_font_page.dart';
 import 'package:bugaoshan/pages/settings/set_theme_color_page.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
-import 'package:bugaoshan/services/widget_update_service.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
-import 'package:bugaoshan/widgets/common/styled_widget.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
+import 'package:bugaoshan/widgets/common/info_card.dart';
+import 'package:bugaoshan/widgets/common/styled_tile.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
-import 'package:bugaoshan/providers/set_theme_color_provider.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
-import 'package:bugaoshan/utils/theme_utils.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 
 class SoftwareSettingPage extends StatelessWidget {
   const SoftwareSettingPage({super.key});
@@ -30,346 +26,111 @@ class SoftwareSettingPage extends StatelessWidget {
     final localizations = AppLocalizations.of(context)!;
     final appConfig = getIt<AppConfigProvider>();
 
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        appConfig.colorOpacity,
-        appConfig.courseCardFontSize,
-        appConfig.showCourseGrid,
-        appConfig.courseRowHeight,
-        appConfig.backgroundImagePath,
-        appConfig.backgroundImageOpacity,
-        appConfig.widgetShowTomorrow,
-      ]),
-      builder: (context, _) {
-        return Scaffold(
-          appBar: AppBar(title: Text(localizations.softwareSetting)),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-            child: Column(
-              spacing: 16,
-              children: [
-                ButtonWithMaxWidth(
-                  onPressed: () {
-                    popupOrNavigate(context, SetLanguagePage());
-                  },
-                  icon: const Icon(Icons.language),
-                  child: Text(localizations.modifyLanguage),
+    return Scaffold(
+      appBar: AppBar(title: Text(localizations.softwareSetting)),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        children: [
+          _SectionTitle(title: localizations.settingsGeneral),
+          InfoCard(
+            children: [
+              IconTile(
+                icon: Icons.language,
+                label: localizations.modifyLanguage,
+                onTap: () => popupOrNavigate(context, SetLanguagePage()),
+              ),
+              if (AppPlatform.isAndroid)
+                IconTile(
+                  icon: Icons.photo_size_select_actual_outlined,
+                  label: localizations.appIcon,
+                  onTap: () => popupOrNavigate(context, const SetAppIconPage()),
                 ),
-                ButtonWithMaxWidth(
-                  onPressed: () {
-                    popupOrNavigate(context, SetDurationPage());
-                  },
-                  icon: const Icon(Icons.timer),
-                  child: Text(localizations.animationDuration),
+              IconTile(
+                icon: Icons.timer,
+                label: localizations.animationDuration,
+                onTap: () => popupOrNavigate(context, SetDurationPage()),
+              ),
+              IconTile(
+                icon: Icons.dock_outlined,
+                label: localizations.customDock,
+                onTap: () => popupOrNavigate(context, const SetDockPage()),
+              ),
+              if (AppPlatform.supportsHomeWidget)
+                IconTile(
+                  icon: Icons.widgets_outlined,
+                  label: localizations.addWidgetPageTitle,
+                  onTap: () => popupOrNavigate(context, const AddWidgetPage()),
                 ),
-                ButtonWithMaxWidth(
-                  onPressed: () {
-                    popupOrNavigate(context, SetThemeColorPage());
-                  },
-                  icon: const Icon(Icons.color_lens),
-                  child: Text(localizations.themeColor),
-                ),
-                ButtonWithMaxWidth(
-                  onPressed: () {
-                    popupOrNavigate(context, const SetDockPage());
-                  },
-                  icon: const Icon(Icons.dock_outlined),
-                  child: Text(localizations.customDock),
-                ),
-
-                const Divider(),
-                // Course card section
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    localizations.courseCardSection,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-                // Color opacity
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text(localizations.colorOpacity)),
-                        Text(
-                          '${(appConfig.colorOpacity.value * 100).round()}%',
-                        ),
-                      ],
-                    ),
-                    Slider(
-                      value: appConfig.colorOpacity.value,
-                      min: 0.3,
-                      max: 1.0,
-                      divisions: 14,
-                      onChanged: (v) => appConfig.colorOpacity.value = v,
-                    ),
-                  ],
-                ),
-                // Font size
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text(localizations.fontSize)),
-                        Text('${appConfig.courseCardFontSize.value.round()}'),
-                      ],
-                    ),
-                    Slider(
-                      value: appConfig.courseCardFontSize.value,
-                      min: 8,
-                      max: 20,
-                      divisions: 12,
-                      onChanged: (v) => appConfig.courseCardFontSize.value = v,
-                    ),
-                  ],
-                ),
-                const Divider(),
-                // Background image section
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    localizations.backgroundImage,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-                // Background image
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ButtonWithMaxWidth(
-                      onPressed: () => _pickBackgroundImage(context, appConfig),
-                      icon: const Icon(Icons.wallpaper),
-                      child: Text(localizations.setBackgroundImage),
-                    ),
-                    if (appConfig.backgroundImagePath.value != null) ...[
-                      const SizedBox(height: 8),
-                      ButtonWithMaxWidth(
-                        onPressed: () async {
-                          final oldPath = appConfig.backgroundImagePath.value;
-                          appConfig.backgroundImagePath.value = null;
-                          if (oldPath != null) {
-                            FileImage(File(oldPath)).evict();
-                            File(oldPath).delete().ignore();
-                          }
-                          if (appConfig.themeColorMode.value ==
-                              ThemeColorMode.backgroundImage) {
-                            appConfig.themeColor.value =
-                                await loadSystemAccentColor();
-                          }
-                        },
-                        icon: const Icon(Icons.delete_outline),
-                        child: Text(localizations.removeBackgroundImage),
-                      ),
-                      const SizedBox(height: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  localizations.backgroundImageOpacity,
-                                ),
-                              ),
-                              Text(
-                                '${(appConfig.backgroundImageOpacity.value * 100).round()}%',
-                              ),
-                            ],
-                          ),
-                          Slider(
-                            value: appConfig.backgroundImageOpacity.value,
-                            min: 0.05,
-                            max: 0.8,
-                            divisions: 15,
-                            onChanged: (v) =>
-                                appConfig.backgroundImageOpacity.value = v,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-                const Divider(),
-                // Course grid section
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    localizations.courseGridSection,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-                // Show course grid switch
-                SwitchListTile(
-                  title: Text(localizations.showCourseGrid),
-                  value: appConfig.showCourseGrid.value,
-                  onChanged: (v) => appConfig.showCourseGrid.value = v,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                // Course row height
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text(localizations.courseRowHeight)),
-                        Text('${appConfig.courseRowHeight.value.round()}'),
-                      ],
-                    ),
-                    Slider(
-                      value: appConfig.courseRowHeight.value,
-                      min: 48,
-                      max: 120,
-                      divisions: 18,
-                      onChanged: (v) => appConfig.courseRowHeight.value = v,
-                    ),
-                  ],
-                ),
-                if (AppPlatform.supportsHomeWidget) ...[
-                  const Divider(),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      localizations.addWidgetSection,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                  ButtonWithMaxWidth(
-                    onPressed: () {
-                      popupOrNavigate(context, const AddWidgetPage());
-                    },
-                    icon: const Icon(Icons.widgets_outlined),
-                    child: Text(localizations.addWidgetPageTitle),
-                  ),
-                  const SizedBox(height: 8),
-                  // Show tomorrow setting for widget
-                  SwitchListTile(
-                    title: Text(localizations.widgetShowTomorrowAfterEnd),
-                    value: appConfig.widgetShowTomorrow.value,
-                    onChanged: (v) async {
-                      appConfig.widgetShowTomorrow.value = v;
-                      // Trigger widget update immediately (force)
-                      final service = getIt<WidgetUpdateService>();
-                      try {
-                        await service.updateWidgetData(force: true);
-                      } catch (e, st) {
-                        debugPrint('WidgetUpdate toggle failed: $e');
-                        debugPrint('$st');
-                      }
-                    },
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ],
-                const Divider(),
-                // Other section
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    localizations.otherSection,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-                ButtonWithMaxWidth(
-                  onPressed: () {
-                    appConfig.colorOpacity.value = 0.85;
-                    appConfig.courseCardFontSize.value = 14.0;
-                    appConfig.showCourseGrid.value = true;
-                    appConfig.courseRowHeight.value = 72.0;
-                    appConfig.backgroundImageOpacity.value = 0.3;
-                  },
-                  icon: const Icon(Icons.refresh),
-                  child: Text(localizations.resetToDefault),
-                ),
-                const Divider(),
-                ButtonWithMaxWidth(
-                  onPressed: () async {
-                    final confirm = await showYesNoDialog(
-                      title: localizations.clearAllData,
-                      content: localizations.confirmMessage,
-                    );
-                    if (confirm == true) {
-                      final scuAuth = getIt<ScuAuthProvider>();
-                      await scuAuth.logout();
-                      await scuAuth.clearCredentials();
-                      appConfig.clearAll();
-                      final courseProvider = getIt<CourseProvider>();
-                      await courseProvider.clearAllData();
-                    }
-                  },
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  child: Text(
-                    localizations.clearAllData,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
-        );
-      },
+          const SizedBox(height: 14),
+          _SectionTitle(title: localizations.settingsStyle),
+          InfoCard(
+            children: [
+              IconTile(
+                icon: Icons.color_lens,
+                label: localizations.themeColor,
+                onTap: () => popupOrNavigate(context, SetThemeColorPage()),
+              ),
+              IconTile(
+                icon: Icons.style,
+                label: localizations.courseStyleSetting,
+                onTap: () =>
+                    popupOrNavigate(context, const SetCourseStylePage()),
+              ),
+              IconTile(
+                icon: Icons.font_download,
+                label: localizations.setFont,
+                onTap: () => popupOrNavigate(context, const SetFontPage()),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _SectionTitle(title: localizations.settingsDanger),
+          InfoCard(
+            children: [
+              IconTile(
+                icon: Icons.delete,
+                iconColor: Colors.red,
+                label: localizations.clearAllData,
+                labelColor: Colors.red,
+                onTap: () async {
+                  final confirm = await showYesNoDialog(
+                    title: localizations.clearAllData,
+                    content: localizations.confirmMessage,
+                  );
+                  if (confirm == true) {
+                    final scuAuth = getIt<ScuAuthProvider>();
+                    await scuAuth.logout();
+                    await scuAuth.clearCredentials();
+                    await appConfig.clearAll();
+                    final courseProvider = getIt<CourseProvider>();
+                    await courseProvider.clearAllData();
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
+}
 
-  Future<void> _pickBackgroundImage(
-    BuildContext context,
-    AppConfigProvider appConfig,
-  ) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked == null) return;
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  const _SectionTitle({required this.title});
 
-    final appDir = await getApplicationDocumentsDirectory();
-    final bgDir = Directory('${appDir.path}/backgrounds');
-    if (!await bgDir.exists()) {
-      await bgDir.create(recursive: true);
-    }
-
-    final ext = p.extension(picked.path);
-    final destPath = '${bgDir.path}/schedule_bg$ext';
-
-    // Delete old background file and evict from image cache
-    final oldPath = appConfig.backgroundImagePath.value;
-    if (oldPath != null) {
-      FileImage(File(oldPath)).evict();
-      final oldFile = File(oldPath);
-      if (await oldFile.exists()) {
-        await oldFile.delete();
-      }
-    }
-
-    await File(picked.path).copy(destPath);
-    appConfig.backgroundImageVersion.value++;
-    appConfig.backgroundImagePath.value = destPath;
-
-    if (appConfig.themeColorMode.value == ThemeColorMode.backgroundImage) {
-      final themeColorProvider = SetThemeColorProvider(appConfig);
-      final result = await themeColorProvider.extractColorFromBackgroundImage();
-      if (result == ExtractColorResult.success &&
-          themeColorProvider.extractedColor != null) {
-        appConfig.themeColor.value = themeColorProvider.extractedColor!;
-      }
-    }
-
-    if (!context.mounted) return;
-    if (appConfig.themeColorMode.value != ThemeColorMode.backgroundImage) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.backgroundImageSetHint),
-          duration: const Duration(seconds: 3),
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 10, 8),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
         ),
-      );
-    }
+      ),
+    );
   }
 }

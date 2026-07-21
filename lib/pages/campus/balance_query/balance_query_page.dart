@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/balance_query_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/balance_query_service.dart';
+import 'package:bugaoshan/services/api/balance_query_service.dart';
+import 'package:bugaoshan/services/auth/payapp_auth.dart';
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
-import 'package:bugaoshan/widgets/common/error_widgets.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'widgets/balance_list.dart';
 import 'widgets/bind_room_dialog.dart';
 
@@ -20,14 +23,15 @@ class BalanceQueryPage extends StatefulWidget {
 class _BalanceQueryPageState extends State<BalanceQueryPage> {
   late BalanceQueryProvider _provider;
   bool _isInitializing = true;
-  String? _initError;
+  LoadErrorType? _initError;
 
   @override
   void initState() {
     super.initState();
-    _provider = BalanceQueryProvider(getIt());
+    _provider = getIt<BalanceQueryProvider>();
     _provider.addListener(_onProviderChanged);
     getIt<ScuAuthProvider>().addListener(_onAuthChanged);
+    getIt<PayAppAuth>().addListener(_onPayAppAuthChanged);
     _initProvider();
   }
 
@@ -41,6 +45,12 @@ class _BalanceQueryPageState extends State<BalanceQueryPage> {
       _initProvider();
     } else if (mounted) {
       setState(() {});
+    }
+  }
+
+  void _onPayAppAuthChanged() {
+    if (getIt<PayAppAuth>().isReady && mounted) {
+      _initProvider();
     }
   }
 
@@ -58,21 +68,33 @@ class _BalanceQueryPageState extends State<BalanceQueryPage> {
       if (mounted) {
         setState(() {
           _isInitializing = false;
-          _initError = 'notLoggedIn';
+          _initError = LoadErrorType.notLoggedIn;
         });
       }
       return;
     }
+
+    // 不在此等待 PayAppAuth.isReady：PayAppApiService 的 _request 模板
+    // 通过 PayAppAuth.getClient 自驱动 SSO 认证，预热失败会走 catch 分支
+    // 显示可重试的错误页，避免预热曾失败时永远停留在加载态。
     try {
       await _provider.getCampusList();
       if (mounted) {
         setState(() => _isInitializing = false);
       }
-    } on BalanceQueryAuthException catch (e) {
+    } on BalanceQueryAuthException {
       if (mounted) {
         setState(() {
           _isInitializing = false;
-          _initError = e.message;
+          _initError = LoadErrorType.sessionExpired;
+        });
+      }
+    } on UnauthenticatedException {
+      // SCU 统一认证失效且续期失败
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+          _initError = LoadErrorType.sessionExpired;
         });
       }
     } catch (e) {
@@ -80,7 +102,7 @@ class _BalanceQueryPageState extends State<BalanceQueryPage> {
       if (mounted) {
         setState(() {
           _isInitializing = false;
-          _initError = 'networkError';
+          _initError = LoadErrorType.networkError;
         });
       }
     }
@@ -90,7 +112,7 @@ class _BalanceQueryPageState extends State<BalanceQueryPage> {
   void dispose() {
     _provider.removeListener(_onProviderChanged);
     getIt<ScuAuthProvider>().removeListener(_onAuthChanged);
-    _provider.dispose();
+    getIt<PayAppAuth>().removeListener(_onPayAppAuthChanged);
     super.dispose();
   }
 
@@ -102,6 +124,11 @@ class _BalanceQueryPageState extends State<BalanceQueryPage> {
       appBar: AppBar(
         title: Text(l10n.balanceQuery),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: l10n.balanceQuerySettings,
+            onPressed: _showSettingsSheet,
+          ),
           if (_provider.bindings.isNotEmpty)
             PopupMenuButton<int>(
               icon: const Icon(Icons.swap_horiz),
@@ -121,7 +148,19 @@ class _BalanceQueryPageState extends State<BalanceQueryPage> {
                 } else if (index < 0) {
                   _showDeleteConfirmDialog(-(index + 2));
                 } else {
-                  _provider.switchBinding(index);
+                  _provider.switchBinding(index).catchError((e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            e is BalanceQueryException
+                                ? e.message
+                                : l10n.networkError,
+                          ),
+                        ),
+                      );
+                    }
+                  });
                 }
               },
               itemBuilder: (context) => [
@@ -180,9 +219,44 @@ class _BalanceQueryPageState extends State<BalanceQueryPage> {
     );
   }
 
+  void _showSettingsSheet() {
+    final appConfig = getIt<AppConfigProvider>();
+    final l10n = AppLocalizations.of(context)!;
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+              child: Text(
+                l10n.balanceQuerySettings,
+                style: Theme.of(sheetContext).textTheme.titleMedium,
+              ),
+            ),
+            ListenableBuilder(
+              listenable: appConfig.autoSampleBalanceOnLogin,
+              builder: (_, _) => SwitchListTile(
+                title: Text(l10n.autoSampleBalanceOnLogin),
+                subtitle: Text(l10n.autoSampleBalanceOnLoginDesc),
+                value: appConfig.autoSampleBalanceOnLogin.value,
+                onChanged: (v) => appConfig.autoSampleBalanceOnLogin.value = v,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildBody(AppLocalizations l10n) {
+    final auth = getIt<ScuAuthProvider>();
+
     if (_isInitializing) {
-      final auth = getIt<ScuAuthProvider>();
       if (auth.isAutoLoggingIn) {
         return const AutoLoginLoadingWidget();
       }
@@ -190,11 +264,11 @@ class _BalanceQueryPageState extends State<BalanceQueryPage> {
     }
 
     if (_initError != null) {
-      if (_initError == 'notLoggedIn') {
+      if (_initError == LoadErrorType.notLoggedIn) {
         return const LoginRequiredWidget();
       }
       return RetryableErrorWidget(
-        message: l10n.loadFailed,
+        errorType: LoadErrorType.loadFailed,
         onRetry: _initProvider,
       );
     }

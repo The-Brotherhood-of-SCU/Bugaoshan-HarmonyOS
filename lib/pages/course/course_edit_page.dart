@@ -1,4 +1,4 @@
-﻿import 'dart:math';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -299,7 +299,7 @@ class _CourseEditPageState extends State<CourseEditPage> {
                     ),
                     label: Text(
                       l10n.deleteCourse,
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
@@ -453,7 +453,10 @@ class _CourseEditPageState extends State<CourseEditPage> {
       await courseProvider.addCourse(course);
     }
 
-    if (mounted) Navigator.pop(logicRootContext);
+    if (mounted) {
+      final rootCtx = logicRootContext;
+      if (rootCtx.mounted) Navigator.pop(rootCtx);
+    }
   }
 
   Future<void> _deleteCourse() async {
@@ -464,7 +467,10 @@ class _CourseEditPageState extends State<CourseEditPage> {
     );
     if (confirm == true && widget.course != null) {
       await courseProvider.deleteCourse(widget.course!.id);
-      if (mounted) Navigator.pop(logicRootContext);
+      if (mounted) {
+        final rootCtx = logicRootContext;
+        if (rootCtx.mounted) Navigator.pop(rootCtx);
+      }
     }
   }
 

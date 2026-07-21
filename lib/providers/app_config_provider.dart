@@ -2,8 +2,9 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Colors, Curve, Curves;
-import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/utils/locale_utils.dart';
+import 'package:bugaoshan/models/campus_item_config.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/utils/theme_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,6 +24,14 @@ const String _keyVisibleDockIds = 'visibleDockIds';
 const String _keyAcceptedEulaVersion = 'acceptedEulaVersion';
 const String _keyThemeColorMode = 'themeColorMode';
 const String _keyWidgetShowTomorrow = 'widget_show_tomorrow';
+const String _keyUsePreviewUpdateSource = 'usePreviewUpdateSource';
+const String _keyShowTeacherName = 'showTeacherName';
+const String _keyShowLocation = 'showLocation';
+const String _keyShowWeekend = 'showWeekend';
+const String _keyShowNonCurrentWeekCourses = 'showNonCurrentWeekCourses';
+const String _keyUseGoogleFonts = 'useGoogleFonts';
+const String _keyCampusGridView = 'campusGridView';
+const String _keyAutoSampleBalanceOnLogin = 'autoSampleBalanceOnLogin';
 const Curve appCurve = Curves.easeOutQuart;
 
 enum ThemeColorMode { system, backgroundImage, custom }
@@ -30,8 +39,9 @@ enum ThemeColorMode { system, backgroundImage, custom }
 class AppConfigProvider {
   final SharedPreferences _sharedPreferences;
 
-  AppConfigProvider(this._sharedPreferences) {
-    _loadLocale();
+  AppConfigProvider(this._sharedPreferences);
+  Future<void> init() async {
+    await _loadPreferences();
     _addSaveCallback();
   }
 
@@ -52,7 +62,6 @@ class AppConfigProvider {
   final ValueNotifier<String?> backgroundImagePath = ValueNotifier<String?>(
     null,
   );
-  final ValueNotifier<int> backgroundImageVersion = ValueNotifier<int>(0);
   final ValueNotifier<bool> firstLaunchWizardCompleted = ValueNotifier<bool>(
     false,
   );
@@ -63,8 +72,20 @@ class AppConfigProvider {
   final ValueNotifier<ThemeColorMode> themeColorMode =
       ValueNotifier<ThemeColorMode>(ThemeColorMode.system);
   final ValueNotifier<bool> widgetShowTomorrow = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> usePreviewUpdateSource = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> useGoogleFonts = ValueNotifier<bool>(true);
+  final ValueNotifier<bool> showTeacherName = ValueNotifier<bool>(true);
+  final ValueNotifier<bool> showLocation = ValueNotifier<bool>(true);
+  final ValueNotifier<bool> showWeekend = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> showNonCurrentWeekCourses = ValueNotifier<bool>(
+    true,
+  );
+  final ValueNotifier<bool> campusGridView = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> autoSampleBalanceOnLogin = ValueNotifier<bool>(
+    true,
+  );
 
-  void _loadLocale() {
+  Future<void> _loadPreferences() async {
     final localeString = _sharedPreferences.getString(_keyLocale);
     locale.value = parseLocale(localeString);
     cardSizeAnimationDuration.value = Duration(
@@ -83,22 +104,64 @@ class AppConfigProvider {
         _sharedPreferences.getDouble(_keyCourseRowHeight) ?? 72.0;
     backgroundImageOpacity.value =
         _sharedPreferences.getDouble(_keyBackgroundImageOpacity) ?? 0.3;
-    backgroundImagePath.value = _sharedPreferences.getString(
-      _keyBackgroundImagePath,
-    );
+    // Load the saved path immediately to allow early image loading.
+    // Existence will be checked later in the Settings UI when needed.
+    final savedPath = _sharedPreferences.getString(_keyBackgroundImagePath);
+    backgroundImagePath.value = savedPath;
     firstLaunchWizardCompleted.value =
-        _sharedPreferences.getBool(_keyFirstLaunchWizardCompleted) ?? false;
+        _sharedPreferences.getBool(_keyFirstLaunchWizardCompleted) ??
+        kDebugMode;
     hasUpdateNotification.value =
-        _sharedPreferences.getBool(_keyHasUpdateNotification) ?? false;
-    visibleDockIds.value =
-        _sharedPreferences.getStringList(_keyVisibleDockIds) ??
-        List<String>.from(defaultVisibleDockIds);
+        !AppPlatform.isHarmony &&
+        (_sharedPreferences.getBool(_keyHasUpdateNotification) ?? false);
+    final persistedDockIds = _sharedPreferences.getStringList(
+      _keyVisibleDockIds,
+    );
+    final availableDockIds = allCampusItems.map((item) => item.id).toSet();
+    final sanitizedDockIds = <String>[];
+    for (final id in persistedDockIds ?? defaultVisibleDockIds) {
+      if (availableDockIds.contains(id) && !sanitizedDockIds.contains(id)) {
+        sanitizedDockIds.add(id);
+      }
+    }
+    if (!sanitizedDockIds.contains(campusItemProfile.id)) {
+      sanitizedDockIds.add(campusItemProfile.id);
+    }
+    visibleDockIds.value = sanitizedDockIds;
+    if (persistedDockIds != null &&
+        !listEquals(persistedDockIds, sanitizedDockIds)) {
+      await _sharedPreferences.setStringList(
+        _keyVisibleDockIds,
+        sanitizedDockIds,
+      );
+    }
     acceptedEulaVersion.value =
-        _sharedPreferences.getInt(_keyAcceptedEulaVersion) ?? 0;
-    themeColorMode.value = ThemeColorMode
-        .values[_sharedPreferences.getInt(_keyThemeColorMode) ?? 0];
+        _sharedPreferences.getInt(_keyAcceptedEulaVersion) ??
+        (kDebugMode ? 114514 : 0); //debug mode default 114514, skip eula check
+    final themeColorIndex = _sharedPreferences.getInt(_keyThemeColorMode) ?? 0;
+    final savedThemeColorMode = themeColorIndex < ThemeColorMode.values.length
+        ? ThemeColorMode.values[themeColorIndex]
+        : ThemeColorMode.custom;
+    themeColorMode.value =
+        AppPlatform.isHarmony && savedThemeColorMode == ThemeColorMode.system
+        ? ThemeColorMode.custom
+        : savedThemeColorMode;
     widgetShowTomorrow.value =
         _sharedPreferences.getBool(_keyWidgetShowTomorrow) ?? false;
+    usePreviewUpdateSource.value =
+        _sharedPreferences.getBool(_keyUsePreviewUpdateSource) ?? false;
+    useGoogleFonts.value =
+        _sharedPreferences.getBool(_keyUseGoogleFonts) ?? true;
+    showTeacherName.value =
+        _sharedPreferences.getBool(_keyShowTeacherName) ?? true;
+    showLocation.value = _sharedPreferences.getBool(_keyShowLocation) ?? true;
+    showWeekend.value = _sharedPreferences.getBool(_keyShowWeekend) ?? false;
+    showNonCurrentWeekCourses.value =
+        _sharedPreferences.getBool(_keyShowNonCurrentWeekCourses) ?? true;
+    campusGridView.value =
+        _sharedPreferences.getBool(_keyCampusGridView) ?? false;
+    autoSampleBalanceOnLogin.value =
+        _sharedPreferences.getBool(_keyAutoSampleBalanceOnLogin) ?? false;
   }
 
   void _addSaveCallback() {
@@ -184,18 +247,55 @@ class AppConfigProvider {
         widgetShowTomorrow.value,
       );
     });
+    usePreviewUpdateSource.addListener(() {
+      _sharedPreferences.setBool(
+        _keyUsePreviewUpdateSource,
+        usePreviewUpdateSource.value,
+      );
+    });
+    useGoogleFonts.addListener(() {
+      _sharedPreferences.setBool(_keyUseGoogleFonts, useGoogleFonts.value);
+    });
+    showTeacherName.addListener(() {
+      _sharedPreferences.setBool(_keyShowTeacherName, showTeacherName.value);
+    });
+    showLocation.addListener(() {
+      _sharedPreferences.setBool(_keyShowLocation, showLocation.value);
+    });
+    showWeekend.addListener(() {
+      _sharedPreferences.setBool(_keyShowWeekend, showWeekend.value);
+    });
+    showNonCurrentWeekCourses.addListener(() {
+      _sharedPreferences.setBool(
+        _keyShowNonCurrentWeekCourses,
+        showNonCurrentWeekCourses.value,
+      );
+    });
+    campusGridView.addListener(() {
+      _sharedPreferences.setBool(_keyCampusGridView, campusGridView.value);
+    });
+    autoSampleBalanceOnLogin.addListener(() {
+      _sharedPreferences.setBool(
+        _keyAutoSampleBalanceOnLogin,
+        autoSampleBalanceOnLogin.value,
+      );
+    });
   }
 
   void resetDockToDefault() {
     visibleDockIds.value = List<String>.from(defaultVisibleDockIds);
   }
 
-  void clearAll() {
-    _sharedPreferences.clear();
-    _loadLocale();
+  Future<void> clearAll() async {
+    await _sharedPreferences.clear();
+    await _loadPreferences();
   }
 
   Future<void> _switchToSystemColor() async {
+    if (AppPlatform.isHarmony) {
+      themeColorMode.value = ThemeColorMode.custom;
+      return;
+    }
     themeColorMode.value = ThemeColorMode.system;
     themeColor.value = await loadSystemAccentColor();
   }

@@ -5,11 +5,12 @@ import 'package:flutter/widgets.dart';
 /// 上半部分空白占 1/3，下半部分空白占 2/3
 class ThirdCenter extends StatelessWidget {
   final Widget child;
+  final double x;
 
-  const ThirdCenter({super.key, required this.child});
+  const ThirdCenter({super.key, required this.child, this.x = 0.0});
 
   @override
   Widget build(BuildContext context) {
-    return Align(alignment: const Alignment(0, -1.3 / 3), child: child);
+    return Align(alignment: Alignment(x, -1.3 / 3), child: child);
   }
 }

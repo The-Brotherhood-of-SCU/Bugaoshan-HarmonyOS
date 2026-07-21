@@ -1,13 +1,15 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/grades_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
 import 'scheme_scores_tab.dart';
 import 'passing_scores_tab.dart';
+import 'custom_stats_tab.dart';
 
 class GradesPage extends StatefulWidget {
   const GradesPage({super.key});
@@ -18,8 +20,39 @@ class GradesPage extends StatefulWidget {
 
 class _GradesPageState extends State<GradesPage> {
   int _currentIndex = 0;
+  String _searchQuery = '';
+  bool _isSearching = false;
+  final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
 
-  final List<Widget> _pages = const [SchemeScoresTab(), PassingScoresTab()];
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  List<Widget> get _pages => [
+    SchemeScoresTab(searchQuery: _searchQuery),
+    PassingScoresTab(searchQuery: _searchQuery),
+    CustomStatsTab(searchQuery: _searchQuery),
+  ];
+
+  void _startSearch() {
+    setState(() {
+      _isSearching = true;
+    });
+    _searchFocusNode.requestFocus();
+  }
+
+  void _stopSearch() {
+    setState(() {
+      _isSearching = false;
+      _searchQuery = '';
+      _searchController.clear();
+    });
+    _searchFocusNode.unfocus();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,47 +66,80 @@ class _GradesPageState extends State<GradesPage> {
       builder: (context, _) {
         final auth = getIt<ScuAuthProvider>();
 
-        final isDesktop = AppPlatform.isDesktop;
+        final isDesktop =
+            !kIsWeb &&
+            (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
         final gradesProvider = getIt<GradesProvider>();
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(l10n.gradesStats),
-            actions: [
-              if (isDesktop && auth.isLoggedIn)
-                IconButton(
-                  onPressed: _currentIndex == 0
-                      ? gradesProvider.refreshSchemeScores
-                      : gradesProvider.refreshPassingScores,
-                  icon: const Icon(Icons.refresh),
-                ),
-            ],
+        return DefaultTabController(
+          length: 3,
+          child: Scaffold(
+            appBar: AppBar(
+              title: _isSearching
+                  ? TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      autofocus: true,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      decoration: InputDecoration(
+                        hintText: l10n.gradesSearchHint,
+                        border: InputBorder.none,
+                        isDense: true,
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
+                    )
+                  : Text(l10n.gradesStats),
+              actions: [
+                if (auth.isLoggedIn)
+                  IconButton(
+                    onPressed: _isSearching ? _stopSearch : _startSearch,
+                    icon: Icon(_isSearching ? Icons.close : Icons.search),
+                  ),
+                if (isDesktop && auth.isLoggedIn)
+                  IconButton(
+                    onPressed: _currentIndex == 0 || _currentIndex == 2
+                        ? gradesProvider.refreshSchemeScores
+                        : gradesProvider.refreshPassingScores,
+                    icon: const Icon(Icons.refresh),
+                  ),
+              ],
+              bottom: auth.isLoggedIn
+                  ? TabBar(
+                      onTap: (index) {
+                        setState(() {
+                          _currentIndex = index;
+                        });
+                      },
+                      dividerHeight: 0,
+                      indicatorSize: TabBarIndicatorSize.label,
+                      indicatorWeight: 3,
+                      labelStyle: Theme.of(context).textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600, fontSize: 15),
+                      unselectedLabelStyle: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.normal,
+                            fontSize: 15,
+                          ),
+                      tabs: [
+                        Tab(text: l10n.schemeScores),
+                        Tab(text: l10n.passingScores),
+                        Tab(text: l10n.customStats),
+                      ],
+                    )
+                  : null,
+            ),
+            body: !auth.isLoggedIn
+                ? auth.isAutoLoggingIn
+                      ? const AutoLoginLoadingWidget()
+                      : const LoginRequiredWidget()
+                : IndexedStack(index: _currentIndex, children: _pages),
           ),
-          body: !auth.isLoggedIn
-              ? auth.isAutoLoggingIn
-                    ? const AutoLoginLoadingWidget()
-                    : const LoginRequiredWidget()
-              : _pages[_currentIndex],
-          bottomNavigationBar: auth.isLoggedIn
-              ? BottomNavigationBar(
-                  currentIndex: _currentIndex,
-                  onTap: (index) {
-                    setState(() {
-                      _currentIndex = index;
-                    });
-                  },
-                  items: [
-                    BottomNavigationBarItem(
-                      icon: const Icon(Icons.list_alt),
-                      label: l10n.schemeScores,
-                    ),
-                    BottomNavigationBarItem(
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: l10n.passingScores,
-                    ),
-                  ],
-                )
-              : null, // 未登录时不显示底部栏
         );
       },
     );

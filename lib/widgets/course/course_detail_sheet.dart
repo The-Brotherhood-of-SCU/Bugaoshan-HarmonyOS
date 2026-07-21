@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/pages/course/course_edit_page.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
@@ -8,12 +9,12 @@ import 'package:bugaoshan/widgets/route/router_utils.dart';
 
 class CourseDetailSheet extends StatelessWidget {
   final Course course;
-  final CourseProvider courseProvider;
+  final CourseProvider? courseProvider;
 
   const CourseDetailSheet({
     super.key,
     required this.course,
-    required this.courseProvider,
+    this.courseProvider,
   });
 
   String _formatTimeOfDay(TimeOfDay time) {
@@ -23,7 +24,9 @@ class CourseDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final config = courseProvider.scheduleConfig.value;
+    final config =
+        courseProvider?.scheduleConfig.value ??
+        ScheduleConfig(semesterStartDate: DateTime(2025, 9, 1));
 
     String timeRange = '';
     if (course.startSection > 0 &&
@@ -37,7 +40,9 @@ class CourseDetailSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppShapes.extraLarge),
+        ),
       ),
       child: SafeArea(
         child: Column(
@@ -57,63 +62,72 @@ class CourseDetailSheet extends StatelessWidget {
                       ),
                     ),
                   ),
-                  IconButton(
-                    iconSize: 22,
-                    icon: Icon(
-                      Icons.delete_outline,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    style: IconButton.styleFrom(
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: () async {
-                      final confirm = await showYesNoDialog(
-                        title: l10n.deleteCourse,
-                        content: l10n.deleteCourseConfirm,
-                      );
-                      if (confirm == true) {
-                        await courseProvider.deleteCourse(course.id);
-                        if (context.mounted) {
-                          Navigator.pop(context);
+                  if (courseProvider != null) ...[
+                    IconButton(
+                      iconSize: 22,
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      style: IconButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () async {
+                        final confirm = await showYesNoDialog(
+                          title: l10n.deleteCourse,
+                          content: l10n.deleteCourseConfirm,
+                        );
+                        if (confirm == true) {
+                          await courseProvider?.deleteCourse(course.id);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
                         }
-                      }
-                    },
-                  ),
-                  IconButton(
-                    iconSize: 22,
-                    icon: Icon(
-                      Icons.copy,
-                      color: Theme.of(context).colorScheme.primary,
+                      },
                     ),
-                    style: IconButton.styleFrom(
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    IconButton(
+                      iconSize: 22,
+                      icon: Icon(
+                        Icons.copy,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      style: IconButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () {
+                        final rootCtx = logicRootContext;
+                        Navigator.pop(context);
+                        final newCourse = course.copyWith();
+                        newCourse.name = '${course.name}${l10n.copySuffix}';
+                        if (rootCtx.mounted) {
+                          popupOrNavigate(
+                            rootCtx,
+                            CourseEditPage(course: newCourse),
+                          );
+                        }
+                      },
                     ),
-                    onPressed: () {
-                      final rootCtx = logicRootContext;
-                      Navigator.pop(context);
-                      final newCourse = course.copyWith();
-                      newCourse.name = '${course.name}${l10n.copySuffix}';
-                      popupOrNavigate(
-                        rootCtx,
-                        CourseEditPage(course: newCourse),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    iconSize: 22,
-                    icon: Icon(
-                      Icons.edit_outlined,
-                      color: Theme.of(context).colorScheme.primary,
+                    IconButton(
+                      iconSize: 22,
+                      icon: Icon(
+                        Icons.edit_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      style: IconButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () {
+                        final rootCtx = logicRootContext;
+                        Navigator.pop(context);
+                        if (rootCtx.mounted) {
+                          popupOrNavigate(
+                            rootCtx,
+                            CourseEditPage(course: course),
+                          );
+                        }
+                      },
                     ),
-                    style: IconButton.styleFrom(
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: () {
-                      final rootCtx = logicRootContext;
-                      Navigator.pop(context);
-                      popupOrNavigate(rootCtx, CourseEditPage(course: course));
-                    },
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -138,7 +152,7 @@ class CourseDetailSheet extends StatelessWidget {
                     icon: Icons.access_time_outlined,
                     iconColor: Colors.orange,
                     text:
-                        '第 ${course.startSection} - ${course.endSection} ${l10n.section}   $timeRange',
+                        '${l10n.sectionRange(course.startSection, course.endSection)}   $timeRange',
                   ),
                   if (course.teacher.isNotEmpty)
                     _InfoItem(
@@ -186,7 +200,7 @@ class _InfoItem extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Text(text, style: const TextStyle(fontSize: 16)),
+              child: Text(text, style: Theme.of(context).textTheme.bodyLarge),
             ),
           ),
         ],

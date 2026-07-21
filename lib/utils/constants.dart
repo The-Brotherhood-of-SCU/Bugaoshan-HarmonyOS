@@ -13,12 +13,11 @@ const String dockIdNetworkDevice = 'network_device';
 const String dockIdBalanceQuery = 'balance_query';
 const String dockIdAcademicCalendar = 'academic_calendar';
 const String dockIdFitnessTest = 'fitness_test';
-
-const List<String> defaultVisibleDockIds = [
-  dockIdCourse,
-  dockIdCampus,
-  dockIdProfile,
-];
+const String dockIdNotice = 'notice';
+const String dockIdDownloadedAttachments = 'downloaded_attachments';
+const String dockIdClassScheduleInquiry = 'class_schedule_inquiry';
+const String dockIdExamPlan = 'exam_plan';
+const String dockIdZysc = 'zysc';
 
 const Duration kHttpTimeout = Duration(seconds: 15);
 

@@ -3,12 +3,14 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/scheme_score.dart';
 import 'package:bugaoshan/providers/grades_provider.dart';
-import 'package:bugaoshan/widgets/common/error_widgets.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/stat_item.dart';
 import 'scheme_scores_tab.dart' show ScoreCardWidget;
 
 class PassingScoresTab extends StatefulWidget {
-  const PassingScoresTab({super.key});
+  const PassingScoresTab({super.key, this.searchQuery = ''});
+
+  final String searchQuery;
 
   @override
   State<PassingScoresTab> createState() => _PassingScoresTabState();
@@ -28,7 +30,7 @@ class _PassingScoresTabState extends State<PassingScoresTab> {
             provider.clearPassingError();
             if (!mounted) return;
             final l10n = AppLocalizations.of(context)!;
-            final message = errorKey == 'sessionExpired'
+            final message = errorKey == LoadErrorType.sessionExpired
                 ? l10n.sessionExpired
                 : l10n.gradesRefreshFailed;
             ScaffoldMessenger.of(
@@ -78,43 +80,66 @@ class _PassingScoresTabState extends State<PassingScoresTab> {
   }
 
   Widget _buildError(BuildContext context, GradesProvider provider) {
-    final l10n = AppLocalizations.of(context)!;
     return RetryableErrorWidget(
-      message: _getErrorMessage(l10n, provider.passingError),
+      errorType: provider.passingError!,
       onRetry: provider.refreshPassingScores,
       iconSize: 56,
     );
   }
 
-  String _getErrorMessage(AppLocalizations l10n, String? errorKey) {
-    switch (errorKey) {
-      case 'sessionExpired':
-        return l10n.sessionExpired;
-      case 'gradesLoadFailed':
-        return l10n.gradesLoadFailed;
-      default:
-        return l10n.loadFailed;
-    }
-  }
-
   Widget _buildContent(BuildContext context, GradesProvider provider) {
     final result = provider.passingScores!;
+    final query = widget.searchQuery.trim();
+
+    // Filter items by course name, remove empty groups
+    final groups = result.groups
+        .map(
+          (g) => PassingScoreGroup(
+            label: g.label,
+            items: g.items
+                .where(
+                  (item) => item.courseName.toLowerCase().contains(
+                    query.toLowerCase(),
+                  ),
+                )
+                .toList(),
+          ),
+        )
+        .where((g) => g.items.isNotEmpty)
+        .toList();
+
     return RefreshIndicator(
       onRefresh: provider.refreshPassingScores,
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _OverallSummaryCard(result: result)),
-          for (final group in result.groups) ...[
-            SliverToBoxAdapter(child: _TermHeader(group: group)),
-            SliverList.builder(
-              itemCount: group.items.length,
-              itemBuilder: (context, i) =>
-                  ScoreCardWidget(item: group.items[i]),
+      child: groups.isEmpty && query.isNotEmpty
+          ? CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _OverallSummaryCard(result: result)),
+                SliverFillRemaining(
+                  child: Center(
+                    child: Text(
+                      AppLocalizations.of(context)!.gradesNoSearchResults,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _OverallSummaryCard(result: result)),
+                for (final group in groups) ...[
+                  SliverToBoxAdapter(child: _TermHeader(group: group)),
+                  SliverList.builder(
+                    itemCount: group.items.length,
+                    itemBuilder: (context, i) =>
+                        ScoreCardWidget(item: group.items[i]),
+                  ),
+                ],
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              ],
             ),
-          ],
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-        ],
-      ),
     );
   }
 }

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/pages/auth/scu_login_page.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/widgets/route/router_utils.dart';
 
 enum LoginStatus {
   autoLoggingIn,
@@ -29,32 +34,97 @@ enum LoginStatus {
   bool get isAutoLoggingIn => this == LoginStatus.autoLoggingIn;
 }
 
-class LoginStatusCard extends StatelessWidget {
-  final LoginStatus status;
-  final String? username;
-  final ScuAuthProvider authProvider;
-  final VoidCallback onLogin;
-  final VoidCallback onLogout;
+class LoginStatusCard extends StatefulWidget {
+  const LoginStatusCard({super.key});
 
-  const LoginStatusCard({
-    super.key,
-    required this.status,
-    this.username,
-    required this.authProvider,
-    required this.onLogin,
-    required this.onLogout,
-  });
+  @override
+  State<LoginStatusCard> createState() => _LoginStatusCardState();
+}
+
+class _LoginStatusCardState extends State<LoginStatusCard> {
+  static const _keyUsername = 'scu_saved_username';
+  static const _storage = FlutterSecureStorage();
+
+  final _authProvider = getIt<ScuAuthProvider>();
+  String? _username;
+  bool _privacyHidden = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _authProvider.addListener(_onChanged);
+    _loadUsername();
+  }
+
+  @override
+  void dispose() {
+    _authProvider.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() {
+    if (mounted) setState(() {});
+    _loadUsername();
+  }
+
+  Future<void> _loadUsername() async {
+    final username = await _storage.read(key: _keyUsername);
+    if (mounted && username != _username) {
+      setState(() => _username = username);
+    }
+  }
+
+  Future<void> _onLogin() async {
+    final result = await popupOrNavigate(context, const ScuLoginPage());
+    if (!mounted) return;
+    if (result == true) {
+      _loadUsername();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('登录成功')));
+    }
+  }
+
+  Future<void> _onLogout() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.confirmMessage),
+        content: Text(l10n.logoutConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.logout),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _authProvider.logout();
+    }
+  }
+
+  String _maskUsername(String username) {
+    if (username.length <= 4) return '*' * username.length;
+    return '${username.substring(0, 2)}${'*' * (username.length - 4)}${username.substring(username.length - 2)}';
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final localizations = AppLocalizations.of(context)!;
     final primaryColor = theme.colorScheme.primary;
+    final status = LoginStatus.from(_authProvider);
 
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
         border: Border.all(color: theme.dividerColor.withValues(alpha: 0.08)),
       ),
       child: Column(
@@ -63,7 +133,7 @@ class LoginStatusCard extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                _buildAvatar(theme, primaryColor),
+                _buildAvatar(theme, primaryColor, status),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -76,10 +146,27 @@ class LoginStatusCard extends StatelessWidget {
                         ),
                       ),
                       if (status.isLoggedIn)
-                        Text(
-                          '${localizations.scuLogin}${username != null ? ' ($username)' : ''}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                        GestureDetector(
+                          onTap: () =>
+                              setState(() => _privacyHidden = !_privacyHidden),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${localizations.scuLogin}${_username != null ? ' (${_privacyHidden ? _maskUsername(_username!) : _username})' : ''}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                _privacyHidden
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                size: 14,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ],
                           ),
                         ),
                       if (status.isSessionExpired)
@@ -96,13 +183,13 @@ class LoginStatusCard extends StatelessWidget {
             ),
           ),
           Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.08)),
-          _buildActionButton(theme, localizations, primaryColor),
+          _buildActionButton(theme, localizations, primaryColor, status),
         ],
       ),
     );
   }
 
-  Widget _buildAvatar(ThemeData theme, Color primaryColor) {
+  Widget _buildAvatar(ThemeData theme, Color primaryColor, LoginStatus status) {
     return Container(
       width: 48,
       height: 48,
@@ -114,7 +201,7 @@ class LoginStatusCard extends StatelessWidget {
             : status.isSessionExpired
             ? theme.colorScheme.tertiaryContainer
             : theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppShapes.medium),
       ),
       child: status.isAutoLoggingIn
           ? SizedBox(
@@ -145,14 +232,17 @@ class LoginStatusCard extends StatelessWidget {
     ThemeData theme,
     AppLocalizations localizations,
     Color primaryColor,
+    LoginStatus status,
   ) {
     return InkWell(
       onTap: status.isAutoLoggingIn
           ? null
           : status.isLoggedIn
-          ? onLogout
-          : onLogin,
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+          ? _onLogout
+          : _onLogin,
+      borderRadius: const BorderRadius.vertical(
+        bottom: Radius.circular(AppShapes.largeIncreased),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Row(

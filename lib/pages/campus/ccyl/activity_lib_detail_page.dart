@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/ccyl_provider.dart';
-import 'package:bugaoshan/services/ccyl_service.dart';
+import 'package:bugaoshan/pages/campus/ccyl/models/ccyl_models.dart';
 import 'package:bugaoshan/pages/campus/ccyl/activity_detail_page.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 class ActivityLibDetailPage extends StatefulWidget {
   final String activityLibraryId;
@@ -16,7 +18,7 @@ class ActivityLibDetailPage extends StatefulWidget {
 
 class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
   bool _loading = true;
-  String? _error;
+  LoadErrorType? _error;
   CyclActivityLib? _activityLib;
   List<CyclActivity> _activities = [];
   bool _subscribed = false;
@@ -51,7 +53,7 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
       debugPrint('Activity lib detail load error: $e');
       if (!mounted) return;
       setState(() {
-        _error = 'ccylActivityLoadFailed';
+        _error = LoadErrorType.ccylActivityLoadFailed;
         _loading = false;
       });
     }
@@ -89,7 +91,7 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.ccylActionFailed),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     }
@@ -117,11 +119,11 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
           onPressed: _actionLoading ? null : _toggleSubscription,
           style: ElevatedButton.styleFrom(
             backgroundColor: _subscribed
-                ? Colors.red.shade100
-                : Colors.green.shade100,
+                ? Theme.of(context).colorScheme.errorContainer
+                : Theme.of(context).colorScheme.primaryContainer,
             foregroundColor: _subscribed
-                ? Colors.red.shade700
-                : Colors.green.shade700,
+                ? Theme.of(context).colorScheme.onErrorContainer
+                : Theme.of(context).colorScheme.onPrimaryContainer,
             minimumSize: const Size.fromHeight(48),
           ),
           child: _actionLoading
@@ -132,8 +134,7 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
                 )
               : Text(
                   _subscribed ? l10n.ccylCancelSubscribe : l10n.ccylSubscribe,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -148,19 +149,7 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _getErrorMessage(l10n, _error!),
-              style: const TextStyle(color: Colors.red),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _loadData, child: Text(l10n.loadFailed)),
-          ],
-        ),
-      );
+      return RetryableErrorWidget(errorType: _error!, onRetry: _loadData);
     }
 
     if (_activityLib == null) {
@@ -209,14 +198,13 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(4),
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(AppShapes.xs),
                     ),
                     child: Text(
                       l10n.ccylSubscribed,
-                      style: TextStyle(
-                        color: Colors.green.shade700,
-                        fontSize: 12,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                     ),
                   ),
@@ -241,7 +229,7 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
                     ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppShapes.xs),
                     ),
                     child: Text(
                       lib.levelName!,
@@ -403,15 +391,6 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
       ],
     );
   }
-
-  String _getErrorMessage(AppLocalizations l10n, String errorKey) {
-    switch (errorKey) {
-      case 'ccylActivityLoadFailed':
-        return l10n.ccylActivityLoadFailed;
-      default:
-        return l10n.loadFailed;
-    }
-  }
 }
 
 class _ActivityCard extends StatelessWidget {
@@ -436,7 +415,7 @@ class _ActivityCard extends StatelessWidget {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppShapes.medium),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -449,7 +428,7 @@ class _ActivityCard extends StatelessWidget {
                     height: 24,
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppShapes.medium),
                     ),
                     child: Center(
                       child: Text(
@@ -476,16 +455,16 @@ class _ActivityCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: activity.status == 'A03'
-                          ? Colors.green.shade100
-                          : Colors.orange.shade100,
-                      borderRadius: BorderRadius.circular(4),
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).colorScheme.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(AppShapes.xs),
                     ),
                     child: Text(
                       activity.statusName ?? activity.status,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: activity.status == 'A03'
-                            ? Colors.green
-                            : Colors.orange,
+                            ? Theme.of(context).colorScheme.onPrimaryContainer
+                            : Theme.of(context).colorScheme.onTertiaryContainer,
                       ),
                     ),
                   ),

@@ -1,11 +1,13 @@
 import 'dart:io';
 
+import 'package:bugaoshan/widgets/common/third_center.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/pages/course/course_edit_page.dart';
 import 'package:bugaoshan/pages/course/import_schedule_page.dart';
+import 'package:bugaoshan/pages/course/schedule_management_page.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
 import 'package:bugaoshan/widgets/course/course_detail_sheet.dart';
@@ -13,9 +15,19 @@ import 'package:bugaoshan/widgets/course/course_grid.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 import 'package:bugaoshan/utils/export_schedule_utils.dart';
+import 'package:bugaoshan/utils/holiday_utils.dart';
+import 'package:bugaoshan/widgets/course/special_day_sheet.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
+
+part 'course_page_swipe_page_view.dart';
+part 'course_page_top_bar.dart';
+part 'course_page_actions.dart';
+part 'course_page_no_schedule_view.dart';
 
 class CoursePage extends StatefulWidget {
-  const CoursePage({super.key});
+  const CoursePage({super.key, this.demoMode = false});
+
+  final bool demoMode;
 
   @override
   State<CoursePage> createState() => _CoursePageState();
@@ -63,8 +75,8 @@ class _CoursePageState extends State<CoursePage> with WidgetsBindingObserver {
         _pageController.page?.round() != targetPage) {
       _pageController.animateToPage(
         targetPage,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+        duration: appConfig.cardSizeAnimationDuration.value,
+        curve: AppCurves.quick,
       );
     } else if (_visibleWeek != courseProvider.currentWeek.value) {
       setState(() {
@@ -80,227 +92,157 @@ class _CoursePageState extends State<CoursePage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final courseDataListenable = Listenable.merge([
+      courseProvider.courses,
+      courseProvider.scheduleConfig,
+      courseProvider.currentWeek,
+      courseProvider.allSchedules,
+    ]);
+    final bgImageListenable = Listenable.merge([
+      appConfig.backgroundImagePath,
+      appConfig.backgroundImageOpacity,
+    ]);
 
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        courseProvider.courses,
-        courseProvider.scheduleConfig,
-        courseProvider.currentWeek,
-        courseProvider.isLoading,
-        appConfig.backgroundImagePath,
-        appConfig.backgroundImageOpacity,
-      ]),
-      builder: (context, _) {
-        final config = courseProvider.scheduleConfig.value;
-        final week = courseProvider.currentWeek.value;
-        final totalWeeks = config.totalWeeks;
-        final allCourses = courseProvider.courses.value;
-
-        return Column(
-          children: [
-            // Top bar: date, week switcher, action buttons
-            _buildTopBar(context, l10n, week, totalWeeks),
-            // Course grid
-            Expanded(
-              child: Stack(
-                children: [
-                  // Fixed background image (doesn't swipe with pages)
-                  if (appConfig.backgroundImagePath.value != null)
-                    Positioned.fill(
-                      child: Opacity(
-                        opacity: appConfig.backgroundImageOpacity.value,
-                        child: Image(
-                          image: FileImage(
-                            File(appConfig.backgroundImagePath.value!),
-                          ),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                        ),
-                      ),
-                    ),
-                  _SwipePageView(
-                    controller: _pageController,
-                    itemCount: totalWeeks,
-                    onPageChanged: (index) {
-                      final displayWeek = index + 1;
-                      if (_visibleWeek != displayWeek) {
-                        setState(() {
-                          _visibleWeek = displayWeek;
-                        });
-                      }
-                      courseProvider.updateCurrentWeek(displayWeek);
-                    },
-                    itemBuilder: (context, index) {
-                      final displayWeek = index + 1;
-                      return CourseGrid(
-                        courses: allCourses,
-                        config: config,
-                        displayWeek: displayWeek,
-                        totalWeeks: totalWeeks,
-                        onCourseTap: _onCourseTap,
-                        onCourseLongPress: _onCourseLongPress,
-                        onEmptyTap: _onEmptyTap,
-                      );
-                    },
-                  ),
-                  if (courseProvider.isLoading.value)
-                    const Center(child: CircularProgressIndicator()),
-                ],
-              ),
+    return Column(
+      children: [
+        if (!widget.demoMode)
+          ListenableBuilder(
+            listenable: courseDataListenable,
+            builder: (context, _) => _TopBar(
+              week: courseProvider.currentWeek.value,
+              totalWeeks: courseProvider.scheduleConfig.value.totalWeeks,
+              visibleWeek: _visibleWeek,
+              onPreviousWeek: () =>
+                  _changeWeek(courseProvider.currentWeek.value - 1),
+              onNextWeek: () =>
+                  _changeWeek(courseProvider.currentWeek.value + 1),
+              onGoToCurrentWeek: _goToCurrentWeek,
+              onImport: _onImport,
+              onExport: _onExport,
+              onAddCourse: _onAddCourse,
             ),
-          ],
+          ),
+        Expanded(
+          child: Stack(
+            children: [
+              ListenableBuilder(
+                listenable: bgImageListenable,
+                builder: _buildBackgroundImage,
+              ),
+              ListenableBuilder(
+                listenable: courseDataListenable,
+                builder: (context, _) =>
+                    widget.demoMode || courseProvider.hasSchedule
+                    ? _buildCourseGrid(context, null)
+                    : _buildNoScheduleView(context, null),
+              ),
+              ValueListenableBuilder<bool>(
+                valueListenable: courseProvider.isLoading,
+                builder: _buildLoadingIndicator,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openScheduleManagement(BuildContext context) {
+    popupOrNavigate(context, const ScheduleManagementPage());
+  }
+
+  void _openAddScheduleDialog(BuildContext context) {
+    promptForNewScheduleConfig(context, courseProvider);
+  }
+
+  Widget _buildBackgroundImage(BuildContext context, Widget? _) {
+    final path = appConfig.backgroundImagePath.value;
+    if (path == null) return const SizedBox.shrink();
+    return Positioned.fill(
+      child: Image(
+        image: FileImage(File(path)),
+        fit: BoxFit.cover,
+        // 使用 frameBuilder 监听第一帧完成并做淡入动画，避免白屏突变
+        frameBuilder:
+            (BuildContext ctx, Widget child, int? frame, bool wasSync) {
+              final visible = frame != null || wasSync;
+              return AnimatedOpacity(
+                opacity: visible ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                child: child,
+              );
+            },
+        color: Colors.white.withAlpha(
+          (appConfig.backgroundImageOpacity.value * 255).round(),
+        ),
+        colorBlendMode: BlendMode.modulate,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  Widget _buildCourseGrid(BuildContext context, Widget? _) {
+    final config = courseProvider.scheduleConfig.value;
+    final allCourses = widget.demoMode
+        ? _kDemoCourses
+        : courseProvider.courses.value;
+    final totalWeeks = config.totalWeeks;
+
+    if (widget.demoMode) {
+      // 预览模式：固定显示第 1 周，不滑动、不跟随当前课表周数
+      return CourseGrid(
+        courses: allCourses,
+        config: config,
+        displayWeek: 1,
+        totalWeeks: totalWeeks,
+      );
+    }
+
+    return _SwipePageView(
+      controller: _pageController,
+      itemCount: totalWeeks,
+      onPageChanged: _onPageChanged,
+      itemBuilder: (context, index) {
+        return CourseGrid(
+          courses: allCourses,
+          config: config,
+          displayWeek: index + 1,
+          totalWeeks: totalWeeks,
+          onCourseTap: widget.demoMode ? null : _onCourseTap,
+          onCourseLongPress: widget.demoMode ? null : _onCourseLongPress,
+          onEmptyTap: widget.demoMode ? null : _onEmptyTap,
+          onSpecialDayTap: widget.demoMode ? null : _onSpecialDayTap,
         );
       },
     );
   }
 
-  Widget _buildTopBar(
-    BuildContext context,
-    AppLocalizations l10n,
-    int week,
-    int totalWeeks,
-  ) {
-    final config = courseProvider.scheduleConfig.value;
-    final isCurrentCalendarWeek = _visibleWeek == config.getCurrentWeek();
-
-    final now = DateTime.now();
-    final dateStr = '${now.year}/${now.month}/${now.day}';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: () => _goToCurrentWeek(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  dateStr,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 1),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GestureDetector(
-                      onTap: week > 1 ? () => _changeWeek(week - 1) : null,
-                      child: Icon(
-                        Icons.chevron_left,
-                        size: 16,
-                        color: week > 1
-                            ? Theme.of(context).colorScheme.onSurface
-                            : Theme.of(context).disabledColor,
-                      ),
-                    ),
-                    SizedBox(
-                      width: 60,
-                      child: Text(
-                        l10n.currentWeek(week),
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: week < totalWeeks
-                          ? () => _changeWeek(week + 1)
-                          : null,
-                      child: Icon(
-                        Icons.chevron_right,
-                        size: 16,
-                        color: week < totalWeeks
-                            ? Theme.of(context).colorScheme.onSurface
-                            : Theme.of(context).disabledColor,
-                      ),
-                    ),
-                    if (isCurrentCalendarWeek) ...[
-                      const SizedBox(width: 3),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          l10n.thisWeek,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 9,
-                              ),
-                        ),
-                      ),
-                    ] else ...[
-                      const SizedBox(width: 3),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          l10n.actualCurrentWeek(config.getCurrentWeek()),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSecondaryContainer,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 9,
-                              ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                onPressed: _onImport,
-                icon: const Icon(Icons.download_rounded, size: 20),
-                tooltip: l10n.importSchedule,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              ),
-              IconButton(
-                onPressed: _onExport,
-                icon: const Icon(Icons.share_rounded, size: 20),
-                tooltip: l10n.exportSchedule,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              ),
-              IconButton(
-                onPressed: _onAddCourse,
-                icon: const Icon(Icons.add_circle_rounded, size: 24),
-                tooltip: l10n.addCourse,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              ),
-            ],
-          ),
-        ],
-      ),
+  Widget _buildNoScheduleView(BuildContext context, Widget? _) {
+    return _NoScheduleView(
+      onOpenManagement: () => _openScheduleManagement(context),
+      onImport: _onImport,
+      onAddSchedule: () => _openAddScheduleDialog(context),
     );
+  }
+
+  Widget _buildLoadingIndicator(
+    BuildContext context,
+    bool isLoading,
+    Widget? _,
+  ) {
+    if (!isLoading) return const SizedBox.shrink();
+    return const Center(child: CircularProgressIndicator());
+  }
+
+  void _onPageChanged(int index) {
+    final displayWeek = index + 1;
+    if (_visibleWeek != displayWeek) {
+      setState(() {
+        _visibleWeek = displayWeek;
+      });
+    }
+    courseProvider.updateCurrentWeek(displayWeek);
   }
 
   void _changeWeek(int newWeek) {
@@ -310,218 +252,76 @@ class _CoursePageState extends State<CoursePage> with WidgetsBindingObserver {
   void _goToCurrentWeek() {
     _syncToCurrentWeek();
   }
-
-  void _onImport() {
-    final l10n = AppLocalizations.of(context)!;
-    final outerContext = context; // Capture the stable context
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 8,
-                ),
-                child: Text(
-                  l10n.importSchedule,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                leading: const Icon(Icons.share),
-                title: Text(l10n.importFromShare),
-                onTap: () {
-                  Navigator.pop(context);
-                  popupOrNavigate(
-                    outerContext,
-                    ImportSchedulePage(
-                      courseProvider: courseProvider,
-                      mode: ImportMode.share,
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                leading: const Icon(Icons.school),
-                title: Text(l10n.importFromJwxt),
-                onTap: () {
-                  Navigator.pop(context);
-                  popupOrNavigate(
-                    outerContext,
-                    ImportSchedulePage(
-                      courseProvider: courseProvider,
-                      mode: ImportMode.jwxt,
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                leading: const Icon(Icons.cloud_download_outlined),
-                title: Text(l10n.importFromJwxtOnline),
-                onTap: () {
-                  Navigator.pop(context);
-                  popupOrNavigate(
-                    outerContext,
-                    ImportSchedulePage(
-                      courseProvider: courseProvider,
-                      mode: ImportMode.online,
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _onExport() {
-    showExportScheduleSheet(context);
-  }
-
-  void _onAddCourse() {
-    popupOrNavigate(context, const CourseEditPage());
-  }
-
-  void _onCourseTap(Course course) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) =>
-          CourseDetailSheet(course: course, courseProvider: courseProvider),
-    );
-  }
-
-  void _onCourseLongPress(Course course) {
-    final l10n = AppLocalizations.of(context)!;
-    showYesNoDialog(
-      title: l10n.deleteCourse,
-      content: l10n.deleteCourseConfirm,
-    ).then((confirm) async {
-      if (confirm == true) {
-        await courseProvider.deleteCourse(course.id);
-      }
-    });
-  }
-
-  void _onEmptyTap(int dayOfWeek, int section) {
-    popupOrNavigate(
-      context,
-      CourseEditPage(prefillDayOfWeek: dayOfWeek, prefillSection: section),
-    );
-  }
 }
 
-/// A PageView wrapper that only triggers page switching when the horizontal
-/// displacement is significantly larger than vertical, so vertical scrolling
-/// inside the page is not accidentally intercepted.
-class _SwipePageView extends StatefulWidget {
-  final PageController controller;
-  final int itemCount;
-  final void Function(int index) onPageChanged;
-  final Widget Function(BuildContext context, int index) itemBuilder;
-
-  const _SwipePageView({
-    required this.controller,
-    required this.itemCount,
-    required this.onPageChanged,
-    required this.itemBuilder,
-  });
-
-  @override
-  State<_SwipePageView> createState() => _SwipePageViewState();
-}
-
-class _SwipePageViewState extends State<_SwipePageView> {
-  double _dragStartX = 0;
-  double _dragStartY = 0;
-  bool? _isHorizontalDrag; // null = undecided
-  int _dragStartPage = 0;
-
-  void _onPanStart(DragStartDetails details) {
-    _dragStartX = details.globalPosition.dx;
-    _dragStartY = details.globalPosition.dy;
-    _isHorizontalDrag = null;
-    _dragStartPage = (widget.controller.page ?? 0).round();
-  }
-
-  void _onPanUpdate(DragUpdateDetails details) {
-    if (_isHorizontalDrag == null) {
-      final dx = (details.globalPosition.dx - _dragStartX).abs();
-      final dy = (details.globalPosition.dy - _dragStartY).abs();
-      if (dx > 8 || dy > 8) {
-        _isHorizontalDrag = dx > dy * 1.5;
-      }
-    }
-    if (_isHorizontalDrag == true) {
-      final newOffset = (widget.controller.offset - details.delta.dx).clamp(
-        0.0,
-        widget.controller.position.maxScrollExtent,
-      );
-      widget.controller.jumpTo(newOffset);
-    }
-  }
-
-  void _onPanEnd(DragEndDetails details) {
-    if (_isHorizontalDrag != true) return;
-    final velocity = details.velocity.pixelsPerSecond.dx;
-    final dragDelta = details.globalPosition.dx - _dragStartX;
-    int targetPage;
-    // Flick gesture: any noticeable velocity flips the page
-    if (velocity < -100) {
-      targetPage = (_dragStartPage + 1).clamp(0, widget.itemCount - 1);
-    } else if (velocity > 100) {
-      targetPage = (_dragStartPage - 1).clamp(0, widget.itemCount - 1);
-    } else if (dragDelta < -50) {
-      // Dragged left far enough without much velocity
-      targetPage = (_dragStartPage + 1).clamp(0, widget.itemCount - 1);
-    } else if (dragDelta > 50) {
-      // Dragged right far enough without much velocity
-      targetPage = (_dragStartPage - 1).clamp(0, widget.itemCount - 1);
-    } else {
-      // Small drag, snap back
-      targetPage = _dragStartPage;
-    }
-    widget.controller.animateToPage(
-      targetPage,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onPanStart: _onPanStart,
-      onPanUpdate: _onPanUpdate,
-      onPanEnd: _onPanEnd,
-      child: PageView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        controller: widget.controller,
-        itemCount: widget.itemCount,
-        onPageChanged: widget.onPageChanged,
-        itemBuilder: widget.itemBuilder,
-      ),
-    );
-  }
-}
+/// 课程表样式预览中使用的示例课程。
+/// 覆盖周一至周五，分布在上午和下午时段，便于在 [SetCourseStylePage] 中预览样式变化。
+final List<Course> _kDemoCourses = [
+  Course(
+    name: '高等数学',
+    teacher: '张教授',
+    location: '综C407',
+    startWeek: 1,
+    endWeek: 20,
+    dayOfWeek: 1,
+    startSection: 1,
+    endSection: 2,
+    colorValue: 0xFF1976D2,
+  ),
+  Course(
+    name: '大学英语（三）',
+    teacher: '李老师',
+    location: '综B207',
+    startWeek: 1,
+    endWeek: 20,
+    dayOfWeek: 2,
+    startSection: 3,
+    endSection: 4,
+    colorValue: 0xFF388E3C,
+  ),
+  Course(
+    name: '程序设计基础',
+    teacher: '王老师',
+    location: '二基楼B501',
+    startWeek: 1,
+    endWeek: 20,
+    dayOfWeek: 3,
+    startSection: 6,
+    endSection: 8,
+    colorValue: 0xFFE64A19,
+  ),
+  Course(
+    name: '线性代数',
+    teacher: '赵教授',
+    location: '综C103',
+    startWeek: 1,
+    endWeek: 20,
+    dayOfWeek: 4,
+    startSection: 1,
+    endSection: 2,
+    colorValue: 0xFF7B1FA2,
+  ),
+  Course(
+    name: '大学物理（下）',
+    teacher: '陈老师',
+    location: '综B307',
+    startWeek: 1,
+    endWeek: 20,
+    dayOfWeek: 5,
+    startSection: 3,
+    endSection: 4,
+    colorValue: 0xFF00838F,
+  ),
+  // 第15周才开始的课程，用于展示「显示非本周课程」开关效果
+  Course(
+    name: '体育',
+    teacher: '刘老师',
+    location: '江安体育馆',
+    startWeek: 15,
+    endWeek: 20,
+    dayOfWeek: 1,
+    startSection: 5,
+    endSection: 6,
+    colorValue: 0xFFF9A825,
+  ),
+];

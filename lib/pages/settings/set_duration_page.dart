@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 
 class SetDurationPage extends StatefulWidget {
   const SetDurationPage({super.key});
@@ -100,8 +101,7 @@ class _SetDurationPageState extends State<SetDurationPage> {
               padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: Text(
                 appLang.currentAnimationDuration(_tempAnimationTime),
-                style: TextStyle(
-                  fontSize: 18,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
@@ -126,7 +126,7 @@ class _SetDurationPageState extends State<SetDurationPage> {
               child: Container(
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppShapes.medium),
                 ),
                 child: Center(
                   child: AnimatedContainer(
@@ -156,9 +156,8 @@ class _SetDurationPageState extends State<SetDurationPage> {
               padding: const EdgeInsets.only(top: 16.0),
               child: Text(
                 appLang.animationDurationHint,
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 14,
                 ),
               ),
             ),

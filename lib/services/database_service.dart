@@ -1,42 +1,42 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:hive_ce/hive.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:bugaoshan/models/balance_record.dart';
 import 'package:bugaoshan/models/course.dart';
 
 const String _keyCurrentScheduleId = 'currentScheduleId';
-const String _keySchedules = 'schedules';
-const String _keyScheduleConfig = 'scheduleConfig'; // Legacy Hive key
-const String _prefsCoursesPrefix = 'courses_';
 
 class DatabaseService {
-  Database? _db;
-  SharedPreferences? _prefs;
+  late Database _db;
 
   // In-memory cache to support synchronous read methods
-  String _currentScheduleId = 'default';
+  String _currentScheduleId = '';
   List<ScheduleConfig> _schedulesCache = [];
   List<Course> _coursesCache = [];
 
-  // CPF's sqflite implementation keeps the database model consistent on OHOS.
-  bool get _usePrefsBackend => false;
+  bool get hasSchedule => _schedulesCache.isNotEmpty;
+
+  DatabaseService();
+
+  /// 测试用:跳过 [init] 中的路径解析与磁盘 IO,直接注入已初始化的 [Database]。
+  /// 自动创建 `balance_records` 表;其余表(courses/schedules/metadata)按需自建。
+  @visibleForTesting
+  DatabaseService.forTesting(Database db) : _db = db;
+
+  /// 测试用:确保 balance_records 表存在(供 [forTesting] 后调用)。
+  @visibleForTesting
+  Future<void> ensureBalanceRecordsTableForTesting() async {
+    await _createBalanceRecordsTable(_db);
+  }
 
   Future<void> init() async {
-    if (_usePrefsBackend) {
-      _prefs = await SharedPreferences.getInstance();
-      await _initPrefsBackend();
-      return;
-    }
-
     final dir = await getApplicationSupportDirectory();
     final dbPath = p.join(dir.path, 'bugaoshan.db');
 
-    final db = await openDatabase(
+    _db = await openDatabase(
       dbPath,
       version: 1,
       onCreate: (db, version) async {
@@ -69,15 +69,15 @@ class DatabaseService {
             FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE
           )
         ''');
+        await _createBalanceRecordsTable(db);
       },
     );
-    _db = db;
 
-    // Try migrating from Hive if old data exists
-    await _migrateFromHiveIfNeeded(dir.path);
+    // 老用户(db 已存在)通过此处确保新表创建
+    await _ensureBalanceRecordsTable();
 
     // Load current schedule ID from metadata
-    final metaRows = await db.query(
+    final metaRows = await _db.query(
       'metadata',
       where: 'key = ?',
       whereArgs: [_keyCurrentScheduleId],
@@ -86,330 +86,26 @@ class DatabaseService {
       _currentScheduleId = metaRows.first['value'] as String;
     }
 
-    // Ensure a default schedule exists
-    final scheduleRows = await db.query('schedules');
-    if (scheduleRows.isEmpty) {
-      final defaultConfig = _defaultScheduleConfig();
-      await db.insert('schedules', {
-        'id': defaultConfig.id,
-        'config_json': _encodeJson(defaultConfig.toJson()),
-      });
-      await db.insert('metadata', {
-        'key': _keyCurrentScheduleId,
-        'value': 'default',
-      });
-    }
+    // 不再自动创建默认课表。新安装的 schedules 表为空，
+    // _currentScheduleId 保持 '' 直到用户切换到一个真实课表。
+    // 老用户：schedules 表非空，上面加载的 _currentScheduleId 继续生效。
 
     // Load caches
     await _loadSchedulesCache();
-    await _ensureCurrentScheduleExists();
     await _loadCoursesCache();
-  }
-
-  Future<void> _initPrefsBackend() async {
-    final prefs = _prefs!;
-    _currentScheduleId = prefs.getString(_keyCurrentScheduleId) ?? 'default';
-
-    final schedulesJson = prefs.getString(_keySchedules);
-    if (schedulesJson == null || schedulesJson.isEmpty) {
-      await _migratePrefsFromHiveIfNeeded();
-      if (prefs.getString(_keySchedules) == null) {
-        final defaultConfig = _defaultScheduleConfig();
-        _currentScheduleId = defaultConfig.id;
-        await prefs.setString(_keyCurrentScheduleId, _currentScheduleId);
-        await _saveSchedulesToPrefs([defaultConfig]);
-      }
-    }
-
-    await _loadSchedulesCache();
-    await _ensureCurrentScheduleExists();
-    await _loadCoursesCache();
-  }
-
-  // ==================== Hive Migration ====================
-
-  Future<void> _migratePrefsFromHiveIfNeeded() async {
-    final dir = await getApplicationSupportDirectory();
-    final hiveMetaFile = File(p.join(dir.path, 'metadata.hive'));
-    if (!hiveMetaFile.existsSync()) return;
-
-    debugPrint('Migrating data from Hive to SharedPreferences...');
-
-    try {
-      Hive.init(dir.path);
-      await Hive.openBox('metadata');
-      final metadataBox = Hive.box('metadata');
-      final schedules = <ScheduleConfig>[];
-
-      final schedulesRaw = metadataBox.get(_keySchedules) as List<dynamic>?;
-      if (schedulesRaw != null) {
-        for (final item in schedulesRaw) {
-          try {
-            final map = Map<String, dynamic>.from(
-              json.decode(item as String) as Map,
-            );
-            schedules.add(ScheduleConfig.fromJson(map));
-          } catch (_) {}
-        }
-      }
-
-      if (schedules.isEmpty) {
-        final legacyJson = metadataBox.get(_keyScheduleConfig) as String?;
-        if (legacyJson != null && legacyJson.isNotEmpty) {
-          try {
-            final config = ScheduleConfig.fromJson(
-              Map<String, dynamic>.from(json.decode(legacyJson) as Map),
-            );
-            config.id = 'default';
-            if (config.semesterName.isEmpty) {
-              config.semesterName = '默认课表';
-            }
-            schedules.add(config);
-          } catch (_) {}
-        }
-      }
-
-      if (schedules.isEmpty) schedules.add(_defaultScheduleConfig());
-
-      final currentId =
-          metadataBox.get(_keyCurrentScheduleId) as String? ??
-          schedules.first.id;
-      _currentScheduleId = currentId;
-      await _prefs!.setString(_keyCurrentScheduleId, currentId);
-      await _saveSchedulesToPrefs(schedules);
-
-      for (final schedule in schedules) {
-        final boxName = schedule.id == 'default'
-            ? 'courses'
-            : 'courses_${schedule.id}';
-        try {
-          await Hive.openBox(boxName);
-          final box = Hive.box(boxName);
-          final courses = <Course>[];
-          for (final value in box.values) {
-            if (value is Map) {
-              courses.add(Course.fromJson(Map<String, dynamic>.from(value)));
-            }
-          }
-          await _saveCoursesToPrefs(schedule.id, courses);
-          await box.close();
-        } catch (e) {
-          debugPrint(
-            'Failed to migrate courses for schedule ${schedule.id}: $e',
-          );
-        }
-      }
-
-      await metadataBox.close();
-      _deleteHiveFiles(dir.path);
-      debugPrint('Hive to SharedPreferences migration completed successfully.');
-    } catch (e) {
-      debugPrint('Hive to SharedPreferences migration failed: $e');
-    }
-  }
-
-  Future<void> _migrateFromHiveIfNeeded(String appDirPath) async {
-    // Check if Hive metadata box file exists
-    final hiveMetaFile = File(p.join(appDirPath, 'metadata.hive'));
-    if (!hiveMetaFile.existsSync()) return;
-
-    // Check if SQLite already has data (don't re-migrate)
-    final existingSchedules = await _db!.query('schedules');
-    if (existingSchedules.isNotEmpty) return;
-
-    debugPrint('Migrating data from Hive to SQLite...');
-
-    try {
-      Hive.init(appDirPath);
-
-      // Open metadata box
-      await Hive.openBox('metadata');
-      final metadataBox = Hive.box('metadata');
-
-      // Read schedules list
-      final schedulesRaw = metadataBox.get(_keySchedules) as List<dynamic>?;
-      final currentId =
-          metadataBox.get(_keyCurrentScheduleId) as String? ?? 'default';
-
-      List<ScheduleConfig> schedules = [];
-      if (schedulesRaw != null) {
-        for (final item in schedulesRaw) {
-          try {
-            final map = Map<String, dynamic>.from(
-              json.decode(item as String) as Map,
-            );
-            schedules.add(ScheduleConfig.fromJson(map));
-          } catch (_) {}
-        }
-      }
-
-      // If no schedules found, try legacy single-schedule format
-      if (schedules.isEmpty) {
-        final legacyJson = metadataBox.get(_keyScheduleConfig) as String?;
-        if (legacyJson != null && legacyJson.isNotEmpty) {
-          try {
-            final config = ScheduleConfig.fromJson(
-              Map<String, dynamic>.from(json.decode(legacyJson) as Map),
-            );
-            config.id = 'default';
-            if (config.semesterName.isEmpty) {
-              config.semesterName = '默认课表';
-            }
-            schedules.add(config);
-          } catch (_) {
-            schedules.add(_defaultScheduleConfig());
-          }
-        } else {
-          schedules.add(_defaultScheduleConfig());
-        }
-      }
-
-      // Insert schedules into SQLite
-      for (final s in schedules) {
-        await _db!.insert('schedules', {
-          'id': s.id,
-          'config_json': _encodeJson(s.toJson()),
-        });
-      }
-
-      // Insert current schedule ID
-      await _db!.insert('metadata', {
-        'key': _keyCurrentScheduleId,
-        'value': currentId,
-      });
-
-      // Migrate courses from each Hive box
-      for (final s in schedules) {
-        final boxName = s.id == 'default' ? 'courses' : 'courses_${s.id}';
-        try {
-          await Hive.openBox(boxName);
-          final box = Hive.box(boxName);
-          for (final value in box.values) {
-            if (value is Map) {
-              final courseMap = Map<String, dynamic>.from(value);
-              final course = Course.fromJson(courseMap);
-              await _db!.insert('courses', _courseToRow(course, s.id));
-            }
-          }
-          await box.close();
-        } catch (e) {
-          debugPrint('Failed to migrate courses for schedule ${s.id}: $e');
-        }
-      }
-
-      await metadataBox.close();
-
-      // Delete old Hive files
-      _deleteHiveFiles(appDirPath);
-
-      debugPrint('Hive migration completed successfully.');
-    } catch (e) {
-      debugPrint('Hive migration failed: $e');
-    }
-  }
-
-  void _deleteHiveFiles(String dirPath) {
-    try {
-      final dir = Directory(dirPath);
-      for (final file in dir.listSync()) {
-        if (file is File) {
-          final name = p.basename(file.path);
-          if (name.endsWith('.hive') ||
-              name.endsWith('.lock') ||
-              name.endsWith('.hive.crc')) {
-            file.deleteSync();
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Failed to delete Hive files: $e');
-    }
   }
 
   // ==================== Cache Helpers ====================
 
   Future<void> _loadSchedulesCache() async {
-    if (_usePrefsBackend) {
-      final raw = _prefs!.getString(_keySchedules);
-      if (raw == null || raw.isEmpty) {
-        _schedulesCache = [_defaultScheduleConfig()];
-        await _saveSchedulesToPrefs(_schedulesCache);
-        return;
-      }
-
-      try {
-        final list = json.decode(raw) as List<dynamic>;
-        _schedulesCache = list
-            .map(
-              (item) => ScheduleConfig.fromJson(
-                Map<String, dynamic>.from(item as Map),
-              ),
-            )
-            .toList();
-        if (_schedulesCache.isEmpty) {
-          _schedulesCache = [_defaultScheduleConfig()];
-          await _saveSchedulesToPrefs(_schedulesCache);
-        }
-      } catch (e) {
-        debugPrint('Failed to load schedules from SharedPreferences: $e');
-        _schedulesCache = [_defaultScheduleConfig()];
-        await _saveSchedulesToPrefs(_schedulesCache);
-      }
-      return;
-    }
-
-    final rows = await _db!.query('schedules');
+    final rows = await _db.query('schedules');
     _schedulesCache = rows.map((row) {
       return ScheduleConfig.fromJson(_decodeJson(row['config_json'] as String));
     }).toList();
-    if (_schedulesCache.isEmpty) {
-      final defaultConfig = _defaultScheduleConfig();
-      await _db!.insert('schedules', {
-        'id': defaultConfig.id,
-        'config_json': _encodeJson(defaultConfig.toJson()),
-      });
-      _schedulesCache = [defaultConfig];
-    }
-  }
-
-  Future<void> _ensureCurrentScheduleExists() async {
-    if (_schedulesCache.any((schedule) => schedule.id == _currentScheduleId)) {
-      return;
-    }
-
-    _currentScheduleId = _schedulesCache.first.id;
-    if (_usePrefsBackend) {
-      await _prefs!.setString(_keyCurrentScheduleId, _currentScheduleId);
-      return;
-    }
-
-    final existing = await _db!.query(
-      'metadata',
-      where: 'key = ?',
-      whereArgs: [_keyCurrentScheduleId],
-    );
-    if (existing.isEmpty) {
-      await _db!.insert('metadata', {
-        'key': _keyCurrentScheduleId,
-        'value': _currentScheduleId,
-      });
-    } else {
-      await _db!.update(
-        'metadata',
-        {'value': _currentScheduleId},
-        where: 'key = ?',
-        whereArgs: [_keyCurrentScheduleId],
-      );
-    }
   }
 
   Future<void> _loadCoursesCache() async {
-    if (_usePrefsBackend) {
-      _coursesCache = _loadCoursesFromPrefs(_currentScheduleId);
-      return;
-    }
-
-    final rows = await _db!.query(
+    final rows = await _db.query(
       'courses',
       where: 'schedule_id = ?',
       whereArgs: [_currentScheduleId],
@@ -433,52 +129,21 @@ class DatabaseService {
   };
 
   Course _rowToCourse(Map<String, dynamic> row) {
+    final weekTypeIndex = row['week_type'] as int? ?? 0;
     return Course(
       id: row['id'] as String,
-      name: row['name'] as String,
-      teacher: row['teacher'] as String,
-      location: row['location'] as String,
+      name: row['name'] as String? ?? '',
+      teacher: row['teacher'] as String? ?? '',
+      location: row['location'] as String? ?? '',
       startWeek: row['start_week'] as int,
       endWeek: row['end_week'] as int,
       dayOfWeek: row['day_of_week'] as int,
       startSection: row['start_section'] as int,
       endSection: row['end_section'] as int,
       colorValue: row['color_value'] as int,
-      weekType: WeekType.values[row['week_type'] as int],
-    );
-  }
-
-  Future<void> _saveSchedulesToPrefs(List<ScheduleConfig> schedules) async {
-    await _prefs!.setString(
-      _keySchedules,
-      json.encode(schedules.map((schedule) => schedule.toJson()).toList()),
-    );
-  }
-
-  List<Course> _loadCoursesFromPrefs(String scheduleId) {
-    final raw = _prefs!.getString('$_prefsCoursesPrefix$scheduleId');
-    if (raw == null || raw.isEmpty) return [];
-
-    try {
-      final list = json.decode(raw) as List<dynamic>;
-      return list
-          .map(
-            (item) => Course.fromJson(Map<String, dynamic>.from(item as Map)),
-          )
-          .toList();
-    } catch (e) {
-      debugPrint('Failed to load courses for schedule $scheduleId: $e');
-      return [];
-    }
-  }
-
-  Future<void> _saveCoursesToPrefs(
-    String scheduleId,
-    List<Course> courses,
-  ) async {
-    await _prefs!.setString(
-      '$_prefsCoursesPrefix$scheduleId',
-      json.encode(courses.map((course) => course.toJson()).toList()),
+      weekType: weekTypeIndex < WeekType.values.length
+          ? WeekType.values[weekTypeIndex]
+          : WeekType.every,
     );
   }
 
@@ -487,25 +152,23 @@ class DatabaseService {
   String getCurrentScheduleId() => _currentScheduleId;
 
   Future<void> switchSchedule(String scheduleId) async {
-    _currentScheduleId = scheduleId;
-    if (_usePrefsBackend) {
-      await _prefs!.setString(_keyCurrentScheduleId, scheduleId);
-      await _loadCoursesCache();
+    // 未知 id 早返回，避免把空 '' 写进 metadata 并触发 courses 缓存重载。
+    if (_schedulesCache.indexWhere((s) => s.id == scheduleId) < 0) {
+      debugPrint('DatabaseService.switchSchedule: unknown id $scheduleId');
       return;
     }
-
-    await _db!.update(
-      'metadata',
-      {'value': scheduleId},
-      where: 'key = ?',
-      whereArgs: [_keyCurrentScheduleId],
-    );
+    _currentScheduleId = scheduleId;
+    await _db.insert('metadata', {
+      'key': _keyCurrentScheduleId,
+      'value': scheduleId,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
     await _loadCoursesCache();
   }
 
   List<ScheduleConfig> getAllSchedules() => List.unmodifiable(_schedulesCache);
 
   ScheduleConfig getScheduleConfig() {
+    if (_schedulesCache.isEmpty) return _placeholderScheduleConfig();
     return _schedulesCache.firstWhere(
       (s) => s.id == _currentScheduleId,
       orElse: () => _schedulesCache.first,
@@ -513,48 +176,27 @@ class DatabaseService {
   }
 
   Future<void> saveScheduleConfig(ScheduleConfig config) async {
-    if (_usePrefsBackend) {
-      final index = _schedulesCache.indexWhere(
-        (schedule) => schedule.id == config.id,
-      );
-      if (index >= 0) {
-        _schedulesCache[index] = config;
-      } else {
-        _schedulesCache.add(config);
-      }
-      await _saveSchedulesToPrefs(_schedulesCache);
-      await _loadSchedulesCache();
-      return;
-    }
-
-    final existing = await _db!.query(
+    final existing = await _db.query(
       'schedules',
       where: 'id = ?',
       whereArgs: [config.id],
     );
     final json = _encodeJson(config.toJson());
     if (existing.isNotEmpty) {
-      await _db!.update(
+      await _db.update(
         'schedules',
         {'config_json': json},
         where: 'id = ?',
         whereArgs: [config.id],
       );
     } else {
-      await _db!.insert('schedules', {'id': config.id, 'config_json': json});
+      await _db.insert('schedules', {'id': config.id, 'config_json': json});
     }
     await _loadSchedulesCache();
   }
 
   Future<void> addSchedule(ScheduleConfig config) async {
-    if (_usePrefsBackend) {
-      _schedulesCache.add(config);
-      await _saveSchedulesToPrefs(_schedulesCache);
-      await _loadSchedulesCache();
-      return;
-    }
-
-    await _db!.insert('schedules', {
+    await _db.insert('schedules', {
       'id': config.id,
       'config_json': _encodeJson(config.toJson()),
     });
@@ -562,46 +204,35 @@ class DatabaseService {
   }
 
   Future<void> deleteSchedule(String scheduleId) async {
-    if (_usePrefsBackend) {
-      await _prefs!.remove('$_prefsCoursesPrefix$scheduleId');
-      _schedulesCache.removeWhere((schedule) => schedule.id == scheduleId);
-      await _saveSchedulesToPrefs(_schedulesCache);
-      await _loadSchedulesCache();
-
-      if (_currentScheduleId == scheduleId && _schedulesCache.isNotEmpty) {
-        await switchSchedule(_schedulesCache.first.id);
-      } else {
-        await _loadCoursesCache();
-      }
-      return;
-    }
-
-    // Delete courses for this schedule
-    await _db!.delete(
-      'courses',
-      where: 'schedule_id = ?',
-      whereArgs: [scheduleId],
-    );
-    // Delete schedule config
-    await _db!.delete('schedules', where: 'id = ?', whereArgs: [scheduleId]);
+    await _db.transaction((txn) async {
+      await txn.delete(
+        'courses',
+        where: 'schedule_id = ?',
+        whereArgs: [scheduleId],
+      );
+      await txn.delete('schedules', where: 'id = ?', whereArgs: [scheduleId]);
+    });
 
     await _loadSchedulesCache();
 
-    // If we deleted the current one, switch to the first available
-    if (_currentScheduleId == scheduleId && _schedulesCache.isNotEmpty) {
-      await switchSchedule(_schedulesCache.first.id);
+    // 如果删的是当前课表：剩余 → 切到第一个；不剩 → 清空 currentScheduleId
+    if (_currentScheduleId == scheduleId) {
+      if (_schedulesCache.isNotEmpty) {
+        await switchSchedule(_schedulesCache.first.id);
+      } else {
+        _currentScheduleId = '';
+        await _db.insert('metadata', {
+          'key': _keyCurrentScheduleId,
+          'value': '',
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await _loadCoursesCache();
+      }
     }
   }
 
   // ==================== Courses ====================
 
   List<Course> getCourses({String? scheduleId}) {
-    if (_usePrefsBackend &&
-        scheduleId != null &&
-        scheduleId != _currentScheduleId) {
-      return List.unmodifiable(_loadCoursesFromPrefs(scheduleId));
-    }
-
     if (scheduleId != null && scheduleId != _currentScheduleId) {
       // For cross-schedule reads, query directly (synchronous fallback)
       // In practice, getCoursesAsync should be used for cross-schedule
@@ -611,29 +242,40 @@ class DatabaseService {
   }
 
   Future<void> addCourse(Course course) async {
-    if (_usePrefsBackend) {
-      _coursesCache.add(course);
-      await _saveCoursesToPrefs(_currentScheduleId, _coursesCache);
-      await _loadCoursesCache();
+    if (_currentScheduleId.isEmpty) {
+      debugPrint('DatabaseService.addCourse: no current schedule');
       return;
     }
-
-    await _db!.insert('courses', _courseToRow(course, _currentScheduleId));
+    await _db.insert('courses', _courseToRow(course, _currentScheduleId));
     await _loadCoursesCache();
   }
 
-  Future<void> updateCourse(Course course) async {
-    if (_usePrefsBackend) {
-      final index = _coursesCache.indexWhere((item) => item.id == course.id);
-      if (index >= 0) {
-        _coursesCache[index] = course;
+  /// 替换指定课表的所有课程（先删后插）。用于「更新课表」场景。
+  Future<void> replaceScheduleCourses(
+    String scheduleId,
+    List<Course> courses,
+  ) async {
+    await _db.transaction((txn) async {
+      await txn.delete(
+        'courses',
+        where: 'schedule_id = ?',
+        whereArgs: [scheduleId],
+      );
+      for (final course in courses) {
+        await txn.insert('courses', _courseToRow(course, scheduleId));
       }
-      await _saveCoursesToPrefs(_currentScheduleId, _coursesCache);
+    });
+    if (_currentScheduleId == scheduleId) {
       await _loadCoursesCache();
+    }
+  }
+
+  Future<void> updateCourse(Course course) async {
+    if (_currentScheduleId.isEmpty) {
+      debugPrint('DatabaseService.updateCourse: no current schedule');
       return;
     }
-
-    await _db!.update(
+    await _db.update(
       'courses',
       _courseToRow(course, _currentScheduleId),
       where: 'id = ?',
@@ -643,24 +285,13 @@ class DatabaseService {
   }
 
   Future<void> deleteCourse(String courseId) async {
-    if (_usePrefsBackend) {
-      _coursesCache.removeWhere((course) => course.id == courseId);
-      await _saveCoursesToPrefs(_currentScheduleId, _coursesCache);
-      await _loadCoursesCache();
-      return;
-    }
-
-    await _db!.delete('courses', where: 'id = ?', whereArgs: [courseId]);
+    await _db.delete('courses', where: 'id = ?', whereArgs: [courseId]);
     await _loadCoursesCache();
   }
 
   Future<List<Course>> getCoursesAsync({String? scheduleId}) async {
     final sid = scheduleId ?? _currentScheduleId;
-    if (_usePrefsBackend) {
-      return _loadCoursesFromPrefs(sid);
-    }
-
-    final rows = await _db!.query(
+    final rows = await _db.query(
       'courses',
       where: 'schedule_id = ?',
       whereArgs: [sid],
@@ -677,50 +308,25 @@ class DatabaseService {
   // ==================== Clear ====================
 
   Future<void> clearAllCourseData() async {
-    if (_usePrefsBackend) {
-      final scheduleIds = _schedulesCache
-          .map((schedule) => schedule.id)
-          .toList();
-      for (final scheduleId in scheduleIds) {
-        await _prefs!.remove('$_prefsCoursesPrefix$scheduleId');
-      }
-
-      final defaultConfig = _defaultScheduleConfig();
-      _currentScheduleId = 'default';
-      await _prefs!.setString(_keyCurrentScheduleId, _currentScheduleId);
-      await _saveSchedulesToPrefs([defaultConfig]);
-      await _loadSchedulesCache();
-      await _loadCoursesCache();
-      return;
-    }
-
-    await _db!.delete('courses');
-    await _db!.delete('schedules');
-    await _db!.delete('metadata');
-
-    // Re-create default schedule
-    final defaultConfig = _defaultScheduleConfig();
-    await _db!.insert('schedules', {
-      'id': defaultConfig.id,
-      'config_json': _encodeJson(defaultConfig.toJson()),
+    await _db.transaction((txn) async {
+      await txn.delete('courses');
+      await txn.delete('schedules');
+      await txn.delete('metadata');
     });
-    await _db!.insert('metadata', {
-      'key': _keyCurrentScheduleId,
-      'value': 'default',
-    });
-    _currentScheduleId = 'default';
-
-    await _loadSchedulesCache();
-    await _loadCoursesCache();
+    _currentScheduleId = '';
+    _schedulesCache = [];
+    _coursesCache = [];
   }
 
   // ==================== Helpers ====================
 
-  ScheduleConfig _defaultScheduleConfig() {
+  /// 占位用 ScheduleConfig，仅在 _schedulesCache 为空时返回，
+  /// 用于周次/总周数等算术保护，**不会**被持久化。
+  ScheduleConfig _placeholderScheduleConfig() {
     final now = DateTime.now();
     return ScheduleConfig(
-      id: 'default',
-      semesterName: '默认课表',
+      id: '',
+      semesterName: '',
       semesterStartDate: now.toMonday(),
       totalWeeks: 20,
     );
@@ -730,4 +336,72 @@ class DatabaseService {
       Map<String, dynamic>.from(json.decode(str) as Map);
 
   String _encodeJson(Map<String, dynamic> map) => json.encode(map);
+
+  // ==================== Balance Records ====================
+
+  Future<void> _createBalanceRecordsTable(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS balance_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_key TEXT NOT NULL,
+        balance_type INTEGER NOT NULL,
+        timestamp INTEGER NOT NULL,
+        balance REAL NOT NULL,
+        price REAL NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_balance_records_lookup
+      ON balance_records(room_key, balance_type, timestamp)
+    ''');
+  }
+
+  Future<void> _ensureBalanceRecordsTable() async {
+    await _createBalanceRecordsTable(_db);
+  }
+
+  Future<int> insertBalanceRecord(BalanceRecord record) async {
+    return await _db.insert('balance_records', record.toRow());
+  }
+
+  Future<List<BalanceRecord>> getBalanceRecords({
+    required String roomKey,
+    required int balanceType,
+    DateTime? since,
+    DateTime? until,
+  }) async {
+    final where = StringBuffer('room_key = ? AND balance_type = ?');
+    final whereArgs = <dynamic>[roomKey, balanceType];
+    if (since != null) {
+      where.write(' AND timestamp >= ?');
+      whereArgs.add(since.millisecondsSinceEpoch);
+    }
+    if (until != null) {
+      where.write(' AND timestamp <= ?');
+      whereArgs.add(until.millisecondsSinceEpoch);
+    }
+    final rows = await _db.query(
+      'balance_records',
+      where: where.toString(),
+      whereArgs: whereArgs,
+      orderBy: 'timestamp ASC',
+    );
+    return rows.map(BalanceRecord.fromRow).toList();
+  }
+
+  Future<int> deleteBalanceRecordsBefore(DateTime threshold) async {
+    return await _db.delete(
+      'balance_records',
+      where: 'timestamp < ?',
+      whereArgs: [threshold.millisecondsSinceEpoch],
+    );
+  }
+
+  Future<int> deleteBalanceRecordsByRoom(String roomKey) async {
+    return await _db.delete(
+      'balance_records',
+      where: 'room_key = ?',
+      whereArgs: [roomKey],
+    );
+  }
 }

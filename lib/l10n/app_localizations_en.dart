@@ -22,6 +22,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your campus assistant: schedules, grades and campus services in one place';
 
   @override
+  String get wizard => 'Wizard';
+
+  @override
+  String get resetWizardTitle => 'Reset Wizard Status';
+
+  @override
+  String get resetWizardSubtitle =>
+      'After resetting, you will enter the Wizard page';
+
+  @override
   String get wizardLoginTitle => 'Login & Import Schedule';
 
   @override
@@ -38,6 +48,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wizardImportButton => 'Import Schedule';
+
+  @override
+  String get wizardHasSchedule => 'Schedule Exists';
 
   @override
   String get wizardImportHint => 'Auto-fetch schedule after login';
@@ -130,6 +143,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get free => 'Free';
 
   @override
+  String get currentlyFree => 'Currently Free';
+
+  @override
   String get inClass => 'In Class';
 
   @override
@@ -164,6 +180,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get period => 'Period';
 
   @override
+  String periodN(int n) {
+    return 'Period $n';
+  }
+
+  @override
+  String get periodStart => 'Start';
+
+  @override
+  String get periodEnd => 'End';
+
+  @override
+  String get periodUnlimited => 'Any';
+
+  @override
+  String get clear => 'Clear';
+
+  @override
   String get loading => 'Loading...';
 
   @override
@@ -178,7 +211,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get campusNetworkRequiredAtNight =>
-      'Access is restricted to campus network during 0:00-6:00. Please connect to campus Wi-Fi or use the school VPN.';
+      'Access is restricted to campus network during 23:00-6:00. Please connect to campus Wi-Fi or use the school VPN.';
 
   @override
   String get appOnly => 'Available on App only';
@@ -322,10 +355,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updateToPreview => 'Update to Latest (Include Preview)';
 
   @override
+  String get usePreviewUpdateSource => 'Use Preview Release Source';
+
+  @override
+  String get usePreviewUpdateSourceHint =>
+      'Affects only the automatic checks on the home and about pages. The test page always checks both channels.';
+
+  @override
   String get downloading => 'Downloading';
 
   @override
   String get updateFailed => 'Update failed';
+
+  @override
+  String notificationDownloading(int percent) {
+    return 'Downloading... $percent%';
+  }
+
+  @override
+  String get notificationInstalling => 'Installing...';
+
+  @override
+  String notificationUpdateFailed(String error) {
+    return 'Update failed: $error';
+  }
 
   @override
   String get preReleaseWarning =>
@@ -347,10 +400,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get environmentInfo => 'Environment Info';
 
   @override
-  String get testPage => 'Test Page';
+  String get devPage => 'Developer Page';
 
   @override
   String get forceUpdate => 'Update to Latest (Include Preview)';
+
+  @override
+  String get authLog => 'Auth Log';
+
+  @override
+  String get viewAuthLog => 'View Auth Log';
+
+  @override
+  String get authLogEmpty => 'No auth log yet.';
+
+  @override
+  String authLogLastEntry(String time, String level, String tag) {
+    return '$level · $tag · $time';
+  }
 
   @override
   String get scheduleSetting => 'Schedule Setting';
@@ -360,6 +427,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get globalSetting => 'Global Setting';
+
+  @override
+  String get noSchedule => 'No schedule yet';
+
+  @override
+  String get noScheduleHint => 'Import or create a schedule to get started';
+
+  @override
+  String get addSchedule => 'Add Schedule';
 
   @override
   String get addCourse => 'Add Course';
@@ -435,7 +511,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String weekRange(int start, int end) {
-    return 'Week $start - $end';
+    return 'Week $start-$end';
   }
 
   @override
@@ -452,6 +528,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get section => 'Sec';
+
+  @override
+  String sectionRange(int start, int end) {
+    return 'Sec $start-$end';
+  }
 
   @override
   String get sectionCount => 'Sections per Day';
@@ -511,7 +592,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get courseGridSection => 'Course Grid';
 
   @override
+  String get courseStyleSetting => 'Course Style';
+
+  @override
   String get otherSection => 'Other';
+
+  @override
+  String get settingsGeneral => 'General';
+
+  @override
+  String get settingsStyle => 'Style';
+
+  @override
+  String get setFont => 'Font';
+
+  @override
+  String get useGoogleFonts => 'Use Google Fonts';
+
+  @override
+  String get fontHint =>
+      'Font size and weight can be adjusted in system settings';
+
+  @override
+  String get settingsDanger => 'Danger Zone';
 
   @override
   String get colorOpacity => 'Color Opacity';
@@ -570,6 +673,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cancel => 'Cancel';
 
   @override
+  String get downloadInBackground => 'Download in Background';
+
+  @override
   String get back => 'Back';
 
   @override
@@ -600,6 +706,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get duplicateScheduleName => 'Schedule name already exists';
+
+  @override
+  String importNameConflictAction(Object name) {
+    return 'Schedule \"$name\" already exists, please choose:';
+  }
+
+  @override
+  String get importNameConflictAddSuffix => 'Import with suffix';
+
+  @override
+  String get importNameConflictUpdate => 'Update existing schedule';
+
+  @override
+  String get importAllConflictAction =>
+      'Some schedule names conflict, please choose how to proceed:';
+
+  @override
+  String get importAllConflictAddSuffix => 'Add suffix to all';
+
+  @override
+  String get importAllConflictUpdate => 'Update all';
 
   @override
   String get importSchedule => 'Import Schedule';
@@ -642,6 +769,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportSchedule => 'Export Schedule';
 
   @override
+  String get exportExamPlan => 'Export Exam Schedule';
+
+  @override
   String get exportScheduleAsCopy => 'Copy to Clipboard';
 
   @override
@@ -649,6 +779,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exportScheduleAsCopySuccess => 'Schedule data copied to clipboard';
+
+  @override
+  String get exportExamPlanAsCopySuccess =>
+      'Exam schedule data copied to clipboard';
 
   @override
   String get exportScheduleAsCopyFailed =>
@@ -677,6 +811,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exportScheduleAddToCalendarFailed => 'Import failed';
+
+  @override
+  String get exportScheduleSelectCalendar => 'Choose Calendar';
+
+  @override
+  String get exportScheduleCalendarDefault => 'Default calendar';
 
   @override
   String get copySuffix => ' (Copy)';
@@ -833,13 +973,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gradesNoData => 'No grade data';
 
   @override
-  String get gradesLoadFailed => 'Failed to load grades';
-
-  @override
   String get gradesRefreshFailed => 'Refresh failed, showing cached data';
 
   @override
   String get gradesNoPassingData => 'No passing grade data';
+
+  @override
+  String get gradesSearchHint => 'Search course name';
+
+  @override
+  String get gradesNoSearchResults => 'No matching courses found';
+
+  @override
+  String get customStats => 'Custom Stats';
+
+  @override
+  String get deselectAll => 'Deselect All';
+
+  @override
+  String get customStatsSelectHint =>
+      'Select courses to calculate custom statistics';
+
+  @override
+  String selectedCount(Object count) {
+    return '$count selected';
+  }
 
   @override
   String get gradesGet => 'Fetch Grades';
@@ -1238,6 +1396,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noData => 'No Data';
 
   @override
+  String get noFreeClassrooms => 'No free classrooms right now';
+
+  @override
   String get networkDeviceQuery => 'Network Device Query';
 
   @override
@@ -1300,19 +1461,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get networkOfflineFailed => 'Failed to offline device';
 
   @override
-  String get balanceQuery => 'Balance Query';
+  String get balanceQuery => 'Electricity Query';
 
   @override
-  String get balanceQueryDesc => 'Query electricity and AC fee balance';
+  String get balanceQueryDesc => 'Query lighting and AC electricity balance';
 
   @override
-  String get electricityFee => 'Electricity';
+  String get electricityFee => 'Lighting';
 
   @override
-  String get acFee => 'AC Fee';
+  String get acFee => 'AC Power';
 
   @override
-  String get balance => 'Balance';
+  String get balance => 'Remaining';
 
   @override
   String get unitKwh => 'kWh';
@@ -1372,6 +1533,93 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get balanceQueryNoBinding =>
       'You haven\'t bound any room yet, please bind first';
+
+  @override
+  String get balanceTrend => 'Usage Trend';
+
+  @override
+  String get balanceTrendTitleElectric => 'Lighting Electricity Trend';
+
+  @override
+  String get balanceTrendTitleAc => 'AC Electricity Trend';
+
+  @override
+  String get balanceTrendDailyAvgCost => 'Daily Avg Cost';
+
+  @override
+  String get balanceTrendDailyAvgKwh => 'Daily Avg Consumption';
+
+  @override
+  String get balanceTrendTotalCost => 'Total Cost';
+
+  @override
+  String get balanceTrendTotalKwh => 'Total Consumption';
+
+  @override
+  String get balanceTrendTotalDays => 'Statistical Days';
+
+  @override
+  String get balanceTrendCurrentPrice => 'Current Price';
+
+  @override
+  String get balanceTrendRecordCount => 'Raw Record Count';
+
+  @override
+  String get balanceTrendRecordRange => 'Record Time Range';
+
+  @override
+  String get balanceTrendSkippedRecharge => 'Skipped Recharge Segments';
+
+  @override
+  String get balanceTrendNoData =>
+      'No history data yet. Refresh the page to start recording.';
+
+  @override
+  String get balanceTrendTimeRange7 => 'Last 7d';
+
+  @override
+  String get balanceTrendTimeRange30 => 'Last 30d';
+
+  @override
+  String get balanceTrendTimeRange90 => 'Last 90d';
+
+  @override
+  String get balanceTrendTimeRangeCustom => 'Custom';
+
+  @override
+  String get balanceTrendChangeRange => 'Change Range';
+
+  @override
+  String get balanceTrendCustomStart => 'Start date';
+
+  @override
+  String get balanceTrendCustomEnd => 'End date';
+
+  @override
+  String get balanceTrendRawRecords => 'Raw Records';
+
+  @override
+  String get balanceTrendYAxisBalance => 'Balance (kWh)';
+
+  @override
+  String get balanceTrendTooltipPrice => 'Price';
+
+  @override
+  String get balanceTrendUnitPerDay => 'CNY/day';
+
+  @override
+  String get balanceTrendUnitYuanPerKwh => 'CNY/kWh';
+
+  @override
+  String get balanceQuerySettings => 'Balance Query Settings';
+
+  @override
+  String get autoSampleBalanceOnLogin =>
+      'Auto-collect balance details on login';
+
+  @override
+  String get autoSampleBalanceOnLoginDesc =>
+      'After login, if no record exists for today, automatically query the current room\'s electricity and AC balance once to improve the statistics';
 
   @override
   String get scuLoginDisclaimerPwd =>
@@ -1517,7 +1765,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dockLabelNetworkDevice => 'Network';
 
   @override
-  String get dockLabelBalanceQuery => 'Balance';
+  String get dockLabelBalanceQuery => 'Electricity';
+
+  @override
+  String get dockLabelClassScheduleInquiry => 'Class Schedule';
 
   @override
   String get dockLabelAcademicCalendar => 'Calendar';
@@ -1598,10 +1849,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fitnessTestNoticeDetail => 'Notice Detail';
 
   @override
-  String get fitnessTestCampusNetworkRequiredAtNight =>
-      'Access is restricted to campus network during 23:00-6:00. Please connect to campus Wi-Fi or use the school VPN.';
-
-  @override
   String get dockLabelFitnessTest => 'Fitness';
 
   @override
@@ -1650,7 +1897,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addWidgetSection => 'Desktop Widget';
 
   @override
-  String get addWidgetPageTitle => 'Add Widget';
+  String get addWidgetPageTitle => 'Widget';
 
   @override
   String get addWidgetDesc =>
@@ -1822,4 +2069,219 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tuanweiTabLabel => 'Youth SCU';
+
+  @override
+  String dateMonthDay(int month, int day) {
+    return '$month/$day';
+  }
+
+  @override
+  String get holidayLabel => 'Hol';
+
+  @override
+  String get festivalLabel => 'Fes';
+
+  @override
+  String get solarTermLabel => 'Term';
+
+  @override
+  String get holidayTypeLabel => 'Holiday';
+
+  @override
+  String get festivalTypeLabel => 'Festival';
+
+  @override
+  String get solarTermTypeLabel => 'Solar Term';
+
+  @override
+  String get classScheduleInquiry => 'Class Schedule Inquiry';
+
+  @override
+  String get classScheduleInquiryDesc => 'View course schedules for each class';
+
+  @override
+  String get classScheduleInquiryNoData => 'No class data';
+
+  @override
+  String get classScheduleInquiryNoSchedule => 'No schedule data';
+
+  @override
+  String get classScheduleInquiryDetail => 'Course Details';
+
+  @override
+  String get classScheduleInquiryFilter => 'Filter';
+
+  @override
+  String get classScheduleInquirySemester => 'Semester';
+
+  @override
+  String get classScheduleInquiryGrade => 'Grade';
+
+  @override
+  String get classScheduleInquiryDepartment => 'Department';
+
+  @override
+  String get classScheduleInquirySubject => 'Major';
+
+  @override
+  String get classScheduleInquiryClass => 'Class';
+
+  @override
+  String get classScheduleInquirySearch => 'Search';
+
+  @override
+  String get classScheduleInquiryLoadMore => 'Load More';
+
+  @override
+  String holidayTotalDays(int days) {
+    return '$days-day holiday';
+  }
+
+  @override
+  String get dockLabelExamPlan => 'Exams';
+
+  @override
+  String get examPlan => 'Exam Schedule';
+
+  @override
+  String get examPlanDesc => 'View exam times, locations and seat numbers';
+
+  @override
+  String get examPlanNoData => 'No exam schedule available';
+
+  @override
+  String get campusGridView => 'Grid View';
+
+  @override
+  String get campusGridViewDesc => 'Use grid layout for campus page';
+
+  @override
+  String get viewChangelog => 'Version Changelog';
+
+  @override
+  String get viewChangelogSubtitle => 'View historical version update logs';
+
+  @override
+  String get changelog => 'Changelog';
+
+  @override
+  String get unreleased => 'Unreleased';
+
+  @override
+  String get dockLabelZysc => 'Volunteer';
+
+  @override
+  String get zyscTitle => 'Volunteer Sichuan';
+
+  @override
+  String get zyscDesc => 'Browse and sign up for volunteer activities';
+
+  @override
+  String get interactiveCalendar => 'Interactive Calendar';
+
+  @override
+  String get originalCalendar => 'Official Charts';
+
+  @override
+  String get calendarLoadingData => 'Loading calendar data...';
+
+  @override
+  String calendarImportSuccess(int count) {
+    return 'Successfully imported $count events to system calendar';
+  }
+
+  @override
+  String get calendarImportFailed => 'Failed to import to system calendar';
+
+  @override
+  String get calendarImportCalendarTitle => 'SCU Academic Calendar';
+
+  @override
+  String calendarDaysRemaining(int days) {
+    return '$days days left';
+  }
+
+  @override
+  String calendarStartedNDaysAgo(int days) {
+    return '$days days ago';
+  }
+
+  @override
+  String get calendarToday => 'Today';
+
+  @override
+  String calendarCurrentWeek(int week) {
+    return 'Week $week';
+  }
+
+  @override
+  String calendarSemesterStart(String date) {
+    return 'Semester Starts: $date';
+  }
+
+  @override
+  String calendarWeeksTotal(int weeks) {
+    return '$weeks weeks total';
+  }
+
+  @override
+  String get calendarImportButton => 'Import to Calendar';
+
+  @override
+  String get calendarHolidayTag => 'Holiday';
+
+  @override
+  String get calendarExamTag => 'Exam';
+
+  @override
+  String get calendarStartTag => 'Start';
+
+  @override
+  String get calendarEventTag => 'Event';
+
+  @override
+  String get calendarNoEventData => 'No interactive calendar data';
+
+  @override
+  String get calendarNextEvent => 'Next Event';
+
+  @override
+  String get appIcon => 'App Icon';
+
+  @override
+  String get defaultIcon => 'Default';
+
+  @override
+  String get oldIcon => 'Old Icon';
+
+  @override
+  String get switchAppIcon => 'Switch App Icon';
+
+  @override
+  String switchAppIconConfirm(String label) {
+    return 'Switch to \"$label\"? The app will restart. Continue?';
+  }
+
+  @override
+  String get defaultIconRestored => 'Restored default icon';
+
+  @override
+  String iconSwitched(String name) {
+    return 'Switched to icon: $name';
+  }
+
+  @override
+  String iconSwitchFailed(String error) {
+    return 'Switch failed: $error';
+  }
+
+  @override
+  String get iconSwitchNotSupported =>
+      'Dynamic icon switching is not supported on this platform';
+
+  @override
+  String get newIconSubtitle => 'Bugaoshan New Icon';
+
+  @override
+  String get oldIconSubtitle => 'Bugaoshan Classic Icon';
 }

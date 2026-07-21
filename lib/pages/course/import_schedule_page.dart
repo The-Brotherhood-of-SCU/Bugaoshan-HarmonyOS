@@ -3,14 +3,42 @@ import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/course.dart';
+import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/scu_auth_service.dart';
-import 'package:bugaoshan/utils/session_expiry_handler.dart';
+import 'package:bugaoshan/services/api/zhjw_api_service.dart';
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
+import 'package:bugaoshan/utils/class_week_parser.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 
 enum ImportMode { share, jwxt, online }
+
+/// 课表名称冲突时的用户选择结果。
+class _NameConflictResult {
+  final bool isCancel;
+  final bool isUpdate;
+  final String? finalName;
+  final String? existingScheduleId;
+
+  _NameConflictResult._({
+    this.isCancel = false,
+    this.isUpdate = false,
+    this.finalName,
+    this.existingScheduleId,
+  });
+
+  factory _NameConflictResult.cancel() => _NameConflictResult._(isCancel: true);
+
+  factory _NameConflictResult.addSuffix(String name) =>
+      _NameConflictResult._(finalName: name);
+
+  factory _NameConflictResult.update(String scheduleId) =>
+      _NameConflictResult._(isUpdate: true, existingScheduleId: scheduleId);
+}
+
+/// 批量导入时的统一操作方式。
+enum _BatchAction { addSuffix, update }
 
 class ImportSchedulePage extends StatefulWidget {
   final CourseProvider courseProvider;
@@ -59,6 +87,7 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
         final nameController = TextEditingController(
           text: 'JWXT Import ${DateTime.now().month}-${DateTime.now().day}',
         );
+        if (!mounted) return;
         final newName = await showDialog<String>(
           context: context,
           builder: (context) => AlertDialog(
@@ -70,14 +99,14 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(logicRootContext),
+                onPressed: () => Navigator.pop(context),
                 child: Text(l10n.cancel),
               ),
               TextButton(
                 onPressed: () {
                   final t = nameController.text.trim();
                   if (t.isNotEmpty) {
-                    Navigator.pop(logicRootContext, t);
+                    Navigator.pop(context, t);
                   }
                 },
                 child: Text(l10n.save),
@@ -105,78 +134,50 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
       }
 
       config.id = DateTime.now().millisecondsSinceEpoch.toString();
+      _validateImportedSchedule(config, courses);
 
-      // For share mode, check for conflict. For jwxt, we already got a name from user.
-      if (widget.mode == ImportMode.share) {
-        // Initial suggested name
-        String baseName = config.semesterName.isEmpty
-            ? l10n.importedScheduleDefaultName
-            : config.semesterName;
-        String finalName = baseName;
+      // Resolve name conflict if any
+      final desiredName = config.semesterName.isEmpty
+          ? l10n.importedScheduleDefaultName
+          : config.semesterName;
+      final resolution = await _resolveNameConflict(desiredName);
 
-        // Check for conflict and ask for rename if necessary
-        if (widget.courseProvider.isScheduleNameTaken(finalName)) {
-          // Try appending '(导入)' if it doesn't already have it
-          if (!finalName.contains(l10n.importNameSuffix)) {
-            finalName = '$finalName ${l10n.importNameSuffix}';
-          }
-
-          // If it still conflicts (or if it already had '(导入)'), show rename dialog
-          if (widget.courseProvider.isScheduleNameTaken(finalName)) {
-            final controller = TextEditingController(text: finalName);
-            final newName = await showDialog<String>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Text(l10n.duplicateScheduleName),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(l10n.importNameConflictHint(finalName)),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: controller,
-                      autofocus: true,
-                      decoration: InputDecoration(hintText: l10n.semesterName),
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(logicRootContext),
-                    child: Text(l10n.cancel),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      final text = controller.text.trim();
-                      if (text.isNotEmpty) {
-                        if (widget.courseProvider.isScheduleNameTaken(text)) {
-                          // Still taken
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l10n.duplicateScheduleName)),
-                          );
-                        } else {
-                          Navigator.pop(logicRootContext, text);
-                        }
-                      }
-                    },
-                    child: Text(l10n.save),
-                  ),
-                ],
+      if (resolution == null) {
+        // No conflict — proceed with desired name
+        config.semesterName = desiredName;
+      } else if (resolution.isCancel) {
+        return;
+      } else if (resolution.isUpdate) {
+        // Update existing schedule's courses instead of creating new.
+        // Regenerate IDs to avoid PRIMARY KEY conflicts (source JSON may have
+        // empty or duplicate IDs).
+        final newCourses = courses
+            .map(
+              (c) => Course(
+                name: c.name,
+                teacher: c.teacher,
+                location: c.location,
+                startWeek: c.startWeek,
+                endWeek: c.endWeek,
+                dayOfWeek: c.dayOfWeek,
+                startSection: c.startSection,
+                endSection: c.endSection,
+                colorValue: c.colorValue,
+                weekType: c.weekType,
               ),
-            );
-
-            if (newName == null) return; // User cancelled
-            finalName = newName;
-          }
+            )
+            .toList();
+        await widget.courseProvider.replaceScheduleCourses(
+          resolution.existingScheduleId!,
+          newCourses,
+        );
+        if (mounted) {
+          _showSuccessAndPop();
         }
-        config.semesterName = finalName;
+        return; // Done
       } else {
-        // For jwxt, we already have a name from the first dialog.
-        // Just ensure it doesn't conflict or handle it simply.
-        if (widget.courseProvider.isScheduleNameTaken(config.semesterName)) {
-          config.semesterName =
-              '${config.semesterName} (${DateTime.now().millisecondsSinceEpoch % 1000})';
-        }
+        // addSuffix
+        config.semesterName = resolution.finalName!;
       }
 
       // Save to DB via provider
@@ -201,12 +202,7 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.importSuccess)));
-        if (Navigator.of(logicRootContext).canPop()) {
-          Navigator.of(logicRootContext).pop();
-        }
+        _showSuccessAndPop();
       }
     } catch (e) {
       debugPrint('Import from share error: $e');
@@ -227,14 +223,23 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
       return;
     }
 
+    // 记录教务处标记为"（当前）"的学期名（剥离后缀后），导入完成后切到它
+    String? currentSemesterCleanName;
+
     setState(() => _loading = true);
 
     // 1. 获取学期列表
     List<({String value, String label})> semesters;
     try {
-      semesters = await authProvider.service.fetchSemesters();
-    } on ScuLoginException catch (e) {
-      if (e.sessionExpired) await SessionExpiryHandler.handle(authProvider);
+      semesters = await getIt<ZhjwApiService>().fetchSemesters();
+
+      for (final s in semesters) {
+        if (s.label.contains('（当前）') || s.label.contains('(当前)')) {
+          currentSemesterCleanName = _cleanSemesterLabel(s.label);
+          break;
+        }
+      }
+    } on ScuException catch (e) {
       if (mounted) showInfoDialog(title: l10n.importFailed, content: e.message);
       if (mounted) setState(() => _loading = false);
       return;
@@ -251,7 +256,7 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
 
     if (!mounted) return;
 
-    // 2. 让用户选择学期（单个或全部）
+    // 2. 让用户选择学期（单个或全部）—— 下拉框保持显示原始 label（含"（当前）"），方便用户识别
     String selectedValue = semesters.first.value;
     // null = 取消, true = 全部导入, false = 导入选中学期
     final choice = await showDialog<Object>(
@@ -298,6 +303,40 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
         ? semesters.reversed.toList()
         : [semesters.firstWhere((s) => s.value == selectedValue)];
 
+    // 批量导入：先检查是否有名称冲突，询问统一操作方式
+    _BatchAction? batchAction;
+    if (importAll) {
+      final hasConflict = toImport.any(
+        (s) => widget.courseProvider.isScheduleNameTaken(
+          _cleanSemesterLabel(s.label),
+        ),
+      );
+      if (hasConflict && mounted) {
+        batchAction = await showDialog<_BatchAction>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.duplicateScheduleName),
+            content: Text(l10n.importAllConflictAction),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, _BatchAction.addSuffix),
+                child: Text(l10n.importAllConflictAddSuffix),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, _BatchAction.update),
+                child: Text(l10n.importAllConflictUpdate),
+              ),
+            ],
+          ),
+        );
+        if (batchAction == null || !mounted) return;
+      }
+    }
+
     setState(() {
       _loading = true;
       _totalToImport = toImport.length;
@@ -306,16 +345,18 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
     try {
       for (final semester in toImport) {
         setState(() => _currentProgress++);
-        final data = await authProvider.service.fetchJwxtSchedule(
+        final data = await getIt<ZhjwApiService>().fetchJwxtSchedule(
           planCode: semester.value,
         );
         if (!mounted) return;
 
-        String scheduleName = semester.label;
+        // 剥离"（当前）"后缀，教务处用此标记当前学期，但不应出现在课表名中
+        String scheduleName = _cleanSemesterLabel(semester.label);
 
         // 单个导入时让用户自定义名称
         if (!importAll) {
           final nameController = TextEditingController(text: scheduleName);
+          if (!mounted) return;
           final newName = await showDialog<String>(
             context: context,
             builder: (ctx) => AlertDialog(
@@ -348,15 +389,60 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
         final config = parsed.config;
         config.semesterName = scheduleName;
         config.id = DateTime.now().millisecondsSinceEpoch.toString();
+        _validateImportedSchedule(config, parsed.courses);
 
-        if (widget.courseProvider.isScheduleNameTaken(config.semesterName)) {
-          config.semesterName =
-              '${config.semesterName} (${DateTime.now().millisecondsSinceEpoch % 1000})';
+        if (!importAll) {
+          // 单个导入：询问用户如何处理名称冲突
+          final resolution = await _resolveNameConflict(scheduleName);
+          if (resolution == null) {
+            // 无冲突，保持原名
+          } else if (resolution.isCancel) {
+            return;
+          } else if (resolution.isUpdate) {
+            await widget.courseProvider.replaceScheduleCourses(
+              resolution.existingScheduleId!,
+              parsed.courses,
+            );
+            continue;
+          } else {
+            config.semesterName = resolution.finalName!;
+          }
+        } else if (batchAction == _BatchAction.update) {
+          // 批量-全部更新：替换已有课表的全部课程
+          final existingId = widget.courseProvider.findScheduleIdByName(
+            scheduleName,
+          );
+          if (existingId != null) {
+            await widget.courseProvider.replaceScheduleCourses(
+              existingId,
+              parsed.courses,
+            );
+            continue;
+          }
+          // existingId == null 表示该学期无冲突，正常添加即可
+        } else if (batchAction == _BatchAction.addSuffix) {
+          // 批量-全部添加后缀：为每个冲突名称追加时间戳
+          if (widget.courseProvider.isScheduleNameTaken(config.semesterName)) {
+            config.semesterName =
+                '${config.semesterName} (${DateTime.now().millisecondsSinceEpoch % 1000})';
+          }
         }
+        // batchAction == null 表示预检查时无冲突，保持原名正常导入
 
         await widget.courseProvider.addSchedule(config);
         for (final course in parsed.courses) {
           await widget.courseProvider.addCourse(course);
+        }
+      }
+
+      // 导入完成后，将教务处标记为"（当前）"的课表设为当前
+      if (currentSemesterCleanName != null && mounted) {
+        final allSchedules = widget.courseProvider.allSchedules.value;
+        final match = allSchedules.where(
+          (s) => s.semesterName.trim() == currentSemesterCleanName,
+        );
+        if (match.isNotEmpty) {
+          await widget.courseProvider.switchSchedule(match.first.id);
         }
       }
 
@@ -366,6 +452,7 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
         ).showSnackBar(SnackBar(content: Text(l10n.importSuccess)));
 
         // 导入成功后，询问是否自动设置当前教学周
+        if (!mounted) return;
         final setWeek = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -385,7 +472,7 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
         );
         if (setWeek == true && mounted) {
           try {
-            final week = await authProvider.service.fetchCurrentWeek();
+            final week = await getIt<ZhjwApiService>().fetchCurrentWeek();
             if (!mounted) return;
             final now = DateTime.now();
             final today = DateTime(now.year, now.month, now.day);
@@ -408,14 +495,12 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
           }
         }
 
-        if (Navigator.of(logicRootContext).canPop()) {
+        if (logicRootContext.mounted &&
+            Navigator.of(logicRootContext).canPop()) {
           Navigator.of(logicRootContext).pop();
         }
       }
-    } on ScuLoginException catch (e) {
-      if (e.sessionExpired) {
-        await SessionExpiryHandler.handle(authProvider);
-      }
+    } on ScuException catch (e) {
       if (mounted) showInfoDialog(title: l10n.importFailed, content: e.message);
     } catch (e) {
       debugPrint('Import from jwxt error: $e');
@@ -425,6 +510,11 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// 剥离教务处学期标签中的"（当前）"标记。
+  String _cleanSemesterLabel(String label) {
+    return label.replaceAll('（当前）', '').replaceAll('(当前)', '').trim();
   }
 
   ({ScheduleConfig config, List<Course> courses}) _parseJwxtData(dynamic data) {
@@ -464,45 +554,25 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
               '${tpMap['teachingBuildingName'] ?? ''}${tpMap['classroomName'] ?? ''}';
           final String classWeek = tpMap['classWeek'] as String? ?? '';
 
-          // Parse weeks from classWeek bitstring (e.g. "111111111111111100000000")
-          int startWeek = -1;
-          int endWeek = -1;
-          List<int> activeWeeks = [];
-          for (int i = 0; i < classWeek.length; i++) {
-            if (classWeek[i] == '1') {
-              int w = i + 1;
-              if (startWeek == -1) startWeek = w;
-              endWeek = w;
-              activeWeeks.add(w);
+          final weekSegments = parseClassWeekSegments(classWeek);
+          if (weekSegments.isNotEmpty) {
+            final colorValue = colors[colorIdx % colors.length].toARGB32();
+            for (final segment in weekSegments) {
+              courses.add(
+                Course(
+                  name: courseName,
+                  teacher: teacher,
+                  location: location,
+                  startWeek: segment.startWeek,
+                  endWeek: segment.endWeek,
+                  dayOfWeek: dayOfWeek,
+                  startSection: startSection,
+                  endSection: endSection,
+                  colorValue: colorValue,
+                  weekType: segment.weekType,
+                ),
+              );
             }
-          }
-
-          if (startWeek != -1) {
-            WeekType weekType = WeekType.every;
-            if (activeWeeks.length > 1) {
-              bool allOdd = activeWeeks.every((w) => w % 2 != 0);
-              bool allEven = activeWeeks.every((w) => w % 2 == 0);
-              if (allOdd) {
-                weekType = WeekType.odd;
-              } else if (allEven) {
-                weekType = WeekType.even;
-              }
-            }
-
-            courses.add(
-              Course(
-                name: courseName,
-                teacher: teacher,
-                location: location,
-                startWeek: startWeek,
-                endWeek: endWeek,
-                dayOfWeek: dayOfWeek,
-                startSection: startSection,
-                endSection: endSection,
-                colorValue: colors[colorIdx % colors.length].toARGB32(),
-                weekType: weekType,
-              ),
-            );
             colorIdx++;
           }
         }
@@ -510,9 +580,80 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
     }
 
     final hasWeekend = courses.any((c) => c.dayOfWeek == 6 || c.dayOfWeek == 7);
-    config.showWeekend = hasWeekend;
+    getIt<AppConfigProvider>().showWeekend.value = hasWeekend;
 
     return (config: config, courses: courses);
+  }
+
+  void _validateImportedSchedule(ScheduleConfig config, List<Course> courses) {
+    if (config.totalWeeks < 1 || config.timeSlots.isEmpty) {
+      throw const FormatException('Invalid schedule config');
+    }
+    final maxSection = config.timeSlots.length;
+    for (final course in courses) {
+      if (course.startWeek < 1 ||
+          course.endWeek < course.startWeek ||
+          course.endWeek > config.totalWeeks ||
+          course.dayOfWeek < 1 ||
+          course.dayOfWeek > 7 ||
+          course.startSection < 1 ||
+          course.endSection < course.startSection ||
+          course.endSection > maxSection) {
+        throw FormatException('Invalid course range: ${course.name}');
+      }
+    }
+  }
+
+  /// 检查课表名称是否冲突，如果冲突则弹出对话框询问用户操作。
+  /// 返回 `null` 表示无冲突（可继续以原名称导入）。
+  Future<_NameConflictResult?> _resolveNameConflict(String desiredName) async {
+    final l10n = AppLocalizations.of(context)!;
+    if (!widget.courseProvider.isScheduleNameTaken(desiredName)) {
+      return null; // No conflict
+    }
+
+    final existingId = widget.courseProvider.findScheduleIdByName(desiredName);
+
+    if (!mounted) return _NameConflictResult.cancel();
+    return showDialog<_NameConflictResult>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.duplicateScheduleName),
+        content: Text(l10n.importNameConflictAction(desiredName)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(
+              ctx,
+              _NameConflictResult.addSuffix(
+                '$desiredName ${l10n.importNameSuffix}',
+              ),
+            ),
+            child: Text(l10n.importNameConflictAddSuffix),
+          ),
+          if (existingId != null)
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, _NameConflictResult.update(existingId)),
+              child: Text(l10n.importNameConflictUpdate),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示导入成功提示并关闭页面。
+  void _showSuccessAndPop() {
+    final l10n = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.importSuccess)));
+    if (logicRootContext.mounted && Navigator.of(logicRootContext).canPop()) {
+      Navigator.of(logicRootContext).pop();
+    }
   }
 
   @override

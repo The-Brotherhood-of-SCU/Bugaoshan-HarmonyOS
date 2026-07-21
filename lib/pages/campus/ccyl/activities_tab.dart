@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/ccyl_provider.dart';
-import 'package:bugaoshan/services/ccyl_service.dart';
+import 'package:bugaoshan/pages/campus/ccyl/models/ccyl_models.dart';
 import 'package:bugaoshan/pages/campus/ccyl/activity_lib_detail_page.dart';
-import 'package:bugaoshan/widgets/common/error_widgets.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 class ActivitiesTab extends StatefulWidget {
   const ActivitiesTab({super.key});
@@ -18,7 +19,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
   final _scrollController = ScrollController();
   List<CyclActivity> _activities = [];
   bool _loading = false;
-  String? _error;
+  LoadErrorType? _error;
   int _pageNum = 1;
   bool _hasMore = true;
 
@@ -74,11 +75,8 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
     } catch (e) {
       debugPrint('Activities load error: $e');
       if (mounted) {
-        final hour = DateTime.now().hour;
         setState(() {
-          _error = (hour >= 0 && hour < 6)
-              ? 'campusNetworkRequiredAtNight'
-              : 'ccylActivityLoadFailed';
+          _error = campusNetworkErrorType(LoadErrorType.ccylActivityLoadFailed);
         });
       }
     } finally {
@@ -87,17 +85,6 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
           _loading = false;
         });
       }
-    }
-  }
-
-  String _getErrorMessage(AppLocalizations l10n, String errorKey) {
-    switch (errorKey) {
-      case 'ccylActivityLoadFailed':
-        return l10n.ccylActivityLoadFailed;
-      case 'campusNetworkRequiredAtNight':
-        return l10n.campusNetworkRequiredAtNight;
-      default:
-        return l10n.loadFailed;
     }
   }
 
@@ -135,7 +122,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
         Expanded(
           child: _error != null
               ? RetryableErrorWidget(
-                  message: _getErrorMessage(l10n, _error!),
+                  errorType: _error!,
                   onRetry: _loadActivities,
                 )
               : _activities.isEmpty && !_loading
@@ -186,7 +173,7 @@ class _ActivityCard extends StatelessWidget {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppShapes.medium),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -220,7 +207,7 @@ class _ActivityCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(AppShapes.xs),
                       ),
                       child: Text(
                         activity.levelName!,
@@ -277,7 +264,7 @@ class _ActivityCard extends StatelessWidget {
                           : (activity.doing
                                 ? Colors.green.shade100
                                 : Colors.orange.shade100),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppShapes.xs),
                     ),
                     child: Text(
                       activity.subscribed

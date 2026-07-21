@@ -1,14 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:bugaoshan/injection/injector.dart';
+import 'package:bugaoshan/providers/app_config_provider.dart';
+import 'package:bugaoshan/providers/app_info_provider.dart';
+import 'package:bugaoshan/services/update_asset_selector.dart';
+import 'package:bugaoshan/services/update_checker.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
+import 'package:crypto/crypto.dart' as crypto;
 
 import 'package:bugaoshan/models/release_info.dart';
-import 'package:bugaoshan/utils/open_link.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CancelToken {
   bool _cancelled = false;
@@ -17,6 +23,16 @@ class CancelToken {
 }
 
 class UpdateCancelledException implements Exception {}
+
+class HashMismatchException implements Exception {
+  final String actual;
+  final String expected;
+  HashMismatchException(this.actual, this.expected);
+
+  @override
+  String toString() =>
+      'Checksum verification failed (expected $expected, got $actual)';
+}
 
 enum UpdateCheckStatus { initial, checking, noUpdate, hasUpdate, error }
 
@@ -43,71 +59,81 @@ class UpdateCheckResult {
   bool get noUpdate => status == UpdateCheckStatus.noUpdate;
   String? get version => release?.tagName;
   String? get downloadUrl => release?.downloadUrl;
+  String? get filename => release?.filename;
   bool get isPrerelease => release?.isPrerelease ?? false;
   String? get releaseNotes => release?.body;
 }
 
 class UpdateService {
-  static const _pubspecUrl =
-      'https://raw.githubusercontent.com/The-Brotherhood-of-SCU/Bugaoshan/main/pubspec.yaml';
   static const _repo = 'The-Brotherhood-of-SCU/Bugaoshan';
   static const _channel = MethodChannel('bugaoshan/update');
 
-  bool _assetMatchesPlatform(String assetName) {
-    final name = assetName.toLowerCase();
-    if (AppPlatform.isAndroid) return name.endsWith('.apk');
-    if (AppPlatform.isHarmony) return name.endsWith('.hap');
-    if (AppPlatform.isWindows) return name.contains('windows');
-    if (AppPlatform.isLinux) return name.contains('linux');
-    return false;
+  final SharedPreferences _prefs;
+  final String _currentVersion;
+
+  UpdateService(this._prefs, this._currentVersion);
+
+  bool get supportsInAppUpdate {
+    if (AppPlatform.isHarmony) return false;
+    return (AppPlatform.isLinux &&
+            !Platform.environment.containsKey('FLATPAK_ID')) ||
+        AppPlatform.isAndroid ||
+        AppPlatform.isWindows;
   }
 
-  Future<String?> getLatestVersion() async {
-    try {
-      final response = await http.get(Uri.parse(_pubspecUrl));
-      if (response.statusCode == 200) {
-        final content = response.body;
-        final versionMatch = RegExp(
-          r'^version:\s*(\S+)',
-          multiLine: true,
-        ).firstMatch(content);
-        if (versionMatch != null) {
-          return versionMatch.group(1);
-        }
-      }
-    } catch (e) {
-      return null;
-    }
+  UpdateAssetPlatform? get _assetPlatform {
+    if (AppPlatform.isHarmony) return null;
+    if (AppPlatform.isAndroid) return UpdateAssetPlatform.android;
+    if (AppPlatform.isWindows) return UpdateAssetPlatform.windows;
+    if (AppPlatform.isLinux) return UpdateAssetPlatform.linux;
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> _selectAsset(List<dynamic> assets) async {
+    final platform = _assetPlatform;
+    if (platform == null) return null;
+    return selectUpdateAssetAsync(
+      assets.whereType<Map<String, dynamic>>(),
+      platform,
+    );
+  }
+
+  /// Parse the `digest` field from a GitHub release asset.
+  /// GitHub returns `"sha256:<hex>"` — extract the hex part.
+  /// Returns `null` if the field is missing or unexpected format.
+  String? _parseDigest(Map<String, dynamic> asset) {
+    final digest = asset['digest'] as String?;
+    if (digest == null) return null;
+    const prefix = 'sha256:';
+    if (digest.startsWith(prefix)) return digest.substring(prefix.length);
     return null;
   }
 
   Future<ReleaseInfo?> getLatestReleaseFromGitHub() async {
+    if (AppPlatform.isHarmony) return null;
     final response = await http.get(
       Uri.parse('https://api.github.com/repos/$_repo/releases/latest'),
       headers: {'Accept': 'application/vnd.github+json'},
     );
-    if (response.statusCode == 200) {
-      if (response.body.isEmpty) return null;
-      final data = jsonDecode(response.body);
-      final tagName = data['tag_name'] as String;
-      final isPrerelease = data['prerelease'] == true;
-      final assets = data['assets'] as List<dynamic>;
-      for (final asset in assets) {
-        final name = asset['name'] as String;
-        if (_assetMatchesPlatform(name)) {
-          return ReleaseInfo(
-            tagName: tagName,
-            downloadUrl: asset['browser_download_url'] as String,
-            isPrerelease: isPrerelease,
-            body: data['body'] as String?,
-          );
-        }
-      }
+    if (response.statusCode != 200) {
+      throw Exception('GitHub API error: ${response.statusCode}');
     }
-    throw Exception('GitHub API error: ${response.statusCode}');
+    if (response.body.isEmpty) return null;
+    final data = jsonDecode(response.body);
+    final asset = await _selectAsset(data['assets'] as List<dynamic>);
+    if (asset == null) return null;
+    return ReleaseInfo(
+      tagName: data['tag_name'] as String,
+      downloadUrl: asset['browser_download_url'] as String,
+      filename: asset['name'] as String?,
+      checksumSha256: _parseDigest(asset),
+      isPrerelease: data['prerelease'] == true,
+      body: data['body'] as String?,
+    );
   }
 
   Future<ReleaseInfo> getLatestPrereleaseFromGitHub() async {
+    if (AppPlatform.isHarmony) return const ReleaseInfo();
     final response = await http.get(
       Uri.parse('https://api.github.com/repos/$_repo/releases'),
       headers: {'Accept': 'application/vnd.github+json'},
@@ -119,17 +145,12 @@ class UpdateService {
         final tagName = releases[0]['tag_name'] as String;
         final isPrerelease = releases[0]['prerelease'] == true;
         final assets = releases[0]['assets'] as List<dynamic>;
-        String? downloadUrl;
-        for (final asset in assets) {
-          final name = asset['name'] as String;
-          if (_assetMatchesPlatform(name)) {
-            downloadUrl = asset['browser_download_url'] as String;
-            break;
-          }
-        }
+        final asset = await _selectAsset(assets);
         return ReleaseInfo(
           tagName: tagName,
-          downloadUrl: downloadUrl,
+          downloadUrl: asset?['browser_download_url'] as String?,
+          filename: asset?['name'] as String?,
+          checksumSha256: asset == null ? null : _parseDigest(asset),
           isPrerelease: isPrerelease,
           body: releases[0]['body'] as String?,
         );
@@ -139,19 +160,84 @@ class UpdateService {
     throw Exception('GitHub API error: ${response.statusCode}');
   }
 
-  bool hasUpdate(String currentVersion, String latestVersion) {
-    final current = _parseVersion(currentVersion);
-    final latest = _parseVersion(latestVersion);
-    if (current == null || latest == null) return false;
-
-    for (int i = 0; i < 3; i++) {
-      if (latest[i] > current[i]) return true;
-      if (latest[i] < current[i]) return false;
+  Future<(ReleaseInfo? latestStable, ReleaseInfo? latestPreview)>
+  getAllLatestReleases() async {
+    if (AppPlatform.isHarmony) return (null, null);
+    final response = await http.get(
+      Uri.parse('https://api.github.com/repos/$_repo/releases'),
+      headers: {'Accept': 'application/vnd.github+json'},
+    );
+    if (response.statusCode != 200) {
+      throw Exception('GitHub API error: ${response.statusCode}');
     }
-    return false;
+    if (response.body.isEmpty) return (null, null);
+
+    final List<dynamic> releases = jsonDecode(response.body);
+    ReleaseInfo? latestStable;
+    ReleaseInfo? latestPreview;
+
+    for (final release in releases) {
+      if (release['tag_name'] == null) continue;
+      final isPrerelease = release['prerelease'] == true;
+      final assets = release['assets'] as List<dynamic>;
+      final asset = await _selectAsset(assets);
+      final info = ReleaseInfo(
+        tagName: release['tag_name'] as String,
+        downloadUrl: asset?['browser_download_url'] as String?,
+        filename: asset?['name'] as String?,
+        checksumSha256: asset == null ? null : _parseDigest(asset),
+        isPrerelease: isPrerelease,
+        body: release['body'] as String?,
+      );
+      if (isPrerelease && latestPreview == null) {
+        latestPreview = info;
+      } else if (!isPrerelease && latestStable == null) {
+        latestStable = info;
+      }
+      if (latestStable != null && latestPreview != null) break;
+    }
+    // Fallback: 列表中全是 prerelease，用 /releases/latest 单独取 stable
+    latestStable ??= await getLatestReleaseFromGitHub();
+    return (latestStable, latestPreview);
+  }
+
+  /// 比较两个语义版本号，判断 [latestVersion] 是否比 [currentVersion] 新。
+  ///
+  /// 委托给 [checkHasUpdate] 以保证与 update_checker 单元测试共享同一套逻辑。
+  bool hasUpdate(String currentVersion, String latestVersion) {
+    return checkHasUpdate(currentVersion, latestVersion);
+  }
+
+  static const _keyLastInstalledVersion = 'last_installed_version';
+
+  /// 清理临时目录中旧版本的安装包，仅在版本变化时执行一次。
+  Future<void> cleanupOldPackages() async {
+    if (AppPlatform.isHarmony || !AppPlatform.isAndroid) return;
+    final lastVersion = _prefs.getString(_keyLastInstalledVersion);
+    if (lastVersion == _currentVersion) return;
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final dir = Directory(tempDir.path);
+      if (await dir.exists()) {
+        await for (final ent in dir.list(recursive: false)) {
+          if (ent is File) {
+            final name = p.basename(ent.path).toLowerCase();
+            if (name.endsWith('.apk') &&
+                (name.startsWith('bugaoshan_v') ||
+                    name.startsWith('bugaoshan_update'))) {
+              try {
+                await ent.delete();
+              } catch (_) {}
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    await _prefs.setString(_keyLastInstalledVersion, _currentVersion);
   }
 
   Future<UpdateCheckResult> checkStableUpdate(String currentVersion) async {
+    if (AppPlatform.isHarmony) return UpdateCheckResult.noUpdate();
     try {
       final latest = await getLatestReleaseFromGitHub();
       if (latest != null &&
@@ -169,6 +255,7 @@ class UpdateService {
     String currentVersion,
     String gitTag,
   ) async {
+    if (AppPlatform.isHarmony) return UpdateCheckResult.noUpdate();
     try {
       final release = await getLatestPrereleaseFromGitHub();
       if (release.tagName == gitTag) {
@@ -184,33 +271,50 @@ class UpdateService {
     }
   }
 
-  List<int>? _parseVersion(String version) {
-    final cleanVersion = version
-        .split('+')
-        .first
-        .replaceFirst(RegExp(r'^v', caseSensitive: false), '');
-    final parts = cleanVersion.split('.');
-    if (parts.length < 3) return null;
-    try {
-      return [int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2])];
-    } catch (e) {
-      return null;
+  Future<UpdateCheckResult> checkForUpdate() {
+    if (!supportsInAppUpdate) return Future.value(UpdateCheckResult.noUpdate());
+    final includePreview =
+        getIt<AppConfigProvider>().usePreviewUpdateSource.value;
+    final versionProvider = getIt<AppInfoProvider>();
+    final currentVersion = versionProvider.currentVersion;
+    final gitTag = includePreview ? versionProvider.gitTag : null;
+    return _checkForUpdate(
+      includePreview: includePreview,
+      currentVersion: currentVersion,
+      gitTag: gitTag,
+    );
+  }
+
+  /// Unified update check used by production callers (home / about pages).
+  ///
+  /// When [includePreview] is true, the latest prerelease is checked; otherwise
+  /// the latest stable release. Pass [gitTag] only when [includePreview] is true
+  /// (used to suppress the "current build is itself the latest preview" case).
+  Future<UpdateCheckResult> _checkForUpdate({
+    required bool includePreview,
+    required String currentVersion,
+    String? gitTag,
+  }) {
+    if (includePreview) {
+      return checkPreviewUpdate(currentVersion, gitTag ?? '');
     }
+    return checkStableUpdate(currentVersion);
   }
 
   Future<void> downloadAndInstall(
     String version,
     String downloadUrl, {
+    String? checksumSha256,
     CancelToken? cancelToken,
     void Function(String status)? onStatus,
     void Function(int received, int total)? onProgress,
   }) async {
     if (AppPlatform.isHarmony) {
-      onStatus?.call('Opening download page...');
-      await openLink(downloadUrl);
-      return;
+      throw UnsupportedError('In-app updates are not supported on HarmonyOS');
     }
-
+    if (!supportsInAppUpdate) {
+      throw UnsupportedError('Updates are managed by Flatpak');
+    }
     onStatus?.call('Downloading update...');
 
     final client = http.Client();
@@ -244,9 +348,18 @@ class UpdateService {
       throw UpdateCancelledException();
     }
 
+    if (checksumSha256 != null) {
+      onStatus?.call('Verifying checksum...');
+      final digest = crypto.sha256.convert(chunks);
+      final actualHash = digest.toString();
+      if (actualHash != checksumSha256) {
+        throw HashMismatchException(actualHash, checksumSha256);
+      }
+    }
+
     if (AppPlatform.isAndroid) {
       onStatus?.call('Installing...');
-      await _installAndroid(chunks);
+      await _installAndroid(chunks, version);
       return;
     }
 
@@ -261,17 +374,17 @@ class UpdateService {
         ? TarDecoder().decodeBytes(GZipDecoder().decodeBytes(chunks))
         : ZipDecoder().decodeBytes(chunks);
     final extractDirObj = Directory(extractDir);
-    if (extractDirObj.existsSync()) {
-      extractDirObj.deleteSync(recursive: true);
+    if (await extractDirObj.exists()) {
+      await extractDirObj.delete(recursive: true);
     }
-    extractDirObj.createSync(recursive: true);
+    await extractDirObj.create(recursive: true);
+    final extractRoot = await extractDirObj.resolveSymbolicLinks();
     for (final file in archive) {
-      final sanitizedName = file.name.replaceAll('/', Platform.pathSeparator);
-      final filename = p.join(extractDir, sanitizedName);
+      final filename = _safeArchivePath(extractRoot, file.name);
       if (file.isFile) {
         final outFile = File(filename);
-        outFile.parent.createSync(recursive: true);
-        outFile.writeAsBytesSync(file.content as List<int>);
+        await outFile.parent.create(recursive: true);
+        await outFile.writeAsBytes(file.content as List<int>);
       }
     }
 
@@ -291,9 +404,33 @@ class UpdateService {
     exit(0);
   }
 
-  Future<void> _installAndroid(List<int> apkBytes) async {
+  String _safeArchivePath(String extractRoot, String entryName) {
+    final normalizedName = entryName.replaceAll('\\', '/');
+    if (normalizedName.split('/').any((part) => part == '..')) {
+      throw FormatException('Unsafe archive entry: $entryName');
+    }
+    final relativePath = p.fromUri(Uri(path: normalizedName));
+    if (p.isAbsolute(relativePath)) {
+      throw FormatException('Unsafe archive entry: $entryName');
+    }
+    final fullPath = p.normalize(p.join(extractRoot, relativePath));
+    final rootWithSeparator = extractRoot.endsWith(Platform.pathSeparator)
+        ? extractRoot
+        : '$extractRoot${Platform.pathSeparator}';
+    if (fullPath != extractRoot && !fullPath.startsWith(rootWithSeparator)) {
+      throw FormatException('Unsafe archive entry: $entryName');
+    }
+    return fullPath;
+  }
+
+  Future<void> _installAndroid(List<int> apkBytes, String version) async {
     final tempDir = await getTemporaryDirectory();
-    final apkPath = p.join(tempDir.path, 'bugaoshan_update.apk');
+    // Compute short sha256 for uniqueness
+    final digest = crypto.sha256.convert(apkBytes);
+    final hashShort = digest.toString().substring(0, 8);
+    final safeVersion = version.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
+    final filename = 'Bugaoshan_v${safeVersion}_$hashShort.apk';
+    final apkPath = p.join(tempDir.path, filename);
     final apkFile = File(apkPath);
     await apkFile.writeAsBytes(apkBytes);
     await _channel.invokeMethod('installApk', {'path': apkPath});
@@ -310,7 +447,7 @@ class UpdateService {
         .decode(scriptBytes.buffer.asUint8List())
         .replaceAll('{EXE_DIR}', exeDir)
         .replaceAll('{EXE_PATH}', exePath);
-    File(scriptPath).writeAsStringSync(script);
+    await File(scriptPath).writeAsString(script);
 
     await Process.start(
       'cmd.exe',
@@ -331,7 +468,7 @@ class UpdateService {
         .decode(scriptBytes.buffer.asUint8List())
         .replaceAll('{EXE_DIR}', exeDir)
         .replaceAll('{EXE_PATH}', exePath);
-    File(scriptPath).writeAsStringSync(script);
+    await File(scriptPath).writeAsString(script);
 
     await Process.run('chmod', ['+x', scriptPath]);
 

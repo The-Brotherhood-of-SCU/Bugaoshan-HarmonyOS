@@ -21,6 +21,9 @@ class CourseProvider {
   final ValueNotifier<int> currentWeek = ValueNotifier<int>(1);
   final ValueNotifier<bool> isLoading = ValueNotifier<bool>(false);
 
+  /// 当前数据库中是否存在课表。UI 据此在「暂无课表」空状态和 grid 之间切换。
+  bool get hasSchedule => allSchedules.value.isNotEmpty;
+
   static ScheduleConfig _defaultConfig() {
     final now = DateTime.now();
     return ScheduleConfig(
@@ -38,7 +41,12 @@ class CourseProvider {
       allSchedules.value = _db.getAllSchedules();
       final config = _db.getScheduleConfig();
       scheduleConfig.value = config;
-      currentWeek.value = config.getCurrentWeek();
+      // 无课表时 currentWeek 兜底为 1，避免占位 config 算出意外的周数
+      if (allSchedules.value.isEmpty) {
+        currentWeek.value = 1;
+      } else {
+        currentWeek.value = config.getCurrentWeek();
+      }
     } catch (e) {
       debugPrint('CourseProvider: failed to load data: $e');
     } finally {
@@ -115,10 +123,33 @@ class CourseProvider {
 
   Future<void> updateScheduleConfig(ScheduleConfig config) async {
     await _db.saveScheduleConfig(config);
-    scheduleConfig.value = config;
     allSchedules.value = _db.getAllSchedules();
-    currentWeek.value = config.getCurrentWeek();
+    if (config.id == _db.getCurrentScheduleId()) {
+      scheduleConfig.value = config;
+      currentWeek.value = config.getCurrentWeek();
+      // 非当前课表不影响当前课程展示，也无需刷新桌面组件。
+      onCoursesChanged?.call();
+    }
+  }
+
+  /// 替换指定课表的所有课程（先删后插）。用于「更新课表」场景。
+  Future<void> replaceScheduleCourses(
+    String scheduleId,
+    List<Course> newCourses,
+  ) async {
+    await _db.replaceScheduleCourses(scheduleId, newCourses);
+    if (scheduleId == _db.getCurrentScheduleId()) {
+      courses.value = _db.getCourses();
+    }
     onCoursesChanged?.call();
+  }
+
+  /// 根据课表名查找已存在的课表 ID，用于冲突时更新。
+  String? findScheduleIdByName(String name) {
+    final match = allSchedules.value.where(
+      (s) => s.semesterName.trim() == name.trim(),
+    );
+    return match.isNotEmpty ? match.first.id : null;
   }
 
   void updateCurrentWeek(int week) {

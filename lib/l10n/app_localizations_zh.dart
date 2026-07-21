@@ -21,6 +21,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get wizardWelcomeDesc => '你的校园生活助手，一站式查看课表、成绩与校园服务';
 
   @override
+  String get wizard => '向导';
+
+  @override
+  String get resetWizardTitle => '重置引导状态';
+
+  @override
+  String get resetWizardSubtitle => '重置后将进入Wizard页面';
+
+  @override
   String get wizardLoginTitle => '登录与导入课表';
 
   @override
@@ -37,6 +46,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get wizardImportButton => '导入课表';
+
+  @override
+  String get wizardHasSchedule => '已有课表';
 
   @override
   String get wizardImportHint => '登录后可自动获取课表';
@@ -124,6 +136,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get free => '空闲';
 
   @override
+  String get currentlyFree => '当前空闲';
+
+  @override
   String get inClass => '上课中';
 
   @override
@@ -158,6 +173,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get period => '节次';
 
   @override
+  String periodN(int n) {
+    return '第 $n 节';
+  }
+
+  @override
+  String get periodStart => '起始';
+
+  @override
+  String get periodEnd => '结束';
+
+  @override
+  String get periodUnlimited => '不限';
+
+  @override
+  String get clear => '清除';
+
+  @override
   String get loading => '加载中...';
 
   @override
@@ -171,7 +203,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get campusNetworkRequiredAtNight =>
-      '该时段（0:00-6:00）仅限校园网访问，请连接校园网或使用学校 VPN 后重试';
+      '该时段（23:00-次日6:00）仅限校园网访问，请连接校园网或使用学校 VPN 后重试';
 
   @override
   String get appOnly => '仅 App 端可使用';
@@ -312,10 +344,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateToPreview => '更新到最新版（包括预览版）';
 
   @override
+  String get usePreviewUpdateSource => '软件更新使用预览版源';
+
+  @override
+  String get usePreviewUpdateSourceHint => '仅影响首页和关于页面的自动检查；测试页面始终同时检查两个渠道。';
+
+  @override
   String get downloading => '正在下载';
 
   @override
   String get updateFailed => '更新失败';
+
+  @override
+  String notificationDownloading(int percent) {
+    return '正在下载... $percent%';
+  }
+
+  @override
+  String get notificationInstalling => '正在安装...';
+
+  @override
+  String notificationUpdateFailed(String error) {
+    return '更新失败:$error';
+  }
 
   @override
   String get preReleaseWarning => '这是预发布版本，使用时请注意。';
@@ -336,10 +387,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get environmentInfo => '环境信息';
 
   @override
-  String get testPage => '测试页面';
+  String get devPage => '开发者页面';
 
   @override
   String get forceUpdate => '更新到最新版本（含预览版）';
+
+  @override
+  String get authLog => '认证日志';
+
+  @override
+  String get viewAuthLog => '查看认证日志';
+
+  @override
+  String get authLogEmpty => '暂无认证日志。';
+
+  @override
+  String authLogLastEntry(String time, String level, String tag) {
+    return '$level · $tag · $time';
+  }
 
   @override
   String get scheduleSetting => '课表设置';
@@ -349,6 +414,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get globalSetting => '全局设置';
+
+  @override
+  String get noSchedule => '暂无课表';
+
+  @override
+  String get noScheduleHint => '导入或新建一个课表开始使用';
+
+  @override
+  String get addSchedule => '新建课表';
 
   @override
   String get addCourse => '添加课程';
@@ -423,7 +497,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String weekRange(int start, int end) {
-    return '第 $start - $end 周';
+    return '$start-$end 周';
   }
 
   @override
@@ -440,6 +514,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get section => '节';
+
+  @override
+  String sectionRange(int start, int end) {
+    return '第$start-$end节';
+  }
 
   @override
   String get sectionCount => '每天节数';
@@ -496,7 +575,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get courseGridSection => '课表网格';
 
   @override
+  String get courseStyleSetting => '课程表样式';
+
+  @override
   String get otherSection => '其他';
+
+  @override
+  String get settingsGeneral => '通用';
+
+  @override
+  String get settingsStyle => '样式';
+
+  @override
+  String get setFont => '字体';
+
+  @override
+  String get useGoogleFonts => '使用 Google 字体';
+
+  @override
+  String get fontHint => '如需调整字号和字重，请在系统设置中修改';
+
+  @override
+  String get settingsDanger => '危险操作';
 
   @override
   String get colorOpacity => '颜色不透明度';
@@ -553,6 +653,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cancel => '取消';
 
   @override
+  String get downloadInBackground => '后台下载';
+
+  @override
   String get back => '上一步';
 
   @override
@@ -581,6 +684,26 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get duplicateScheduleName => '课表名称已存在';
+
+  @override
+  String importNameConflictAction(Object name) {
+    return '课表 \"$name\" 已存在，请选择操作：';
+  }
+
+  @override
+  String get importNameConflictAddSuffix => '添加后缀导入';
+
+  @override
+  String get importNameConflictUpdate => '更新当前课表';
+
+  @override
+  String get importAllConflictAction => '部分课表名称与已有课表冲突，请选择操作方式：';
+
+  @override
+  String get importAllConflictAddSuffix => '全部添加后缀';
+
+  @override
+  String get importAllConflictUpdate => '全部更新';
 
   @override
   String get importSchedule => '导入课表';
@@ -623,6 +746,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportSchedule => '导出课表';
 
   @override
+  String get exportExamPlan => '导出考表';
+
+  @override
   String get exportScheduleAsCopy => '复制到剪切板';
 
   @override
@@ -630,6 +756,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get exportScheduleAsCopySuccess => '课表已复制到剪切板';
+
+  @override
+  String get exportExamPlanAsCopySuccess => '考表已复制到剪切板';
 
   @override
   String get exportScheduleAsCopyFailed => '复制失败，您可以稍后再试';
@@ -657,6 +786,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get exportScheduleAddToCalendarFailed => '导入失败';
+
+  @override
+  String get exportScheduleSelectCalendar => '选择目标日历';
+
+  @override
+  String get exportScheduleCalendarDefault => '默认日历';
 
   @override
   String get copySuffix => ' (副本)';
@@ -808,13 +943,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gradesNoData => '暂无成绩数据';
 
   @override
-  String get gradesLoadFailed => '成绩加载失败';
-
-  @override
   String get gradesRefreshFailed => '刷新失败，显示的是缓存数据';
 
   @override
   String get gradesNoPassingData => '暂无及格成绩数据';
+
+  @override
+  String get gradesSearchHint => '搜索课程名称';
+
+  @override
+  String get gradesNoSearchResults => '未找到匹配的课程';
+
+  @override
+  String get customStats => '自定义统计';
+
+  @override
+  String get deselectAll => '取消全选';
+
+  @override
+  String get customStatsSelectHint => '选择课程以计算自定义统计';
+
+  @override
+  String selectedCount(Object count) {
+    return '已选 $count 门';
+  }
 
   @override
   String get gradesGet => '获取成绩';
@@ -1205,6 +1357,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noData => '暂无数据';
 
   @override
+  String get noFreeClassrooms => '当前没有空闲教室';
+
+  @override
   String get networkDeviceQuery => '校园网设备查询';
 
   @override
@@ -1264,19 +1419,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkOfflineFailed => '下线失败';
 
   @override
-  String get balanceQuery => '余额查询';
+  String get balanceQuery => '电费查询';
 
   @override
-  String get balanceQueryDesc => '查询电费和空调费用余额';
+  String get balanceQueryDesc => '查询照明和空调电费余额';
 
   @override
-  String get electricityFee => '电费';
+  String get electricityFee => '照明电量';
 
   @override
-  String get acFee => '空调费';
+  String get acFee => '空调电量';
 
   @override
-  String get balance => '余额';
+  String get balance => '剩余电量';
 
   @override
   String get unitKwh => '度';
@@ -1334,6 +1489,91 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get balanceQueryNoBinding => '您还没有绑定房间，请先绑定';
+
+  @override
+  String get balanceTrend => '用电趋势';
+
+  @override
+  String get balanceTrendTitleElectric => '照明电量趋势';
+
+  @override
+  String get balanceTrendTitleAc => '空调电量趋势';
+
+  @override
+  String get balanceTrendDailyAvgCost => '日均电费';
+
+  @override
+  String get balanceTrendDailyAvgKwh => '日均消耗';
+
+  @override
+  String get balanceTrendTotalCost => '累计消耗金额';
+
+  @override
+  String get balanceTrendTotalKwh => '累计消耗度数';
+
+  @override
+  String get balanceTrendTotalDays => '统计天数';
+
+  @override
+  String get balanceTrendCurrentPrice => '当前单价';
+
+  @override
+  String get balanceTrendRecordCount => '原始记录条数';
+
+  @override
+  String get balanceTrendRecordRange => '记录时间范围';
+
+  @override
+  String get balanceTrendSkippedRecharge => '已识别充值段';
+
+  @override
+  String get balanceTrendNoData => '暂无历史数据，刷新页面后即可开始记录';
+
+  @override
+  String get balanceTrendTimeRange7 => '近7天';
+
+  @override
+  String get balanceTrendTimeRange30 => '近30天';
+
+  @override
+  String get balanceTrendTimeRange90 => '近90天';
+
+  @override
+  String get balanceTrendTimeRangeCustom => '自定义';
+
+  @override
+  String get balanceTrendChangeRange => '修改区间';
+
+  @override
+  String get balanceTrendCustomStart => '开始日期';
+
+  @override
+  String get balanceTrendCustomEnd => '结束日期';
+
+  @override
+  String get balanceTrendRawRecords => '原始记录';
+
+  @override
+  String get balanceTrendYAxisBalance => '余额 (度)';
+
+  @override
+  String get balanceTrendTooltipPrice => '单价';
+
+  @override
+  String get balanceTrendUnitPerDay => '元/天';
+
+  @override
+  String get balanceTrendUnitYuanPerKwh => '元/度';
+
+  @override
+  String get balanceQuerySettings => '电费查询设置';
+
+  @override
+  String get autoSampleBalanceOnLogin => '登录后自动统计电费详情';
+
+  @override
+  String get autoSampleBalanceOnLoginDesc =>
+      '登录成功后若当日尚无记录，自动查询一次当前房间的电费与空调余额以完善统计信息';
 
   @override
   String get scuLoginDisclaimerPwd => '当使用记住密码功能时，密码通过系统级加密仅存储在本机';
@@ -1474,7 +1714,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockLabelNetworkDevice => '校园网';
 
   @override
-  String get dockLabelBalanceQuery => '余额';
+  String get dockLabelBalanceQuery => '电费';
+
+  @override
+  String get dockLabelClassScheduleInquiry => '班级课表';
 
   @override
   String get dockLabelAcademicCalendar => '校历';
@@ -1555,10 +1798,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fitnessTestNoticeDetail => '通知详情';
 
   @override
-  String get fitnessTestCampusNetworkRequiredAtNight =>
-      '该时段（23:00-次日6:00）仅限校园网访问，请连接校园网或使用学校 VPN 后重试';
-
-  @override
   String get dockLabelFitnessTest => '体测';
 
   @override
@@ -1606,7 +1845,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addWidgetSection => '桌面小组件';
 
   @override
-  String get addWidgetPageTitle => '添加小组件';
+  String get addWidgetPageTitle => '小组件';
 
   @override
   String get addWidgetDesc => '将课表小组件添加到桌面，随时查看今日课程安排。';
@@ -1770,6 +2009,220 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tuanweiTabLabel => '青春川大';
+
+  @override
+  String dateMonthDay(int month, int day) {
+    return '$month月$day日';
+  }
+
+  @override
+  String get holidayLabel => '假';
+
+  @override
+  String get festivalLabel => '节';
+
+  @override
+  String get solarTermLabel => '气';
+
+  @override
+  String get holidayTypeLabel => '节假日';
+
+  @override
+  String get festivalTypeLabel => '节日';
+
+  @override
+  String get solarTermTypeLabel => '节气';
+
+  @override
+  String get classScheduleInquiry => '班级课表';
+
+  @override
+  String get classScheduleInquiryDesc => '查看各班级的课表信息';
+
+  @override
+  String get classScheduleInquiryNoData => '暂无班级数据';
+
+  @override
+  String get classScheduleInquiryNoSchedule => '暂无课表数据';
+
+  @override
+  String get classScheduleInquiryDetail => '课程详情';
+
+  @override
+  String get classScheduleInquiryFilter => '查询条件';
+
+  @override
+  String get classScheduleInquirySemester => '学年学期';
+
+  @override
+  String get classScheduleInquiryGrade => '年级';
+
+  @override
+  String get classScheduleInquiryDepartment => '院系';
+
+  @override
+  String get classScheduleInquirySubject => '专业';
+
+  @override
+  String get classScheduleInquiryClass => '班级';
+
+  @override
+  String get classScheduleInquirySearch => '查询';
+
+  @override
+  String get classScheduleInquiryLoadMore => '加载更多';
+
+  @override
+  String holidayTotalDays(int days) {
+    return '共$days天假';
+  }
+
+  @override
+  String get dockLabelExamPlan => '考表';
+
+  @override
+  String get examPlan => '考试安排';
+
+  @override
+  String get examPlanDesc => '查询本学期考试时间、地点和座位号';
+
+  @override
+  String get examPlanNoData => '暂无考试安排';
+
+  @override
+  String get campusGridView => '网格视图';
+
+  @override
+  String get campusGridViewDesc => '校园页面使用网格布局';
+
+  @override
+  String get viewChangelog => '版本更新日志';
+
+  @override
+  String get viewChangelogSubtitle => '查看历史版本更新记录';
+
+  @override
+  String get changelog => '更新日志';
+
+  @override
+  String get unreleased => '未发布';
+
+  @override
+  String get dockLabelZysc => '志愿';
+
+  @override
+  String get zyscTitle => '志愿四川';
+
+  @override
+  String get zyscDesc => '查看志愿服务活动并参与报名';
+
+  @override
+  String get interactiveCalendar => '互动校历';
+
+  @override
+  String get originalCalendar => '官方图表';
+
+  @override
+  String get calendarLoadingData => '正在获取校历数据...';
+
+  @override
+  String calendarImportSuccess(int count) {
+    return '已成功导入 $count 个事件到系统日历';
+  }
+
+  @override
+  String get calendarImportFailed => '导入系统日历失败';
+
+  @override
+  String get calendarImportCalendarTitle => '四川大学校历';
+
+  @override
+  String calendarDaysRemaining(int days) {
+    return '剩 $days 天';
+  }
+
+  @override
+  String calendarStartedNDaysAgo(int days) {
+    return '已过 $days 天';
+  }
+
+  @override
+  String get calendarToday => '今天';
+
+  @override
+  String calendarCurrentWeek(int week) {
+    return '当前第 $week 周';
+  }
+
+  @override
+  String calendarSemesterStart(String date) {
+    return '学期开始: $date';
+  }
+
+  @override
+  String calendarWeeksTotal(int weeks) {
+    return '共 $weeks 周';
+  }
+
+  @override
+  String get calendarImportButton => '导入系统日历';
+
+  @override
+  String get calendarHolidayTag => '放假';
+
+  @override
+  String get calendarExamTag => '考试';
+
+  @override
+  String get calendarStartTag => '开学';
+
+  @override
+  String get calendarEventTag => '事件';
+
+  @override
+  String get calendarNoEventData => '暂无互动校历数据';
+
+  @override
+  String get calendarNextEvent => '下个重要事件';
+
+  @override
+  String get appIcon => '应用图标';
+
+  @override
+  String get defaultIcon => '默认图标';
+
+  @override
+  String get oldIcon => '旧版图标';
+
+  @override
+  String get switchAppIcon => '切换应用图标';
+
+  @override
+  String switchAppIconConfirm(String label) {
+    return '切换至「$label」后应用将重启，是否继续？';
+  }
+
+  @override
+  String get defaultIconRestored => '已恢复默认图标';
+
+  @override
+  String iconSwitched(String name) {
+    return '已切换到图标: $name';
+  }
+
+  @override
+  String iconSwitchFailed(String error) {
+    return '切换失败: $error';
+  }
+
+  @override
+  String get iconSwitchNotSupported => '当前平台不支持动态切换应用图标';
+
+  @override
+  String get newIconSubtitle => 'Bugaoshan 新图标';
+
+  @override
+  String get oldIconSubtitle => 'Bugaoshan 经典图标';
 }
 
 /// The translations for Chinese, as used in China, using the Han script (`zh_Hans_CN`).

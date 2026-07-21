@@ -1,14 +1,18 @@
 # HarmonyOS 开发指南
 
-本项目使用 CPF Flutter 的 OpenHarmony 适配版本构建 HarmonyOS HAP，平台工程直接位于仓库根目录的 `ohos/`。
+本项目基于上游不高山上 `2.2.0+3`，使用 CPF Flutter 的 OpenHarmony 适配版本构建 HarmonyOS HAP，平台工程直接位于仓库根目录的 `ohos/`。
 
 ## 固定版本
 
 | 组件 | 版本 |
 | --- | --- |
+| 不高山上 | 2.2.0+3 |
 | CPF Flutter | 3.41.9 (`aa33b6e2a6ed5e2672e45eef43d1221310a96878`) |
 | Dart | 3.11.5 |
 | Java | 17 |
+| DevEco Studio | 6.1.1 Release |
+| OHOS 编译 SDK | 6.1.1 Release (API 24) |
+| OHOS 目标版本 | 6.1.0 Release (API 23) |
 | OHOS 最低兼容版本 | 5.1.0 (API 18) |
 | 当前真机验证版本 | OpenHarmony 6.1.1.120 (API 24) |
 
@@ -16,7 +20,9 @@ Flutter SDK 和 OHOS 插件都固定到了不可变 Git 提交。升级时应同
 
 ## macOS 环境
 
-安装 DevEco Studio 后，克隆 CPF Flutter：
+安装 DevEco Studio 6.1.1 Release 后，克隆 CPF Flutter。不要使用 Beta SDK
+构建分发包，否则产物的 `pack.info` 会包含 `releaseType: Beta1`，无法通过
+AppGallery Connect 上架检测。
 
 ```bash
 mkdir -p "$HOME/Developer"
@@ -36,7 +42,7 @@ CPF 的 3.41.9 分支没有版本 tag，`configure_flutter_ohos.py` 用于写入
 
 ```bash
 export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-export TOOL_HOME="/Applications/DevEco-Studio.app/Contents"
+export TOOL_HOME="/Applications/DevEco-Studio-6.1.1.app/Contents"
 export DEVECO_SDK_HOME="$TOOL_HOME/sdk"
 export HOS_SDK_HOME="$DEVECO_SDK_HOME"
 export PUB_HOSTED_URL="https://pub.flutter-io.cn"
@@ -48,16 +54,20 @@ export PATH="$HOME/Developer/flutter-ohos/bin:$TOOL_HOME/tools/ohpm/bin:$TOOL_HO
 重新打开终端后配置 SDK 并检查环境：
 
 ```bash
-flutter config --ohos-sdk "/Applications/DevEco-Studio.app/Contents/sdk"
+flutter config --ohos-sdk "/Applications/DevEco-Studio-6.1.1.app/Contents/sdk"
 flutter doctor -v
 flutter devices
 ```
+
+`flutter doctor -v` 应显示 API 24，且 SDK 的
+`default/openharmony/ets/oh-uni-package.json` 中必须是
+`"releaseType": "Release"`。
 
 ## 依赖与生成
 
 ```bash
 flutter pub get
-dart run build_runner build
+dart run build_runner build --delete-conflicting-outputs
 flutter gen-l10n
 flutter analyze
 flutter test
@@ -89,13 +99,34 @@ flutter run --debug -d <device-id>
 
 调试产物位于 `build/ohos/hap/entry-default-signed.hap`。
 
+AppGallery Connect 使用的 `.app` 通过以下命令构建：
+
+```bash
+flutter clean
+flutter pub get
+flutter build hap --release
+cd ohos
+hvigorw assembleApp -p product=default -p buildMode=release --no-daemon
+```
+
+签名 App Pack 位于 `ohos/build/outputs/default/ohos-default-signed.app`。上传前检查
+同目录的 `pack.info`，其中 `apiVersion.releaseType` 必须是 `Release`。测试分发时
+使用 DevEco Studio 的 `Build -> Upload Product -> Testing Only`，由 AppGallery
+Connect 使用云管理证书重新签名。
+
 ## 当前平台行为
 
 - 课表使用 CPF `sqflite`，与其他平台共用 SQLite 数据模型。
 - 登录令牌和记住的凭据使用 `flutter_secure_storage_ohos` 加密存储。
-- 背景图片、外部链接、分享、应用信息和 SharedPreferences 已接入 OHOS 插件。
+- 外部链接、分享、应用信息和 SharedPreferences 已接入 OHOS 插件。
 - ICS 导入通过 `bugaoshan/update` MethodChannel 调用系统日历处理应用。
-- HarmonyOS 更新入口打开 Release 下载页，不尝试申请系统级静默安装权限。
-- Android 桌面小组件、OCR 自动登录和相册直接保存暂未在 HarmonyOS 启用。
+- 通知公告、桌面小组件、相册/图库、系统主题色、文件选择与打开等文件操作，以及应用内更新入口在 HarmonyOS 上隐藏。
+- OCR 自动登录使用纯 Dart `scu_ocr_lite`，在 HarmonyOS 上保留并纳入真机验证。
 
-CI 会构建 unsigned HAP 作为编译产物，但不会把无签名 HAP 发布给最终用户。正式分发需要配置与 bundleName `com.scubrotherhood.bugaoshan` 匹配的发布证书和 Profile。
+## CI 验证
+
+GitHub 托管 runner 没有可可靠自动安装的 DevEco Studio 6.1.1 Release / HarmonyOS API 24 Release SDK。`.github/workflows/build-ohos.yml` 因此在 Pull Request 上使用固定 CPF Flutter 执行依赖解析、代码生成、本地化生成、静态分析和完整 Dart/Widget 测试。
+
+unsigned release HAP 构建仅能通过 `workflow_dispatch` 显式启用，并要求带有 `harmonyos-api-24-release` 标签的 self-hosted macOS runner。该 runner 必须预装 DevEco Studio 6.1.1 Release，将 `DEVECO_SDK_HOME` 指向其 `Contents/sdk`，并可访问 GitCode 和 Flutter/Pub 镜像。工作流会在构建前验证 ETS 和 Native SDK 都是 API 24 `Release`，不符合时直接失败。
+
+CI 生成的 unsigned HAP 只作为短期 Actions 验证产物，不会被 `.github/workflows/release.yml` 下载或发布。正式分发需要配置与 bundleName `com.scubrotherhood.bugaoshan` 匹配的发布证书和 Profile。

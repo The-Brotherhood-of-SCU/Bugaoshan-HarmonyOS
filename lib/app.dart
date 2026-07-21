@@ -1,32 +1,47 @@
+// 这个库是为了在iOS上使用CupertinoPageTransitionsBuilder，flutter新版已经分离出来了，不要删
+// ignore: unnecessary_import
+import 'package:flutter/cupertino.dart';
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/pages/home_page.dart';
+import 'package:bugaoshan/pages/wizard/eula_gate_page.dart';
 import 'package:bugaoshan/pages/wizard/wizard_page.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
-import 'package:bugaoshan/utils/theme_utils.dart';
+import 'package:bugaoshan/services/background_cache_service.dart';
+import 'package:bugaoshan/theme.dart';
+import 'package:bugaoshan/widgets/common/session_expired_listener.dart';
+import 'package:bugaoshan/widgets/eula_content.dart';
+import 'package:bugaoshan/widgets/route/mouse_back_handler.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
+import 'package:system_theme/system_theme.dart';
 import 'l10n/app_localizations.dart';
 
-const _pageTransitionsTheme = PageTransitionsTheme(
-  builders: {
-    TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
-    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-  },
-);
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
 
-const _appBarTheme = AppBarTheme(
-  toolbarHeight: 48,
-  centerTitle: true,
-  scrolledUnderElevation: 0,
-);
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
 
-const _navigationBarTheme = NavigationBarThemeData(height: 64);
-
-class MyApp extends StatelessWidget {
-  MyApp({super.key});
-
+class _MyAppState extends State<MyApp> {
   final AppConfigProvider _appConfig = getIt<AppConfigProvider>();
+  late final BackgroundCacheService _bgCache = getIt<BackgroundCacheService>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _bgCache.precache();
+    });
+  }
+
+  @override
+  void dispose() {
+    _bgCache.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +50,7 @@ class MyApp extends StatelessWidget {
         _appConfig.locale,
         _appConfig.themeColor,
         _appConfig.themeColorMode,
+        _appConfig.useGoogleFonts,
       ]),
       builder: (context, _) => MaterialApp(
         navigatorKey: navigatorKey,
@@ -45,10 +61,21 @@ class MyApp extends StatelessWidget {
         theme: _buildTheme(Brightness.light),
         darkTheme: _buildTheme(Brightness.dark),
         themeMode: ThemeMode.system,
-        home: ValueListenableBuilder<bool>(
-          valueListenable: _appConfig.firstLaunchWizardCompleted,
-          builder: (_, completed, _) =>
-              completed ? const HomePage() : const WizardPage(),
+        builder: (context, child) => MouseBackHandler(
+          child: SessionExpiredListener(child: child ?? const SizedBox()),
+        ),
+        home: ValueListenableBuilder<int>(
+          valueListenable: _appConfig.acceptedEulaVersion,
+          builder: (_, eulaVersion, _) {
+            if (eulaVersion < currentEulaVersion) {
+              return const EulaGatePage();
+            }
+            return ValueListenableBuilder<bool>(
+              valueListenable: _appConfig.firstLaunchWizardCompleted,
+              builder: (_, completed, _) =>
+                  completed ? const HomePage() : const WizardPage(),
+            );
+          },
         ),
       ),
     );
@@ -56,20 +83,12 @@ class MyApp extends StatelessWidget {
 
   ThemeData _buildTheme(Brightness brightness) {
     final seedColor = _appConfig.themeColorMode.value == ThemeColorMode.system
-        ? currentSystemAccentColor()
+        ? SystemTheme.accentColor.accent
         : _appConfig.themeColor.value;
-    final baseTheme = ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: brightness,
-      ),
-      pageTransitionsTheme: _pageTransitionsTheme,
-      appBarTheme: _appBarTheme,
-      navigationBarTheme: _navigationBarTheme,
-    );
-
-    return baseTheme.copyWith(
-      textTheme: GoogleFonts.notoSansScTextTheme(baseTheme.textTheme),
+    return buildTheme(
+      brightness: brightness,
+      seedColor: seedColor,
+      useGoogleFonts: _appConfig.useGoogleFonts.value,
     );
   }
 }

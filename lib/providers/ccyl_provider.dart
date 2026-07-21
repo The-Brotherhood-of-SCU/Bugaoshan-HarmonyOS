@@ -1,67 +1,48 @@
 import 'package:flutter/foundation.dart';
-import 'package:bugaoshan/providers/secure_storage_provider.dart';
-import 'package:bugaoshan/services/ccyl_oauth_service.dart';
-import 'package:bugaoshan/services/ccyl_service.dart';
+import 'package:bugaoshan/pages/campus/ccyl/models/ccyl_models.dart';
+import 'package:bugaoshan/services/api/ccyl_api_service.dart';
+import 'package:bugaoshan/services/auth/ccyl_auth.dart';
 
-const _keyCcylToken = 'ccyl_token';
-const _keyCcylUserId = 'ccyl_user_id';
-
+/// 第二课堂（CCYL）登录状态的 Provider。
+///
+/// 内部委托给 [CcylAuth] 执行实际鉴权逻辑。
+/// UI 通过 [service] 访问 API 方法（自动携带 token）。
 class CcylProvider extends ChangeNotifier {
-  final SecureStorage _secure;
-  final CcylService _service = CcylService();
+  final CcylAuth _ccylAuth;
+  final CcylApiService _apiService;
 
-  CcylProvider._(this._secure);
-
-  static Future<CcylProvider> create() async {
-    final secure = SecureStorageProvider.instance;
-    final provider = CcylProvider._(secure);
-    await provider._initFromSecureStorage();
-    return provider;
+  CcylProvider(this._ccylAuth, this._apiService) {
+    _ccylAuth.addListener(_onAuthChanged);
   }
 
-  Future<void> _initFromSecureStorage() async {
-    _token = await _secure.read(key: _keyCcylToken);
-    final userId = await _secure.read(key: _keyCcylUserId);
-    if (_token != null) {
-      _service.restoreToken(_token!, userId);
-    }
-  }
+  void _onAuthChanged() => notifyListeners();
 
-  String? _token;
-  String? get token => _token;
-  bool get isLoggedIn => _token != null;
-  CcylService get service => _service;
-  CcylUser? get currentUser => _service.currentUser;
+  String? get token => _ccylAuth.token;
+  bool get isLoggedIn => _ccylAuth.isLoggedIn;
+  CcylUser? get currentUser => _ccylAuth.currentUser;
+
+  /// API Service，UI 通过此访问所有 CCYL 数据 API。
+  /// 自动处理 token 注入，未登录时抛 [UnauthenticatedException]。
+  CcylApiService get service => _apiService;
+
+  @override
+  void dispose() {
+    _ccylAuth.removeListener(_onAuthChanged);
+    super.dispose();
+  }
 
   Future<void> loginWithOAuthCode(String code) async {
-    await _service.login(code);
-    _token = _service.token;
-    await _secure.write(key: _keyCcylToken, value: _token!);
-    if (_service.currentUser != null) {
-      await _secure.write(key: _keyCcylUserId, value: _service.currentUser!.id);
-      debugPrint('Saved userId: ${_service.currentUser!.id}');
-    }
-    debugPrint(
-      'loginWithOAuthCode: _service.currentUser=${_service.currentUser?.id}',
-    );
+    await _ccylAuth.loginWithCode(code);
     notifyListeners();
   }
 
-  void logout() {
-    _service.logout();
-    _token = null;
-    _secure.delete(key: _keyCcylToken);
-    _secure.delete(key: _keyCcylUserId);
+  Future<void> logout() async {
+    await _ccylAuth.logout();
     notifyListeners();
   }
 
   Future<void> reLogin() async {
-    try {
-      final oauthCode = await CcylOAuthService().getOAuthCode();
-      if (oauthCode == null) return;
-      await loginWithOAuthCode(oauthCode);
-    } catch (e) {
-      debugPrint('CcylProvider.reLogin error: $e');
-    }
+    final success = await _ccylAuth.reLogin();
+    if (success) notifyListeners();
   }
 }

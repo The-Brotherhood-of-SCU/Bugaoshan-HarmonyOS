@@ -1,7 +1,7 @@
 ﻿import 'package:flutter/foundation.dart' show kDebugMode, kIsWasm, kIsWeb;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:bugaoshan/providers/environment_info/native.dart'
-    if (dart.library.js_interop) 'package:bugaoshan/providers/environment_info/web.dart';
+import 'package:bugaoshan/models/version_info.dart';
+import 'package:bugaoshan/providers/environment_info/native.dart';
 
 class AppInfoProvider {
   PackageInfo packageInfo;
@@ -26,34 +26,25 @@ class AppInfoProvider {
   String get shortCommit =>
       gitCommit.length >= 7 ? gitCommit.substring(0, 7) : gitCommit;
 
-  Future<String> getVersionInfo() async {
-    var appName = packageInfo.appName;
-    var buildNumber = packageInfo.buildNumber;
-    var version = packageInfo.version;
-    var signature = packageInfo.buildSignature;
-    var installerStore = packageInfo.installerStore;
-    var packageName = packageInfo.packageName;
-
-    var environmentText = "---Environment---\n${await getEnvironmentInfo()}";
-
-    String content =
-        "---APP---\n"
-        "AppName: $appName\n"
-        "BuildNumber: $buildNumber\n"
-        "Version: $version\n"
-        "Signature: $signature\n"
-        "Installer: $installerStore\n"
-        "PackageName: $packageName\n"
-        "$environmentText"
-        "---FLAG---\n"
-        "Web: $kIsWeb\n"
-        "WASM: $kIsWasm\n"
-        "Debug: $kDebugMode\n"
-        "---BUILD---\n"
-        "Tag: $gitTag\n"
-        "Commit: $shortCommit\n"
-        "CommitDate: $gitCommitDateRaw\n"
-        "BuildTime: $buildTime";
-    return content;
+  Future<VersionInfo> getVersionInfo() async {
+    return VersionInfo(
+      app:
+          "AppName: ${packageInfo.appName}\n"
+          "BuildNumber: ${packageInfo.buildNumber}\n"
+          "Version: ${packageInfo.version}\n"
+          "Signature: ${packageInfo.buildSignature}\n"
+          "Installer: ${packageInfo.installerStore}\n"
+          "PackageName: ${packageInfo.packageName}",
+      environment: await getEnvironmentInfo(),
+      flag:
+          "Web: $kIsWeb\n"
+          "WASM: $kIsWasm\n"
+          "Debug: $kDebugMode",
+      build:
+          "Tag: $gitTag\n"
+          "Commit: $shortCommit\n"
+          "CommitDate: $gitCommitDateRaw\n"
+          "BuildTime: $buildTime",
+    );
   }
 }

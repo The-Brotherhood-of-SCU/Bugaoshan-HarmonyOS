@@ -23,6 +23,7 @@ class BatteryOptimizationCard extends StatelessWidget {
 
     return AnimatedSize(
       duration: duration,
+      curve: appCurve,
       child: switch (status) {
         BatteryOptimizationStatus.checking => _LoadingCard(
           localizations: localizations,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/course/import_schedule_page.dart';
@@ -24,6 +25,12 @@ class _LoginPageState extends State<LoginPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    final checkedIcon = Icon(
+      Icons.check_circle,
+      size: 18,
+      color: colorScheme.primary,
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -35,7 +42,7 @@ class _LoginPageState extends State<LoginPage> {
             height: 72,
             decoration: BoxDecoration(
               color: colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
             ),
             child: Icon(
               Icons.login_rounded,
@@ -63,11 +70,7 @@ class _LoginPageState extends State<LoginPage> {
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 18,
-                        color: colorScheme.primary,
-                      ),
+                      checkedIcon,
                       const SizedBox(width: 4),
                       Text(
                         l10n.wizardLoginDone,
@@ -109,7 +112,22 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 );
               },
-              child: Text(l10n.wizardImportButton),
+              child: ListenableBuilder(
+                listenable: _courseProvider.allSchedules,
+                builder: (context, _) {
+                  final hasSchedule = _courseProvider.hasSchedule;
+                  if (hasSchedule) {
+                    return Row(
+                      children: [
+                        checkedIcon,
+                        const SizedBox(width: 4),
+                        Text(l10n.wizardHasSchedule),
+                      ],
+                    );
+                  }
+                  return Text(l10n.wizardImportButton);
+                },
+              ),
             ),
           ),
           const Spacer(flex: 2),
@@ -142,7 +160,7 @@ class _StepCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
         border: Border.all(
           color: colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
@@ -156,7 +174,7 @@ class _StepCard extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppShapes.medium),
               ),
               child: Center(
                 child: Text(

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/pages/campus/balance_query/balance_trend_page.dart';
 import 'package:bugaoshan/providers/balance_query_provider.dart';
-import 'package:bugaoshan/services/balance_query_service.dart';
+import 'package:bugaoshan/services/api/balance_query_service.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
 
@@ -35,6 +37,7 @@ class BalanceCardState extends State<BalanceCard> {
   bool _isLoading = false;
   String? _error;
   RoomInfo? _localInfo; // 本地持有数据，不依赖父级传入
+  bool _privacyHidden = true;
 
   @override
   void initState() {
@@ -120,7 +123,7 @@ class BalanceCardState extends State<BalanceCard> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: widget.iconColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppShapes.medium),
                   ),
                   child: Icon(widget.icon, color: widget.iconColor, size: 28),
                 ),
@@ -134,10 +137,37 @@ class BalanceCardState extends State<BalanceCard> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        widget.binding.displayName,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _privacyHidden = !_privacyHidden),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _privacyHidden
+                                  ? widget.binding.displayName
+                                        .split(' ')
+                                        .take(2)
+                                        .join(' ')
+                                  : widget.binding.displayName,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              _privacyHidden
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 14,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -150,9 +180,30 @@ class BalanceCardState extends State<BalanceCard> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 else
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: _forceRefresh,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_localInfo != null)
+                        IconButton(
+                          icon: const Icon(Icons.insights_outlined),
+                          tooltip: l10n.balanceTrend,
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BalanceTrendPage(
+                                provider: widget.provider,
+                                balanceType: widget.balanceType,
+                                title: widget.title,
+                                themeColor: widget.iconColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: _forceRefresh,
+                      ),
+                    ],
                   ),
               ],
             ),
@@ -164,13 +215,54 @@ class BalanceCardState extends State<BalanceCard> {
                   ? Center(
                       child: Text(
                         l10n.loadFailed,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.error,
                         ),
                       ),
                     )
                   : _localInfo == null
-                  ? Center(child: Text(l10n.loading))
+                  ? Column(
+                      children: [
+                        Center(
+                          child: Column(
+                            children: [
+                              Text(
+                                l10n.balance,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                l10n.loading,
+                                style: Theme.of(context).textTheme.displayMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                              ),
+                              Text(
+                                widget.unit,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _infoRow(l10n.roomNumber, '—'),
+                        _infoRow(l10n.pricePerUnit, '—'),
+                      ],
+                    )
                   : Column(
                       children: [
                         Center(
@@ -209,7 +301,10 @@ class BalanceCardState extends State<BalanceCard> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        _infoRow(l10n.roomNumber, _localInfo!.roomNo),
+                        _infoRow(
+                          l10n.roomNumber,
+                          _privacyHidden ? '***' : _localInfo!.roomNo,
+                        ),
                         _infoRow(l10n.pricePerUnit, '${_localInfo!.price} 元/度'),
                       ],
                     ),
@@ -228,11 +323,16 @@ class BalanceCardState extends State<BalanceCard> {
         children: [
           Text(
             label,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );

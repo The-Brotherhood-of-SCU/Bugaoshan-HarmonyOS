@@ -1,5 +1,4 @@
-﻿import 'dart:io';
-
+import 'dart:io';
 import 'package:os_type/os_type.dart';
 import 'package:path_provider/path_provider.dart';
 
