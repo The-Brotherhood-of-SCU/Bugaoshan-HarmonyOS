@@ -22,6 +22,16 @@ def git_output(root: Path, *args: str) -> str:
     ).strip()
 
 
+def bootstrap_flutter(root: Path) -> None:
+    """Build the Flutter tool before writing metadata it would invalidate."""
+    subprocess.run(
+        [str(root / "bin/flutter"), "--version"],
+        cwd=root,
+        check=True,
+        env=os.environ.copy(),
+    )
+
+
 def main() -> None:
     root = Path(
         os.environ.get("FLUTTER_OH_ROOT", Path.home() / "Developer/flutter-ohos")
@@ -32,6 +42,7 @@ def main() -> None:
             f"Expected CPF Flutter {EXPECTED_REVISION}, found {revision} at {root}"
         )
 
+    bootstrap_flutter(root)
     commit_date = git_output(root, "log", "-1", "--format=%cI")
     engine_revision = (root / "bin/internal/engine.version").read_text().strip()
     cache = root / "bin/cache"
