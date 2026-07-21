@@ -9,6 +9,9 @@
 | CPF Flutter | 3.41.9 (`aa33b6e2a6ed5e2672e45eef43d1221310a96878`) |
 | Dart | 3.11.5 |
 | Java | 17 |
+| DevEco Studio | 6.1.1 Release |
+| OHOS 编译 SDK | 6.1.1 Release (API 24) |
+| OHOS 目标版本 | 6.1.0 Release (API 23) |
 | OHOS 最低兼容版本 | 5.1.0 (API 18) |
 | 当前真机验证版本 | OpenHarmony 6.1.1.120 (API 24) |
 
@@ -16,7 +19,9 @@ Flutter SDK 和 OHOS 插件都固定到了不可变 Git 提交。升级时应同
 
 ## macOS 环境
 
-安装 DevEco Studio 后，克隆 CPF Flutter：
+安装 DevEco Studio 6.1.1 Release 后，克隆 CPF Flutter。不要使用 Beta SDK
+构建分发包，否则产物的 `pack.info` 会包含 `releaseType: Beta1`，无法通过
+AppGallery Connect 上架检测。
 
 ```bash
 mkdir -p "$HOME/Developer"
@@ -36,7 +41,7 @@ CPF 的 3.41.9 分支没有版本 tag，`configure_flutter_ohos.py` 用于写入
 
 ```bash
 export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-export TOOL_HOME="/Applications/DevEco-Studio.app/Contents"
+export TOOL_HOME="/Applications/DevEco-Studio-6.1.1.app/Contents"
 export DEVECO_SDK_HOME="$TOOL_HOME/sdk"
 export HOS_SDK_HOME="$DEVECO_SDK_HOME"
 export PUB_HOSTED_URL="https://pub.flutter-io.cn"
@@ -48,10 +53,14 @@ export PATH="$HOME/Developer/flutter-ohos/bin:$TOOL_HOME/tools/ohpm/bin:$TOOL_HO
 重新打开终端后配置 SDK 并检查环境：
 
 ```bash
-flutter config --ohos-sdk "/Applications/DevEco-Studio.app/Contents/sdk"
+flutter config --ohos-sdk "/Applications/DevEco-Studio-6.1.1.app/Contents/sdk"
 flutter doctor -v
 flutter devices
 ```
+
+`flutter doctor -v` 应显示 API 24，且 SDK 的
+`default/openharmony/ets/oh-uni-package.json` 中必须是
+`"releaseType": "Release"`。
 
 ## 依赖与生成
 
@@ -88,6 +97,21 @@ flutter run --debug -d <device-id>
 ```
 
 调试产物位于 `build/ohos/hap/entry-default-signed.hap`。
+
+AppGallery Connect 使用的 `.app` 通过以下命令构建：
+
+```bash
+flutter clean
+flutter pub get
+flutter build hap --release
+cd ohos
+hvigorw assembleApp -p product=default -p buildMode=release --no-daemon
+```
+
+签名 App Pack 位于 `ohos/build/outputs/default/ohos-default-signed.app`。上传前检查
+同目录的 `pack.info`，其中 `apiVersion.releaseType` 必须是 `Release`。测试分发时
+使用 DevEco Studio 的 `Build -> Upload Product -> Testing Only`，由 AppGallery
+Connect 使用云管理证书重新签名。
 
 ## 当前平台行为
 
