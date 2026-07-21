@@ -3,6 +3,7 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 
 class TimeSlotSettingPage extends StatefulWidget {
   final int morningSections;
@@ -124,13 +125,60 @@ class _TimeSlotSettingPageState extends State<TimeSlotSettingPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Quick set section
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '快速设置',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('四川大学江安校区'),
+              subtitle: const Text('自动设置 4-5-3 节数及对应时间点'),
+              trailing: const Icon(Icons.auto_fix_high),
+              onTap: () {
+                setState(() {
+                  _morningSections = 4;
+                  _afternoonSections = 5;
+                  _eveningSections = 3;
+                  _timeSlots = List.of(ScheduleConfig.jiangAnTimeSlots);
+                });
+                _autoSave();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('已应用四川大学江安校区时间表预设')),
+                );
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('四川大学望江/华西校区'),
+              subtitle: const Text('自动设置 4-5-3 节数及对应时间点'),
+              trailing: const Icon(Icons.auto_fix_high),
+              onTap: () {
+                setState(() {
+                  _morningSections = 4;
+                  _afternoonSections = 5;
+                  _eveningSections = 3;
+                  _timeSlots = List.of(ScheduleConfig.wangJiangHuaXiTimeSlots);
+                });
+                _autoSave();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('已应用四川大学望江/华西校区时间表预设')),
+                );
+              },
+            ),
+            const Divider(height: 32),
             // Section count settings
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 l10n.sectionCount,
-                style: TextStyle(
-                  fontSize: 16,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -226,7 +274,7 @@ class _TimeSlotSettingPageState extends State<TimeSlotSettingPage> {
                       padding: const EdgeInsets.only(top: 16, bottom: 8),
                       child: Text(
                         groupTitle,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
                         ),
@@ -260,157 +308,6 @@ class _TimeSlotSettingPageState extends State<TimeSlotSettingPage> {
                 ],
               );
             }),
-            const Divider(height: 32),
-            // Quick set section
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                '快速设置',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('四川大学江安校区'),
-              subtitle: const Text('自动设置 4-5-3 节数及对应时间点'),
-              trailing: const Icon(Icons.auto_fix_high),
-              onTap: () {
-                setState(() {
-                  _morningSections = 4;
-                  _afternoonSections = 5;
-                  _eveningSections = 3;
-                  // Use the hardcoded default logic for 4-5-3
-                  _timeSlots = [
-                    // Morning
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 8, minute: 15),
-                      endTime: TimeOfDay(hour: 9, minute: 0),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 9, minute: 10),
-                      endTime: TimeOfDay(hour: 9, minute: 55),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 10, minute: 15),
-                      endTime: TimeOfDay(hour: 11, minute: 0),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 11, minute: 10),
-                      endTime: TimeOfDay(hour: 11, minute: 55),
-                    ),
-                    // Afternoon
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 13, minute: 50),
-                      endTime: TimeOfDay(hour: 14, minute: 35),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 14, minute: 45),
-                      endTime: TimeOfDay(hour: 15, minute: 30),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 15, minute: 40),
-                      endTime: TimeOfDay(hour: 16, minute: 25),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 16, minute: 45),
-                      endTime: TimeOfDay(hour: 17, minute: 30),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 17, minute: 40),
-                      endTime: TimeOfDay(hour: 18, minute: 25),
-                    ),
-                    // Evening
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 19, minute: 20),
-                      endTime: TimeOfDay(hour: 20, minute: 5),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 20, minute: 15),
-                      endTime: TimeOfDay(hour: 21, minute: 0),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 21, minute: 10),
-                      endTime: TimeOfDay(hour: 21, minute: 55),
-                    ),
-                  ];
-                });
-                _autoSave();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('已应用四川大学江安校区时间表预设')),
-                );
-              },
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('四川大学望江/华西校区'),
-              subtitle: const Text('自动设置 4-5-3 节数及对应时间点'),
-              trailing: const Icon(Icons.auto_fix_high),
-              onTap: () {
-                setState(() {
-                  _morningSections = 4;
-                  _afternoonSections = 5;
-                  _eveningSections = 3;
-                  _timeSlots = [
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 8, minute: 0),
-                      endTime: TimeOfDay(hour: 8, minute: 45),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 8, minute: 55),
-                      endTime: TimeOfDay(hour: 9, minute: 40),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 10, minute: 0),
-                      endTime: TimeOfDay(hour: 10, minute: 45),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 10, minute: 55),
-                      endTime: TimeOfDay(hour: 11, minute: 40),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 14, minute: 0),
-                      endTime: TimeOfDay(hour: 14, minute: 45),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 14, minute: 55),
-                      endTime: TimeOfDay(hour: 15, minute: 40),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 15, minute: 50),
-                      endTime: TimeOfDay(hour: 16, minute: 35),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 16, minute: 55),
-                      endTime: TimeOfDay(hour: 17, minute: 40),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 17, minute: 50),
-                      endTime: TimeOfDay(hour: 18, minute: 35),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 19, minute: 30),
-                      endTime: TimeOfDay(hour: 20, minute: 15),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 20, minute: 25),
-                      endTime: TimeOfDay(hour: 21, minute: 10),
-                    ),
-                    const TimeSlot(
-                      startTime: TimeOfDay(hour: 21, minute: 20),
-                      endTime: TimeOfDay(hour: 22, minute: 5),
-                    ),
-                  ];
-                });
-                _autoSave();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('已应用四川大学望江/华西校区时间表预设')),
-                );
-              },
-            ),
           ],
         ),
       ),
@@ -472,7 +369,9 @@ class _TimeSlotEditor extends StatelessWidget {
             width: 48,
             child: Text(
               '${index + 1}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
@@ -490,7 +389,7 @@ class _TimeSlotEditor extends StatelessWidget {
                       border: Border.all(
                         color: Theme.of(context).colorScheme.outline,
                       ),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppShapes.small),
                     ),
                     child: Text(startStr),
                   ),
@@ -510,7 +409,7 @@ class _TimeSlotEditor extends StatelessWidget {
                       border: Border.all(
                         color: Theme.of(context).colorScheme.outline,
                       ),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppShapes.small),
                     ),
                     child: Text(endStr),
                   ),

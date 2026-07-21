@@ -3,12 +3,24 @@
     "selfLanguage": "English",
     "wizardWelcomeTitle": "Welcome to Bugaoshan",
     "wizardWelcomeDesc": "Your campus assistant: schedules, grades and campus services in one place",
+    "wizard": "Wizard",
+    "@wizard": {
+        "description": "Section title for the onboarding wizard (short). Shown in the Test page and headings.",
+        "type": "text"
+    },
+    "resetWizardTitle": "Reset Wizard Status",
+    "@resetWizardTitle": {
+        "description": "Title for the action that resets the onboarding/wizard status so the wizard runs again.",
+        "type": "text"
+    },
+    "resetWizardSubtitle": "After resetting, you will enter the Wizard page",
     "wizardLoginTitle": "Login & Import Schedule",
     "wizardLoginStep1": "Log in with SCU Unified Identity",
     "wizardLoginStep2": "Import schedule from academic system",
     "wizardLoginDone": "Logged in",
     "wizardLoginButton": "Go to Login",
     "wizardImportButton": "Import Schedule",
+    "wizardHasSchedule": "Schedule Exists",
     "wizardImportHint": "Auto-fetch schedule after login",
     "wizardFeatureTitle": "Explore More Features",
     "wizardFeatureCourse": "Course Schedule",
@@ -40,6 +52,7 @@
     "allBuildings": "All Buildings",
     "seats": "seats",
     "free": "Free",
+    "currentlyFree": "Currently Free",
     "inClass": "In Class",
     "borrowed": "Borrowed",
     "classroomPeriodExam": "Exam",
@@ -60,11 +73,22 @@
     "classroomCannotBorrow": "Not Borrowable",
     "classroomRemark": "Remark",
     "period": "Period",
+    "periodN": "Period {n}",
+    "@periodN": {
+        "description": "Period number format",
+        "placeholders": {
+            "n": {"type": "int"}
+        }
+    },
+    "periodStart": "Start",
+    "periodEnd": "End",
+    "periodUnlimited": "Any",
+    "clear": "Clear",
     "loading": "Loading...",
     "loadFailed": "Load Failed",
     "retry": "Retry",
     "campusNetworkRequired": "This feature is only available on campus network. Please connect to campus Wi-Fi or use the school VPN.",
-    "campusNetworkRequiredAtNight": "Access is restricted to campus network during 0:00-6:00. Please connect to campus Wi-Fi or use the school VPN.",
+    "campusNetworkRequiredAtNight": "Access is restricted to campus network during 23:00-6:00. Please connect to campus Wi-Fi or use the school VPN.",
     "appOnly": "Available on App only",
     "softwareSetting": "Software Setting",
     "followSystem": "Follow System",
@@ -109,8 +133,30 @@
     "updateToLatest": "Update to Latest",
     "updateToStable": "Update to Latest Stable",
     "updateToPreview": "Update to Latest (Include Preview)",
+    "usePreviewUpdateSource": "Use Preview Release Source",
+    "@usePreviewUpdateSource": {
+      "description": "Toggle in the test page that makes the home/about update checks target the preview release channel."
+    },
+    "usePreviewUpdateSourceHint": "Affects only the automatic checks on the home and about pages. The test page always checks both channels.",
     "downloading": "Downloading",
     "updateFailed": "Update failed",
+    "notificationDownloading": "Downloading... {percent}%",
+    "notificationInstalling": "Installing...",
+    "notificationUpdateFailed": "Update failed: {error}",
+    "@notificationDownloading": {
+        "placeholders": {
+            "percent": {
+                "type": "int"
+            }
+        }
+    },
+    "@notificationUpdateFailed": {
+        "placeholders": {
+            "error": {
+                "type": "String"
+            }
+        }
+    },
     "preReleaseWarning": "This is a pre-release version. Use with caution.",
     "releaseNotes": "Release Notes",
     "neverMind": "Never Mind",
@@ -118,11 +164,25 @@
     "clearAllData": "Clear All Data",
     "confirmMessage":"Are you sure?",
     "environmentInfo":"Environment Info",
-    "testPage":"Test Page",
+    "devPage":"Developer Page",
     "forceUpdate":"Update to Latest (Include Preview)",
+    "authLog":"Auth Log",
+    "viewAuthLog":"View Auth Log",
+    "authLogEmpty":"No auth log yet.",
+    "@authLogLastEntry": {
+        "placeholders": {
+            "time": {"type": "String"},
+            "level": {"type": "String"},
+            "tag": {"type": "String"}
+        }
+    },
+    "authLogLastEntry": "{level} · {tag} · {time}",
     "scheduleSetting":"Schedule Setting",
     "scheduleManagement":"Schedule Management",
     "globalSetting":"Global Setting",
+    "noSchedule":"No schedule yet",
+    "noScheduleHint":"Import or create a schedule to get started",
+    "addSchedule":"Add Schedule",
 
     "addCourse":"Add Course",
     "editCourse":"Edit Course",
@@ -147,7 +207,7 @@
     "sunday":"Sun",
     "currentWeek":"Week {week}",
     "thisWeek":"This week",
-    "weekRange":"Week {start} - {end}",
+    "weekRange":"Week {start}-{end}",
     "@weekRange": {
         "placeholders": {
             "start": {"type": "int"},
@@ -159,6 +219,14 @@
     "oddWeek":"Odd Week",
     "evenWeek":"Even Week",
     "section":"Sec",
+    "sectionRange": "Sec {start}-{end}",
+    "@sectionRange": {
+        "description": "Section range display, e.g. 'Sec 1-2'",
+        "placeholders": {
+            "start": {"type": "int"},
+            "end": {"type": "int"}
+        }
+    },
     "sectionCount":"Sections per Day",
     "timeSlot":"Time Slot",
     "startTime":"Start Time",
@@ -177,7 +245,14 @@
     "displaySetting":"Display Setting",
     "courseCardSection":"Course Card",
     "courseGridSection":"Course Grid",
+    "courseStyleSetting":"Course Style",
     "otherSection":"Other",
+    "settingsGeneral":"General",
+    "settingsStyle":"Style",
+    "setFont":"Font",
+    "useGoogleFonts":"Use Google Fonts",
+    "fontHint":"Font size and weight can be adjusted in system settings",
+    "settingsDanger":"Danger Zone",
     "colorOpacity":"Color Opacity",
     "fontSize":"Font Size",
     "showCourseGrid":"Show Course Grid",
@@ -196,6 +271,7 @@
     "showNonCurrentWeekCourses":"Show Non-Current Week Courses",
     "save":"Save",
     "cancel":"Cancel",
+    "downloadInBackground": "Download in Background",
     "back": "Back",
     "next": "Next",
     "delete":"Delete",
@@ -206,6 +282,12 @@
     "fieldRequired":"This field is required",
     "invalidWeekRange":"End week must be greater than or equal to start week",
     "duplicateScheduleName":"Schedule name already exists",
+    "importNameConflictAction": "Schedule \"{name}\" already exists, please choose:",
+    "importNameConflictAddSuffix": "Import with suffix",
+    "importNameConflictUpdate": "Update existing schedule",
+    "importAllConflictAction": "Some schedule names conflict, please choose how to proceed:",
+    "importAllConflictAddSuffix": "Add suffix to all",
+    "importAllConflictUpdate": "Update all",
     "importSchedule":"Import Schedule",
     "importFromShare":"Import from Share",
     "importFromJwxt":"Import from Education System",
@@ -218,9 +300,11 @@
     "defaultScheduleName": "Default Schedule",
     "deleteScheduleConfirm": "Are you sure you want to delete schedule \"{name}\"?",
     "exportSchedule": "Export Schedule",
+    "exportExamPlan": "Export Exam Schedule",
     "exportScheduleAsCopy":"Copy to Clipboard",
     "exportScheduleAsIcs":"Export to Calendar File",
     "exportScheduleAsCopySuccess":"Schedule data copied to clipboard",
+    "exportExamPlanAsCopySuccess":"Exam schedule data copied to clipboard",
     "exportScheduleAsCopyFailed":"Copy failed, maybe you can try later",
     "exportScheduleAsIcsTo":"Save Calendar File to...",
     "exportScheduleAsIcsSuccess":"File saved successfully",
@@ -230,6 +314,8 @@
     "exportScheduleAddToCalendar":"Import to Calendar",
     "exportScheduleAddToCalendarSuccess":"Imported to calendar",
     "exportScheduleAddToCalendarFailed":"Import failed",
+    "exportScheduleSelectCalendar":"Choose Calendar",
+    "exportScheduleCalendarDefault":"Default calendar",
     "copySuffix": " (Copy)",
     "notThisWeek": "[Not]",
     "actualCurrentWeek": "Week {week}",
@@ -284,9 +370,14 @@
     "passingScores": "Passing Scores",
     "gradesLoginRequired": "Please complete SCU Unified Identity login in the Profile page first",
     "gradesNoData": "No grade data",
-    "gradesLoadFailed": "Failed to load grades",
     "gradesRefreshFailed": "Refresh failed, showing cached data",
     "gradesNoPassingData": "No passing grade data",
+    "gradesSearchHint": "Search course name",
+    "gradesNoSearchResults": "No matching courses found",
+    "customStats": "Custom Stats",
+    "deselectAll": "Deselect All",
+    "customStatsSelectHint": "Select courses to calculate custom statistics",
+    "selectedCount": "{count} selected",
     "gradesGet": "Fetch Grades",
     "gradesRetry": "Retry",
     "gpa": "GPA",
@@ -415,6 +506,7 @@
     "ccylSeriesName": "Series Name",
     "ccylOrganizer": "Organizer",
     "noData": "No Data",
+    "noFreeClassrooms": "No free classrooms right now",
     "networkDeviceQuery": "Network Device Query",
     "networkDeviceQueryDesc": "Query campus network account and online devices",
     "networkDeviceUserInfo": "User Information",
@@ -442,11 +534,11 @@
     "ccylActivityLoadFailed": "Failed to load activity",
     "networkOfflineFailed": "Failed to offline device",
     "importFailed": "Import failed",
-    "balanceQuery": "Balance Query",
-    "balanceQueryDesc": "Query electricity and AC fee balance",
-    "electricityFee": "Electricity",
-    "acFee": "AC Fee",
-    "balance": "Balance",
+    "balanceQuery": "Electricity Query",
+    "balanceQueryDesc": "Query lighting and AC electricity balance",
+    "electricityFee": "Lighting",
+    "acFee": "AC Power",
+    "balance": "Remaining",
     "unitKwh": "kWh",
     "bindRoom": "Bind Room",
     "bindNewRoom": "Bind New Room",
@@ -468,6 +560,34 @@
     "pricePerUnit": "Price per unit",
     "balanceQueryLoginRequired": "Please complete SCU Unified Identity login in the Profile page first",
     "balanceQueryNoBinding": "You haven't bound any room yet, please bind first",
+    "balanceTrend": "Usage Trend",
+    "balanceTrendTitleElectric": "Lighting Electricity Trend",
+    "balanceTrendTitleAc": "AC Electricity Trend",
+    "balanceTrendDailyAvgCost": "Daily Avg Cost",
+    "balanceTrendDailyAvgKwh": "Daily Avg Consumption",
+    "balanceTrendTotalCost": "Total Cost",
+    "balanceTrendTotalKwh": "Total Consumption",
+    "balanceTrendTotalDays": "Statistical Days",
+    "balanceTrendCurrentPrice": "Current Price",
+    "balanceTrendRecordCount": "Raw Record Count",
+    "balanceTrendRecordRange": "Record Time Range",
+    "balanceTrendSkippedRecharge": "Skipped Recharge Segments",
+    "balanceTrendNoData": "No history data yet. Refresh the page to start recording.",
+    "balanceTrendTimeRange7": "Last 7d",
+    "balanceTrendTimeRange30": "Last 30d",
+    "balanceTrendTimeRange90": "Last 90d",
+    "balanceTrendTimeRangeCustom": "Custom",
+    "balanceTrendChangeRange": "Change Range",
+    "balanceTrendCustomStart": "Start date",
+    "balanceTrendCustomEnd": "End date",
+    "balanceTrendRawRecords": "Raw Records",
+    "balanceTrendYAxisBalance": "Balance (kWh)",
+    "balanceTrendTooltipPrice": "Price",
+    "balanceTrendUnitPerDay": "CNY/day",
+    "balanceTrendUnitYuanPerKwh": "CNY/kWh",
+    "balanceQuerySettings": "Balance Query Settings",
+    "autoSampleBalanceOnLogin": "Auto-collect balance details on login",
+    "autoSampleBalanceOnLoginDesc": "After login, if no record exists for today, automatically query the current room's electricity and AC balance once to improve the statistics",
     "scuLoginDisclaimerPwd": "When 'Remember Password' is enabled, your password is encrypted and stored locally using system-level encryption",
     "scuLoginDisclaimerOcr": "Captcha is recognized by a local OCR model",
     "scuLoginDisclaimerPrivacy": "We do not collect any personal information",
@@ -524,7 +644,8 @@
     "dockLabelTrainProgram": "Program",
     "dockLabelClassroom": "Classroom",
     "dockLabelNetworkDevice": "Network",
-    "dockLabelBalanceQuery": "Balance",
+    "dockLabelBalanceQuery": "Electricity",
+    "dockLabelClassScheduleInquiry": "Class Schedule",
     "dockLabelAcademicCalendar": "Calendar",
     "fitnessTest": "Fitness Test",
     "fitnessTestDesc": "Query fitness test scores and view notices",
@@ -551,7 +672,6 @@
     "fitnessTestReadCount": "reads",
     "fitnessTestSticky": "Pinned",
     "fitnessTestNoticeDetail": "Notice Detail",
-    "fitnessTestCampusNetworkRequiredAtNight": "Access is restricted to campus network during 23:00-6:00. Please connect to campus Wi-Fi or use the school VPN.",
     "dockLabelFitnessTest": "Fitness",
     "dockLabelNotice": "Notice",
     "dockLabelNoticeParty": "XGB",
@@ -572,7 +692,7 @@
         }
     },
     "addWidgetSection": "Desktop Widget",
-    "addWidgetPageTitle": "Add Widget",
+    "addWidgetPageTitle": "Widget",
     "addWidgetDesc": "Add course schedule widgets to your home screen for quick access.",
     "widgetSizeSmall": "Small (2×2)",
     "widgetSizeSmallDesc": "Shows today's next 2 courses",
@@ -642,5 +762,144 @@
     "downloadedAttachmentsDesc": "Manage downloaded notice attachments",
     "jwcTabLabel": "Academic",
     "xgbTabLabel": "Party Affairs",
-    "tuanweiTabLabel": "Youth SCU"
+    "tuanweiTabLabel": "Youth SCU",
+    "dateMonthDay": "{month}/{day}",
+    "@dateMonthDay": {
+        "placeholders": {
+            "month": {"type": "int"},
+            "day": {"type": "int"}
+        }
+    },
+    "holidayLabel": "Hol",
+    "@holidayLabel": {
+        "description": "Short label for statutory holiday displayed in course grid date header"
+    },
+    "festivalLabel": "Fes",
+    "@festivalLabel": {
+        "description": "Short label for festival displayed in course grid date header"
+    },
+    "solarTermLabel": "Term",
+    "@solarTermLabel": {
+        "description": "Short label for solar term displayed in course grid date header"
+    },
+    "holidayTypeLabel": "Holiday",
+    "@holidayTypeLabel": {
+        "description": "Label for statutory holiday type shown in special day detail sheet"
+    },
+    "festivalTypeLabel": "Festival",
+    "@festivalTypeLabel": {
+        "description": "Label for festival type shown in special day detail sheet"
+    },
+    "solarTermTypeLabel": "Solar Term",
+    "@solarTermTypeLabel": {
+        "description": "Label for solar term type shown in special day detail sheet"
+    },
+    "classScheduleInquiry": "Class Schedule Inquiry",
+    "classScheduleInquiryDesc": "View course schedules for each class",
+    "classScheduleInquiryNoData": "No class data",
+    "classScheduleInquiryNoSchedule": "No schedule data",
+    "classScheduleInquiryDetail": "Course Details",
+    "classScheduleInquiryFilter": "Filter",
+    "classScheduleInquirySemester": "Semester",
+    "classScheduleInquiryGrade": "Grade",
+    "classScheduleInquiryDepartment": "Department",
+    "classScheduleInquirySubject": "Major",
+    "classScheduleInquiryClass": "Class",
+    "classScheduleInquirySearch": "Search",
+    "classScheduleInquiryLoadMore": "Load More",
+    "holidayTotalDays": "{days}-day holiday",
+    "@holidayTotalDays": {
+        "description": "Shows total holiday days, e.g. '3-day holiday'",
+        "placeholders": {
+            "days": {"type": "int"}
+        }
+    },
+    "dockLabelExamPlan": "Exams",
+    "examPlan": "Exam Schedule",
+    "examPlanDesc": "View exam times, locations and seat numbers",
+    "examPlanNoData": "No exam schedule available",
+    "campusGridView": "Grid View",
+    "campusGridViewDesc": "Use grid layout for campus page",
+    "viewChangelog": "Version Changelog",
+    "viewChangelogSubtitle": "View historical version update logs",
+    "changelog": "Changelog",
+    "unreleased": "Unreleased",
+    "dockLabelZysc": "Volunteer",
+    "zyscTitle": "Volunteer Sichuan",
+    "zyscDesc": "Browse and sign up for volunteer activities",
+    "interactiveCalendar": "Interactive Calendar",
+    "originalCalendar": "Official Charts",
+    "calendarLoadingData": "Loading calendar data...",
+    "calendarImportSuccess": "Successfully imported {count} events to system calendar",
+    "@calendarImportSuccess": {
+        "placeholders": {
+            "count": {"type": "int"}
+        }
+    },
+    "calendarImportFailed": "Failed to import to system calendar",
+    "calendarImportCalendarTitle": "SCU Academic Calendar",
+    "calendarDaysRemaining": "{days} days left",
+    "@calendarDaysRemaining": {
+        "placeholders": {
+            "days": {"type": "int"}
+        }
+    },
+    "calendarStartedNDaysAgo": "{days} days ago",
+    "@calendarStartedNDaysAgo": {
+        "placeholders": {
+            "days": {"type": "int"}
+        }
+    },
+    "calendarToday": "Today",
+    "calendarCurrentWeek": "Week {week}",
+    "@calendarCurrentWeek": {
+        "placeholders": {
+            "week": {"type": "int"}
+        }
+    },
+    "calendarSemesterStart": "Semester Starts: {date}",
+    "@calendarSemesterStart": {
+        "placeholders": {
+            "date": {"type": "String"}
+        }
+    },
+    "calendarWeeksTotal": "{weeks} weeks total",
+    "@calendarWeeksTotal": {
+        "placeholders": {
+            "weeks": {"type": "int"}
+        }
+    },
+    "calendarImportButton": "Import to Calendar",
+    "calendarHolidayTag": "Holiday",
+    "calendarExamTag": "Exam",
+    "calendarStartTag": "Start",
+    "calendarEventTag": "Event",
+    "calendarNoEventData": "No interactive calendar data",
+    "calendarNextEvent": "Next Event",
+    "appIcon": "App Icon",
+    "defaultIcon": "Default",
+    "oldIcon": "Old Icon",
+    "switchAppIcon": "Switch App Icon",
+    "switchAppIconConfirm": "Switch to \"{label}\"? The app will restart. Continue?",
+    "@switchAppIconConfirm": {
+        "placeholders": {
+            "label": {"type": "String"}
+        }
+    },
+    "defaultIconRestored": "Restored default icon",
+    "iconSwitched": "Switched to icon: {name}",
+    "@iconSwitched": {
+        "placeholders": {
+            "name": {"type": "String"}
+        }
+    },
+    "iconSwitchFailed": "Switch failed: {error}",
+    "@iconSwitchFailed": {
+        "placeholders": {
+            "error": {"type": "String"}
+        }
+    },
+    "iconSwitchNotSupported": "Dynamic icon switching is not supported on this platform",
+    "newIconSubtitle": "Bugaoshan New Icon",
+    "oldIconSubtitle": "Bugaoshan Classic Icon"
 }

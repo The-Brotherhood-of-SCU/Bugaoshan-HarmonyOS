@@ -1,14 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/pages/campus/classroom/classroom_detail_page.dart';
 import 'package:bugaoshan/pages/campus/models/classroom_model.dart';
+import 'package:bugaoshan/providers/course_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/scu_auth_service.dart';
-import 'package:bugaoshan/utils/session_expiry_handler.dart';
+import 'package:bugaoshan/services/api/zhjw_api_service.dart';
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
-import 'package:bugaoshan/widgets/common/error_widgets.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 enum _ViewMode { campus, building, room }
 
@@ -20,7 +25,8 @@ class ClassroomPage extends StatefulWidget {
 }
 
 class _ClassroomPageState extends State<ClassroomPage> {
-  late final ScuAuthService _authService;
+  late final ZhjwApiService _zhjwApi;
+  Timer? _clockTimer;
 
   List<ClassroomCampus> _campuses = [];
   List<ClassroomBuilding> _allBuildings = [];
@@ -31,20 +37,31 @@ class _ClassroomPageState extends State<ClassroomPage> {
   _ViewMode _viewMode = _ViewMode.campus;
   bool _isLoading = false;
   bool _isInitialLoad = true;
-  String? _error;
+  LoadErrorType? _error;
   DateTime _selectedDate = DateTime.now();
+  int? _filterPeriodStart; // 筛选起始节次 1-12, null=不过滤
+  int? _filterPeriodEnd; // 筛选结束节次 1-12, null=不过滤
 
   @override
   void initState() {
     super.initState();
-    _authService = getIt<ScuAuthProvider>().service;
+    _zhjwApi = getIt<ZhjwApiService>();
     getIt<ScuAuthProvider>().addListener(_onAuthChanged);
+    _startClockTimer();
     _loadIndex();
+  }
+
+  void _startClockTimer() {
+    _clockTimer?.cancel();
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
     getIt<ScuAuthProvider>().removeListener(_onAuthChanged);
+    _clockTimer?.cancel();
     super.dispose();
   }
 
@@ -63,7 +80,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
       if (auth.isAutoLoggingIn) return;
       if (!mounted) return;
       setState(() {
-        _error = 'notLoggedIn';
+        _error = LoadErrorType.notLoggedIn;
         _isLoading = false;
         _isInitialLoad = false;
       });
@@ -75,7 +92,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
       _error = null;
     });
     try {
-      final result = await _authService.fetchClassroomIndex();
+      final result = await _zhjwApi.fetchClassroomIndex();
       if (!mounted) return;
       setState(() {
         _campuses = result.campuses;
@@ -83,13 +100,10 @@ class _ClassroomPageState extends State<ClassroomPage> {
         _isLoading = false;
         _isInitialLoad = false;
       });
-    } on ScuLoginException catch (e) {
+    } on UnauthenticatedException catch (_) {
       if (!mounted) return;
-      if (e.sessionExpired) {
-        await SessionExpiryHandler.handle(getIt<ScuAuthProvider>());
-      }
       setState(() {
-        _error = e.sessionExpired ? 'sessionExpired' : 'loadFailed';
+        _error = LoadErrorType.sessionExpired;
         _isLoading = false;
         _isInitialLoad = false;
       });
@@ -97,7 +111,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
       debugPrint('Classroom index load error: $e');
       if (!mounted) return;
       setState(() {
-        _error = 'loadFailed';
+        _error = campusNetworkErrorType(LoadErrorType.loadFailed);
         _isLoading = false;
         _isInitialLoad = false;
       });
@@ -109,7 +123,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
     if (!auth.isLoggedIn) {
       if (!mounted) return;
       setState(() {
-        _error = 'notLoggedIn';
+        _error = LoadErrorType.notLoggedIn;
         _isLoading = false;
       });
       return;
@@ -124,7 +138,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
     try {
       final dateStr =
           '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
-      _queryResult = await _authService.fetchClassroomAvailability(
+      _queryResult = await _zhjwApi.fetchClassroomAvailability(
         campusNumber: building.campusNumber,
         buildingNumber: building.teachingBuildingNumber,
         searchDate: dateStr,
@@ -133,20 +147,17 @@ class _ClassroomPageState extends State<ClassroomPage> {
       setState(() {
         _isLoading = false;
       });
-    } on ScuLoginException catch (e) {
+    } on UnauthenticatedException catch (_) {
       if (!mounted) return;
-      if (e.sessionExpired) {
-        await SessionExpiryHandler.handle(getIt<ScuAuthProvider>());
-      }
       setState(() {
-        _error = e.sessionExpired ? 'sessionExpired' : 'loadFailed';
+        _error = LoadErrorType.sessionExpired;
         _isLoading = false;
       });
     } catch (e) {
       debugPrint('Classroom query error: $e');
       if (!mounted) return;
       setState(() {
-        _error = 'loadFailed';
+        _error = campusNetworkErrorType(LoadErrorType.loadFailed);
         _isLoading = false;
       });
     }
@@ -160,7 +171,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    return '${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   bool get _isToday {
@@ -195,6 +206,69 @@ class _ClassroomPageState extends State<ClassroomPage> {
     if (_selectedBuilding != null) {
       _queryBuilding(_selectedBuilding!);
     }
+  }
+
+  int? _currentPeriod() {
+    // 优先使用当前查询校区的时间表，各校区上课时间不同
+    final campusName = _selectedCampus?.campusName;
+    final campusSlots = campusName != null
+        ? ScheduleConfig.timeSlotsForCampusName(campusName)
+        : null;
+    final timeSlots =
+        campusSlots ?? getIt<CourseProvider>().scheduleConfig.value.timeSlots;
+    if (timeSlots.isEmpty) return null;
+
+    final now = DateTime.now();
+    final currentMinutes = now.hour * 60 + now.minute;
+
+    const preClassLeadMinutes = 15;
+
+    for (var index = 0; index < timeSlots.length; index++) {
+      final slot = timeSlots[index];
+      final startMinutes = slot.startTime.hour * 60 + slot.startTime.minute;
+      final endMinutes = slot.endTime.hour * 60 + slot.endTime.minute;
+      if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+        return index + 1;
+      }
+
+      if (index == 0 &&
+          currentMinutes >= startMinutes - preClassLeadMinutes &&
+          currentMinutes < startMinutes) {
+        return 1;
+      }
+
+      if (index + 1 < timeSlots.length) {
+        final nextSlot = timeSlots[index + 1];
+        final nextStartMinutes =
+            nextSlot.startTime.hour * 60 + nextSlot.startTime.minute;
+        if (currentMinutes >= endMinutes && currentMinutes < nextStartMinutes) {
+          return index + 2;
+        }
+      }
+    }
+    return null;
+  }
+
+  List<ClassroomInfo> _visibleRooms() {
+    final result = _queryResult;
+    if (result == null) return [];
+
+    final start = _filterPeriodStart;
+    final end = _filterPeriodEnd;
+    if (start == null || end == null || !_isToday) {
+      return result.classrooms;
+    }
+
+    return result.classrooms.where((room) {
+      final statusMap = result.periodStatusMap(room.classroomNumber);
+      for (int p = start; p <= end; p++) {
+        final status = statusMap[p];
+        if (status != null && status != ClassroomPeriodStatus.free) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
   }
 
   void _goBack() {
@@ -361,7 +435,9 @@ class _ClassroomPageState extends State<ClassroomPage> {
 
     if (_queryResult == null) return const SizedBox.shrink();
 
-    final rooms = _queryResult!.classrooms;
+    final currentPeriod = _currentPeriod();
+    final hasFilter = _filterPeriodStart != null;
+    final rooms = _visibleRooms();
 
     return Column(
       children: [
@@ -396,27 +472,74 @@ class _ClassroomPageState extends State<ClassroomPage> {
             ],
           ),
         ),
+        // ── 紧凑筛选栏 ─────────────────────────────────
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              ActionChip(
-                avatar: const Icon(Icons.calendar_today, size: 18),
-                label: Text(_formatDate(_selectedDate)),
-                onPressed: _pickDate,
-              ),
-              if (!_isToday) ...[
-                const SizedBox(width: 8),
-                ActionChip(label: Text(l10n.today), onPressed: _goToToday),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ActionChip(
+                  avatar: const Icon(Icons.calendar_today, size: 16),
+                  label: Text(_formatDate(_selectedDate)),
+                  onPressed: _pickDate,
+                  visualDensity: VisualDensity.compact,
+                ),
+                const SizedBox(width: 6),
+                if (!_isToday)
+                  ActionChip(
+                    label: Text(l10n.today),
+                    onPressed: _goToToday,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                if (!_isToday) const SizedBox(width: 6),
+                if (_isToday)
+                  FilterChip(
+                    avatar: const Icon(Icons.access_time, size: 16),
+                    label: Text(l10n.currentlyFree),
+                    selected:
+                        _filterPeriodStart == currentPeriod &&
+                        _filterPeriodEnd == currentPeriod,
+                    showCheckmark: false,
+                    visualDensity: VisualDensity.compact,
+                    onSelected: currentPeriod != null
+                        ? (selected) {
+                            setState(() {
+                              if (selected) {
+                                _filterPeriodStart = currentPeriod;
+                                _filterPeriodEnd = currentPeriod;
+                              } else {
+                                _clearPeriodFilter();
+                              }
+                            });
+                          }
+                        : null,
+                  ),
+                if (_isToday) const SizedBox(width: 6),
+                if (_isToday)
+                  ActionChip(
+                    avatar: const Icon(Icons.format_list_numbered, size: 16),
+                    label: Text(_periodRangeLabel(l10n)),
+                    onPressed: () => _showPeriodRangeDialog(l10n),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                if (hasFilter) ...[
+                  const SizedBox(width: 6),
+                  ActionChip(
+                    label: Text(l10n.clear),
+                    onPressed: _clearPeriodFilter,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
         Expanded(
           child: rooms.isEmpty
               ? Center(
                   child: Text(
-                    l10n.noData,
+                    hasFilter ? l10n.noFreeClassrooms : l10n.noData,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -456,7 +579,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppShapes.medium),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -518,18 +641,13 @@ class _ClassroomPageState extends State<ClassroomPage> {
   }
 
   Widget _buildErrorWidget(AppLocalizations l10n, VoidCallback onRetry) {
-    if (_error == 'notLoggedIn') {
+    if (_error == LoadErrorType.notLoggedIn) {
       if (getIt<ScuAuthProvider>().isAutoLoggingIn) {
         return const AutoLoginLoadingWidget();
       }
       return const LoginRequiredWidget();
     }
-    return RetryableErrorWidget(
-      message: _error == 'sessionExpired'
-          ? l10n.sessionExpired
-          : l10n.loadFailed,
-      onRetry: onRetry,
-    );
+    return RetryableErrorWidget(errorType: _error!, onRetry: onRetry);
   }
 
   String _periodTooltip(
@@ -586,6 +704,104 @@ class _ClassroomPageState extends State<ClassroomPage> {
         return Colors.purple;
       case ClassroomPeriodStatus.borrowed:
         return Colors.amber;
+    }
+  }
+
+  void _clearPeriodFilter() {
+    setState(() {
+      _filterPeriodStart = null;
+      _filterPeriodEnd = null;
+    });
+  }
+
+  String _periodRangeLabel(AppLocalizations l10n) {
+    if (_filterPeriodStart == null || _filterPeriodEnd == null) {
+      return l10n.periodUnlimited;
+    }
+    if (_filterPeriodStart == _filterPeriodEnd) {
+      return l10n.periodN(_filterPeriodStart!);
+    }
+    return '${l10n.periodN(_filterPeriodStart!)}-${l10n.periodN(_filterPeriodEnd!)}';
+  }
+
+  Future<void> _showPeriodRangeDialog(AppLocalizations l10n) async {
+    int start = _filterPeriodStart ?? 1;
+    int end = _filterPeriodEnd ?? 12;
+    final result = await showDialog<Map<String, int>>(
+      context: context,
+      builder: (context) {
+        final dialogL10n = AppLocalizations.of(context)!;
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(dialogL10n.period),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Text('${dialogL10n.periodStart}: '),
+                    DropdownButton<int>(
+                      value: start,
+                      items: List.generate(
+                        12,
+                        (i) => DropdownMenuItem(
+                          value: i + 1,
+                          child: Text(dialogL10n.periodN(i + 1)),
+                        ),
+                      ),
+                      onChanged: (v) {
+                        setDialogState(() {
+                          start = v!;
+                          if (start > end) end = start;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text('${dialogL10n.periodEnd}: '),
+                    DropdownButton<int>(
+                      value: end,
+                      items: List.generate(
+                        12,
+                        (i) => DropdownMenuItem(
+                          value: i + 1,
+                          child: Text(dialogL10n.periodN(i + 1)),
+                        ),
+                      ),
+                      onChanged: (v) {
+                        setDialogState(() {
+                          end = v!;
+                          if (end < start) start = end;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(dialogL10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () =>
+                    Navigator.pop(context, {'start': start, 'end': end}),
+                child: Text(dialogL10n.confirm),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (result != null) {
+      setState(() {
+        _filterPeriodStart = result['start']!;
+        _filterPeriodEnd = result['end']!;
+      });
     }
   }
 }

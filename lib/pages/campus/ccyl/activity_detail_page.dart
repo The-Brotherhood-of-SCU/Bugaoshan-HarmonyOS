@@ -1,16 +1,11 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:gal/gal.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart' show ShareParams, XFile, SharePlus;
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/ccyl_provider.dart';
-import 'package:bugaoshan/services/ccyl_service.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
-import 'package:photo_view/photo_view.dart';
+import 'package:bugaoshan/pages/campus/ccyl/models/ccyl_models.dart';
+import 'package:bugaoshan/widgets/common/image_viewer.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 class ActivityDetailPage extends StatefulWidget {
   final String activityId;
@@ -23,7 +18,7 @@ class ActivityDetailPage extends StatefulWidget {
 
 class _ActivityDetailPageState extends State<ActivityDetailPage> {
   bool _loading = true;
-  String? _error;
+  LoadErrorType? _error;
   CyclActivity? _activity;
   CyclActivityLib? _activityLib;
   bool _signedUp = false;
@@ -58,7 +53,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
       debugPrint('Activity detail load error: $e');
       if (!mounted) return;
       setState(() {
-        _error = 'ccylActivityLoadFailed';
+        _error = LoadErrorType.ccylActivityLoadFailed;
         _loading = false;
       });
     }
@@ -112,7 +107,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.ccylActionFailed),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
       return;
@@ -142,7 +137,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.ccylActionFailed),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
       return;
@@ -213,11 +208,11 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
           onPressed: _actionLoading ? null : _toggleSignUp,
           style: ElevatedButton.styleFrom(
             backgroundColor: _signedUp
-                ? Colors.red.shade100
-                : Colors.green.shade100,
+                ? Theme.of(context).colorScheme.errorContainer
+                : Theme.of(context).colorScheme.primaryContainer,
             foregroundColor: _signedUp
-                ? Colors.red.shade700
-                : Colors.green.shade700,
+                ? Theme.of(context).colorScheme.onErrorContainer
+                : Theme.of(context).colorScheme.onPrimaryContainer,
             minimumSize: const Size.fromHeight(48),
           ),
           child: _actionLoading
@@ -228,8 +223,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                 )
               : Text(
                   _signedUp ? l10n.ccylCancelSignUp : l10n.ccylSignUp,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -244,19 +238,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _getErrorMessage(l10n, _error!),
-              style: const TextStyle(color: Colors.red),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _loadData, child: Text(l10n.loadFailed)),
-          ],
-        ),
-      );
+      return RetryableErrorWidget(errorType: _error!, onRetry: _loadData);
     }
 
     if (_activity == null) {
@@ -292,9 +274,10 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
     }
 
     return GestureDetector(
-      onTap: () => _showFullScreenImage(context, _activity!.poster),
+      onTap: () =>
+          showFullScreenImageViewer(context, imageUrl: _activity!.poster),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppShapes.medium),
         child: Image.network(
           _activity!.poster,
           width: double.infinity,
@@ -311,152 +294,6 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
         ),
       ),
     );
-  }
-
-  void _showFullScreenImage(BuildContext context, String imageUrl) {
-    final l10n = AppLocalizations.of(context)!;
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
-            children: [
-              Center(
-                child: GestureDetector(
-                  onLongPress: () => _showImageActions(context, imageUrl, l10n),
-                  child: PhotoView(
-                    imageProvider: NetworkImage(imageUrl),
-                    minScale: PhotoViewComputedScale.contained,
-                    maxScale: PhotoViewComputedScale.covered * 3,
-                    backgroundDecoration: const BoxDecoration(
-                      color: Colors.black,
-                    ),
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Container(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          child: const Icon(
-                            Icons.image_not_supported,
-                            size: 64,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 8,
-                left: 8,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ),
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 8,
-                right: 8,
-                child: IconButton(
-                  icon: const Icon(Icons.more_vert, color: Colors.white),
-                  onPressed: () => _showImageActions(context, imageUrl, l10n),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showImageActions(
-    BuildContext context,
-    String imageUrl,
-    AppLocalizations l10n,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!AppPlatform.isHarmony)
-              ListTile(
-                leading: const Icon(Icons.save_alt),
-                title: Text(l10n.saveImageToGallery),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _saveImageToGallery(context, imageUrl, l10n);
-                },
-              ),
-            ListTile(
-              leading: const Icon(Icons.share),
-              title: Text(l10n.share),
-              onTap: () {
-                Navigator.pop(ctx);
-                _shareImage(context, imageUrl, l10n);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _saveImageToGallery(
-    BuildContext context,
-    String imageUrl,
-    AppLocalizations l10n,
-  ) async {
-    try {
-      final response = await http.get(Uri.parse(imageUrl));
-      if (response.statusCode != 200) throw Exception('Download failed');
-      await Gal.putImageBytes(response.bodyBytes);
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.imageSavedToGallery)));
-      }
-    } catch (e) {
-      debugPrint('Save image error: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.imageSaveFailed),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _shareImage(
-    BuildContext context,
-    String imageUrl,
-    AppLocalizations l10n,
-  ) async {
-    try {
-      final response = await http.get(Uri.parse(imageUrl));
-      if (response.statusCode != 200) throw Exception('Download failed');
-      final dir = await getTemporaryDirectory();
-      final file = File(
-        '${dir.path}/ccyl_image_${DateTime.now().millisecondsSinceEpoch}.jpg',
-      );
-      await file.writeAsBytes(response.bodyBytes);
-      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
-    } catch (e) {
-      debugPrint('Share image error: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.imageSaveFailed),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   Widget _buildHeader(AppLocalizations l10n) {
@@ -484,21 +321,20 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                   ),
                   decoration: BoxDecoration(
                     color: activity.status == 'A03'
-                        ? Colors.green.shade100
+                        ? Theme.of(context).colorScheme.primaryContainer
                         : activity.status == 'A05'
-                        ? Colors.blue.shade100
-                        : Colors.orange.shade100,
-                    borderRadius: BorderRadius.circular(4),
+                        ? Theme.of(context).colorScheme.secondaryContainer
+                        : Theme.of(context).colorScheme.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(AppShapes.xs),
                   ),
                   child: Text(
                     activity.statusName ?? activity.status,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: activity.status == 'A03'
-                          ? Colors.green.shade700
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
                           : activity.status == 'A05'
-                          ? Colors.blue.shade700
-                          : Colors.orange.shade700,
-                      fontSize: 12,
+                          ? Theme.of(context).colorScheme.onSecondaryContainer
+                          : Theme.of(context).colorScheme.onTertiaryContainer,
                     ),
                   ),
                 ),
@@ -650,8 +486,8 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: activity.isSignIn == '1'
-                        ? Colors.green
-                        : Colors.grey,
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outline,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -668,8 +504,8 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: activity.isSignOut == '1'
-                        ? Colors.green
-                        : Colors.grey,
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outline,
                   ),
                 ),
               ],
@@ -795,14 +631,5 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
         ],
       ),
     );
-  }
-
-  String _getErrorMessage(AppLocalizations l10n, String errorKey) {
-    switch (errorKey) {
-      case 'ccylActivityLoadFailed':
-        return l10n.ccylActivityLoadFailed;
-      default:
-        return l10n.loadFailed;
-    }
   }
 }

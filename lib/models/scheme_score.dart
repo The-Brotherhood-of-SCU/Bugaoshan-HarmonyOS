@@ -1,5 +1,6 @@
 class SchemeScoreItem {
   final String courseName;
+  final String? englishCourseName;
   final String courseAttributeName; // 必修/选修/任选
   final String credit;
   final String cj; // 原始成绩
@@ -9,9 +10,11 @@ class SchemeScoreItem {
   final String academicYearCode;
   final String termName; // 秋/春
   final bool passed; // gradeName != 'F'
+  final bool hasEffectiveScore; // courseScore >= 0 && gradePointScore >= 0
 
   const SchemeScoreItem({
     required this.courseName,
+    this.englishCourseName,
     required this.courseAttributeName,
     required this.credit,
     required this.cj,
@@ -21,21 +24,27 @@ class SchemeScoreItem {
     required this.academicYearCode,
     required this.termName,
     required this.passed,
+    required this.hasEffectiveScore,
   });
 
   factory SchemeScoreItem.fromJson(Map<String, dynamic> json) {
     final gradeName = json['gradeName']?.toString() ?? '';
+    final courseScore = (json['courseScore'] as num?)?.toDouble() ?? 0.0;
+    final gradePointScore =
+        (json['gradePointScore'] as num?)?.toDouble() ?? 0.0;
     return SchemeScoreItem(
       courseName: json['courseName']?.toString() ?? '',
+      englishCourseName: json['englishCourseName']?.toString(),
       courseAttributeName: json['courseAttributeName']?.toString() ?? '',
       credit: json['credit']?.toString() ?? '0',
       cj: json['cj']?.toString() ?? '',
-      courseScore: (json['courseScore'] as num?)?.toDouble() ?? 0.0,
-      gradePointScore: (json['gradePointScore'] as num?)?.toDouble() ?? 0.0,
+      courseScore: courseScore,
+      gradePointScore: gradePointScore,
       gradeName: gradeName,
       academicYearCode: json['academicYearCode']?.toString() ?? '',
       termName: json['termName']?.toString() ?? '',
       passed: gradeName != 'F' && gradeName.isNotEmpty,
+      hasEffectiveScore: courseScore >= 0 && gradePointScore >= 0,
     );
   }
 }
@@ -109,7 +118,7 @@ class SchemeScoreSummary {
     double totalCredits = 0;
     for (final item in items) {
       final credit = double.tryParse(item.credit) ?? 0;
-      if (credit > 0 && item.passed) {
+      if (credit > 0 && item.passed && item.hasEffectiveScore) {
         totalPoints += item.gradePointScore * credit;
         totalCredits += credit;
       }
@@ -122,7 +131,11 @@ class SchemeScoreSummary {
     double totalPoints = 0;
     double totalCredits = 0;
     for (final item in items) {
-      if (!item.passed || item.courseAttributeName != '必修') continue;
+      if (!item.passed ||
+          !item.hasEffectiveScore ||
+          item.courseAttributeName != '必修') {
+        continue;
+      }
       final credit = double.tryParse(item.credit) ?? 0;
       if (credit <= 0) continue;
       totalPoints += item.gradePointScore * credit;
@@ -134,7 +147,7 @@ class SchemeScoreSummary {
   /// 已修学分（仅计及格课程）
   double get earnedCredits {
     return items.fold(0.0, (sum, item) {
-      if (!item.passed) return sum;
+      if (!item.passed || !item.hasEffectiveScore) return sum;
       return sum + (double.tryParse(item.credit) ?? 0);
     });
   }
@@ -144,7 +157,7 @@ class SchemeScoreSummary {
     double totalScore = 0;
     double totalCredits = 0;
     for (final item in items) {
-      if (!item.passed) continue;
+      if (!item.passed || !item.hasEffectiveScore) continue;
       final credit = double.tryParse(item.credit) ?? 0;
       if (credit <= 0) continue;
       totalScore += item.courseScore * credit;
@@ -158,7 +171,11 @@ class SchemeScoreSummary {
     double totalScore = 0;
     double totalCredits = 0;
     for (final item in items) {
-      if (!item.passed || item.courseAttributeName != '必修') continue;
+      if (!item.passed ||
+          !item.hasEffectiveScore ||
+          item.courseAttributeName != '必修') {
+        continue;
+      }
       final credit = double.tryParse(item.credit) ?? 0;
       if (credit <= 0) continue;
       totalScore += item.courseScore * credit;
@@ -177,7 +194,11 @@ class SchemeScoreSummary {
   double get optionalCredits => _creditsByAttr('任选');
 
   double _creditsByAttr(String attr) => items.fold(0.0, (sum, item) {
-    if (!item.passed || item.courseAttributeName != attr) return sum;
+    if (!item.passed ||
+        !item.hasEffectiveScore ||
+        item.courseAttributeName != attr) {
+      return sum;
+    }
     return sum + (double.tryParse(item.credit) ?? 0);
   });
 }
@@ -185,18 +206,9 @@ class SchemeScoreSummary {
 /// 及格成绩 - 单学期分组
 class PassingScoreGroup {
   final String label; // cjlx，如 "2023-2024学年秋(两学期)"
-  final double yxxf;
-  final int tgms;
-  final int wtgms;
   final List<SchemeScoreItem> items;
 
-  const PassingScoreGroup({
-    required this.label,
-    required this.yxxf,
-    required this.tgms,
-    required this.wtgms,
-    required this.items,
-  });
+  const PassingScoreGroup({required this.label, required this.items});
 
   factory PassingScoreGroup.fromJson(Map<String, dynamic> json) {
     final items =
@@ -207,11 +219,38 @@ class PassingScoreGroup {
         [];
     return PassingScoreGroup(
       label: json['cjlx']?.toString() ?? '',
-      yxxf: (json['yxxf'] as num?)?.toDouble() ?? 0.0,
-      tgms: (json['tgms'] as num?)?.toInt() ?? 0,
-      wtgms: (json['wtgms'] as num?)?.toInt() ?? 0,
       items: items,
     );
+  }
+
+  double get yxxf {
+    double sum = 0;
+    for (final item in items) {
+      if (item.passed && item.hasEffectiveScore) {
+        sum += double.tryParse(item.credit) ?? 0;
+      }
+    }
+    return sum;
+  }
+
+  int get tgms {
+    int count = 0;
+    for (final item in items) {
+      if (item.passed && item.hasEffectiveScore) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  int get wtgms {
+    int count = 0;
+    for (final item in items) {
+      if (!item.passed) {
+        count++;
+      }
+    }
+    return count;
   }
 }
 
@@ -254,7 +293,7 @@ class PassingScoreResult {
     for (final g in groups) {
       for (final item in g.items) {
         final credit = double.tryParse(item.credit) ?? 0;
-        if (credit > 0 && item.passed) {
+        if (credit > 0 && item.passed && item.hasEffectiveScore) {
           totalPoints += item.gradePointScore * credit;
           totalCredits += credit;
         }
@@ -263,9 +302,29 @@ class PassingScoreResult {
     return totalCredits > 0 ? totalPoints / totalCredits : 0.0;
   }
 
-  double get totalCredits => groups.fold(0.0, (sum, g) => sum + g.yxxf);
+  double get totalCredits {
+    double sum = 0;
+    for (final g in groups) {
+      for (final item in g.items) {
+        if (item.passed && item.hasEffectiveScore) {
+          sum += double.tryParse(item.credit) ?? 0;
+        }
+      }
+    }
+    return sum;
+  }
 
-  int get totalPassed => groups.fold(0, (sum, g) => sum + g.tgms);
+  int get totalPassed {
+    int count = 0;
+    for (final g in groups) {
+      for (final item in g.items) {
+        if (item.passed && item.hasEffectiveScore) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
 
   /// 平均成绩：所有及格科目的学分加权平均分
   double get weightedAvgScore {
@@ -273,7 +332,7 @@ class PassingScoreResult {
     double totalCredits = 0;
     for (final g in groups) {
       for (final item in g.items) {
-        if (!item.passed) continue;
+        if (!item.passed || !item.hasEffectiveScore) continue;
         final credit = double.tryParse(item.credit) ?? 0;
         if (credit <= 0) continue;
         totalScore += item.courseScore * credit;
@@ -289,7 +348,11 @@ class PassingScoreResult {
     double totalCredits = 0;
     for (final g in groups) {
       for (final item in g.items) {
-        if (!item.passed || item.courseAttributeName != '必修') continue;
+        if (!item.passed ||
+            !item.hasEffectiveScore ||
+            item.courseAttributeName != '必修') {
+          continue;
+        }
         final credit = double.tryParse(item.credit) ?? 0;
         if (credit <= 0) continue;
         totalScore += item.courseScore * credit;

@@ -2,9 +2,11 @@
 
 import os
 import re
+import sys
 
 def main():
     version = os.environ.get("VERSION", "").lstrip("v")
+    is_prerelease = "-" in version
 
     with open("CHANGELOG.md", "r", encoding="utf-8") as f:
         content = f.read()
@@ -13,15 +15,26 @@ def main():
     start_idx = -1
     end_idx = len(lines)
 
-    pattern = rf"^##\s*\[?{re.escape(version)}\]?(?:\s*-\s*\d{{4}}-\d{{2}}-\d{{2}})?\s*$"
-
-    for i, line in enumerate(lines):
-        if re.match(pattern, line.strip(), re.IGNORECASE):
-            start_idx = i
-            break
+    if is_prerelease:
+        # Prerelease: use the latest (first) changelog section
+        for i, line in enumerate(lines):
+            if re.match(r"^##\s", line.strip()):
+                start_idx = i
+                break
+    else:
+        pattern = rf"^##\s*\[?{re.escape(version)}\]?(?:\s*-\s*\d{{4}}-\d{{2}}-\d{{2}})?\s*$"
+        for i, line in enumerate(lines):
+            if re.match(pattern, line.strip(), re.IGNORECASE):
+                start_idx = i
+                break
 
     if start_idx == -1:
-        changelog = "*No changelog entry for this version.*"
+        if is_prerelease:
+            changelog = "*No changelog entry for this version.*"
+        else:
+            print(f"::error::No changelog entry found for release version {version}. "
+                  "Please add a changelog entry before releasing.", file=sys.stderr)
+            sys.exit(1)
     else:
         for i in range(start_idx + 1, len(lines)):
             if re.match(r"^##\s", lines[i].strip()):
@@ -35,6 +48,10 @@ def main():
             changelog_lines.pop()
 
         changelog = "\n".join(changelog_lines) if changelog_lines else "*No changelog entry for this version.*"
+        if not is_prerelease and changelog.startswith("*No changelog"):
+            print(f"::error::Changelog entry for {version} is empty. "
+                  "Please add content before releasing.", file=sys.stderr)
+            sys.exit(1)
 
     output = os.environ.get("GITHUB_OUTPUT", "")
     if output:

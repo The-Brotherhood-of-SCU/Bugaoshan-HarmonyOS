@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/ccyl_provider.dart';
-import 'package:bugaoshan/services/ccyl_oauth_service.dart';
+import 'package:bugaoshan/services/auth/ccyl_oauth_service.dart';
+import 'package:bugaoshan/services/auth/scu_auth.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 class CcylBindPage extends StatefulWidget {
   const CcylBindPage({super.key});
@@ -12,9 +14,11 @@ class CcylBindPage extends StatefulWidget {
 }
 
 class _CcylBindPageState extends State<CcylBindPage> {
-  final _oauthService = CcylOAuthService();
+  late final CcylOAuthService _oauthService = CcylOAuthService(
+    getIt<ScuAuth>(),
+  );
   bool _loading = false;
-  String? _error;
+  Object? _error;
 
   Future<void> _doOAuthBind() async {
     if (!mounted) return;
@@ -43,7 +47,7 @@ class _CcylBindPageState extends State<CcylBindPage> {
       debugPrint('CCYL bind error: $e');
       if (mounted) {
         setState(() {
-          _error = 'ccylBindFailed';
+          _error = LoadErrorType.ccylBindFailed;
         });
       }
     } finally {
@@ -76,8 +80,12 @@ class _CcylBindPageState extends State<CcylBindPage> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Text(
-                  _getErrorMessage(l10n, _error!),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  _error is LoadErrorType
+                      ? (_error as LoadErrorType).message(l10n)
+                      : _error as String,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -104,14 +112,5 @@ class _CcylBindPageState extends State<CcylBindPage> {
         ),
       ),
     );
-  }
-
-  String _getErrorMessage(AppLocalizations l10n, String errorKey) {
-    switch (errorKey) {
-      case 'ccylBindFailed':
-        return l10n.ccylBindFailed;
-      default:
-        return l10n.loadFailed;
-    }
   }
 }

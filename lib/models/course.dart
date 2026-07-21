@@ -46,10 +46,6 @@ class ScheduleConfig {
   int breakDuration;
   bool autoSyncTime;
   List<TimeSlot> timeSlots;
-  bool showTeacherName;
-  bool showLocation;
-  bool showWeekend;
-  bool showNonCurrentWeekCourses;
 
   int get sectionsPerDay =>
       morningSections + afternoonSections + eveningSections;
@@ -66,10 +62,6 @@ class ScheduleConfig {
     this.breakDuration = 10,
     this.autoSyncTime = true,
     List<TimeSlot>? timeSlots,
-    this.showTeacherName = true,
-    this.showLocation = true,
-    this.showWeekend = false,
-    this.showNonCurrentWeekCourses = true,
   }) : timeSlots = timeSlots ?? _defaultTimeSlots(4, 5, 3, 45, 10);
 
   factory ScheduleConfig.fromJson(Map<String, dynamic> json) {
@@ -128,11 +120,6 @@ class ScheduleConfig {
             courseDuration,
             breakDuration,
           ),
-      showTeacherName: json['showTeacherName'] as bool? ?? true,
-      showLocation: json['showLocation'] as bool? ?? true,
-      showWeekend: json['showWeekend'] as bool? ?? false,
-      showNonCurrentWeekCourses:
-          json['showNonCurrentWeekCourses'] as bool? ?? true,
     );
   }
 
@@ -149,11 +136,127 @@ class ScheduleConfig {
     'breakDuration': breakDuration,
     'autoSyncTime': autoSyncTime,
     'timeSlots': timeSlots.map((e) => e.toJson()).toList(),
-    'showTeacherName': showTeacherName,
-    'showLocation': showLocation,
-    'showWeekend': showWeekend,
-    'showNonCurrentWeekCourses': showNonCurrentWeekCourses,
   };
+
+  /// 四川大学江安校区时间表预设（4-5-3）
+  static List<TimeSlot> get jiangAnTimeSlots => const [
+    // Morning
+    TimeSlot(
+      startTime: TimeOfDay(hour: 8, minute: 15),
+      endTime: TimeOfDay(hour: 9, minute: 0),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 9, minute: 10),
+      endTime: TimeOfDay(hour: 9, minute: 55),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 10, minute: 15),
+      endTime: TimeOfDay(hour: 11, minute: 0),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 11, minute: 10),
+      endTime: TimeOfDay(hour: 11, minute: 55),
+    ),
+    // Afternoon
+    TimeSlot(
+      startTime: TimeOfDay(hour: 13, minute: 50),
+      endTime: TimeOfDay(hour: 14, minute: 35),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 14, minute: 45),
+      endTime: TimeOfDay(hour: 15, minute: 30),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 15, minute: 40),
+      endTime: TimeOfDay(hour: 16, minute: 25),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 16, minute: 45),
+      endTime: TimeOfDay(hour: 17, minute: 30),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 17, minute: 40),
+      endTime: TimeOfDay(hour: 18, minute: 25),
+    ),
+    // Evening
+    TimeSlot(
+      startTime: TimeOfDay(hour: 19, minute: 20),
+      endTime: TimeOfDay(hour: 20, minute: 5),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 20, minute: 15),
+      endTime: TimeOfDay(hour: 21, minute: 0),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 21, minute: 10),
+      endTime: TimeOfDay(hour: 21, minute: 55),
+    ),
+  ];
+
+  /// 四川大学望江/华西校区时间表预设（4-5-3）
+  static List<TimeSlot> get wangJiangHuaXiTimeSlots => const [
+    TimeSlot(
+      startTime: TimeOfDay(hour: 8, minute: 0),
+      endTime: TimeOfDay(hour: 8, minute: 45),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 8, minute: 55),
+      endTime: TimeOfDay(hour: 9, minute: 40),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 10, minute: 0),
+      endTime: TimeOfDay(hour: 10, minute: 45),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 10, minute: 55),
+      endTime: TimeOfDay(hour: 11, minute: 40),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 14, minute: 0),
+      endTime: TimeOfDay(hour: 14, minute: 45),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 14, minute: 55),
+      endTime: TimeOfDay(hour: 15, minute: 40),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 15, minute: 50),
+      endTime: TimeOfDay(hour: 16, minute: 35),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 16, minute: 55),
+      endTime: TimeOfDay(hour: 17, minute: 40),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 17, minute: 50),
+      endTime: TimeOfDay(hour: 18, minute: 35),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 19, minute: 30),
+      endTime: TimeOfDay(hour: 20, minute: 15),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 20, minute: 25),
+      endTime: TimeOfDay(hour: 21, minute: 10),
+    ),
+    TimeSlot(
+      startTime: TimeOfDay(hour: 21, minute: 20),
+      endTime: TimeOfDay(hour: 22, minute: 5),
+    ),
+  ];
+
+  /// 根据校区名称返回对应的时间表预设。
+  ///
+  /// 匹配逻辑：校区名包含"江安" → 江安时间表；
+  /// 包含"望江"或"华西" → 望江/华西时间表；
+  /// 否则返回 null，调用方应使用全局配置作为兜底。
+  static List<TimeSlot>? timeSlotsForCampusName(String campusName) {
+    if (campusName.contains('江安')) return jiangAnTimeSlots;
+    if (campusName.contains('望江') || campusName.contains('华西')) {
+      return wangJiangHuaXiTimeSlots;
+    }
+    return null;
+  }
 
   static List<TimeSlot> _defaultTimeSlots(
     int morning,
@@ -164,61 +267,9 @@ class ScheduleConfig {
   ) {
     final slots = <TimeSlot>[];
 
-    // Check if it matches the standard 4-5-3 config to provide specific times
+    // Standard 4-5-3 → use the 江安 preset (most common SCU schedule)
     if (morning == 4 && afternoon == 5 && evening == 3) {
-      return [
-        // Morning
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 8, minute: 15),
-          endTime: const TimeOfDay(hour: 9, minute: 0),
-        ),
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 9, minute: 10),
-          endTime: const TimeOfDay(hour: 9, minute: 55),
-        ),
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 10, minute: 15),
-          endTime: const TimeOfDay(hour: 11, minute: 0),
-        ),
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 11, minute: 10),
-          endTime: const TimeOfDay(hour: 11, minute: 55),
-        ),
-        // Afternoon
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 13, minute: 50),
-          endTime: const TimeOfDay(hour: 14, minute: 35),
-        ),
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 14, minute: 45),
-          endTime: const TimeOfDay(hour: 15, minute: 30),
-        ),
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 15, minute: 40),
-          endTime: const TimeOfDay(hour: 16, minute: 25),
-        ),
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 16, minute: 45),
-          endTime: const TimeOfDay(hour: 17, minute: 30),
-        ),
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 17, minute: 40),
-          endTime: const TimeOfDay(hour: 18, minute: 25),
-        ),
-        // Evening
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 19, minute: 20),
-          endTime: const TimeOfDay(hour: 20, minute: 5),
-        ),
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 20, minute: 15),
-          endTime: const TimeOfDay(hour: 21, minute: 0),
-        ),
-        TimeSlot(
-          startTime: const TimeOfDay(hour: 21, minute: 10),
-          endTime: const TimeOfDay(hour: 21, minute: 55),
-        ),
-      ];
+      return List.of(jiangAnTimeSlots);
     }
 
     // Default generic logic if config is different
@@ -296,6 +347,26 @@ class ScheduleConfig {
     return week.clamp(1, totalWeeks);
   }
 
+  /// 返回指定教学周、星期对应的自然日。
+  ///
+  /// 课表允许将学期起点保存为周日；该周日属于第一教学周，随后一天
+  /// 才是第一周周一。因此不能直接用 [DateTimeExtension.toMonday]，否则
+  /// 周日起点会被归到前一周。
+  DateTime dateForCourseDay(int week, int dayOfWeek) {
+    final start = DateTime(
+      semesterStartDate.year,
+      semesterStartDate.month,
+      semesterStartDate.day,
+    );
+    final mondayOffset = (DateTime.monday - start.weekday) % 7;
+    final daysFromMonday = dayOfWeek == DateTime.sunday
+        ? -1
+        : dayOfWeek - DateTime.monday;
+    return start.add(
+      Duration(days: (week - 1) * 7 + mondayOffset + daysFromMonday),
+    );
+  }
+
   ScheduleConfig copyWith({
     String? id,
     String? semesterName,
@@ -308,10 +379,6 @@ class ScheduleConfig {
     int? breakDuration,
     bool? autoSyncTime,
     List<TimeSlot>? timeSlots,
-    bool? showTeacherName,
-    bool? showLocation,
-    bool? showWeekend,
-    bool? showNonCurrentWeekCourses,
   }) {
     return ScheduleConfig(
       id: id ?? this.id,
@@ -325,11 +392,6 @@ class ScheduleConfig {
       breakDuration: breakDuration ?? this.breakDuration,
       autoSyncTime: autoSyncTime ?? this.autoSyncTime,
       timeSlots: timeSlots ?? List.of(this.timeSlots),
-      showTeacherName: showTeacherName ?? this.showTeacherName,
-      showLocation: showLocation ?? this.showLocation,
-      showWeekend: showWeekend ?? this.showWeekend,
-      showNonCurrentWeekCourses:
-          showNonCurrentWeekCourses ?? this.showNonCurrentWeekCourses,
     );
   }
 }

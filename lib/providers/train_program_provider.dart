@@ -1,19 +1,16 @@
-import 'dart:convert';
-
 import 'package:flutter/widgets.dart';
 import 'package:bugaoshan/pages/campus/train_program/models/train_program.dart';
 import 'package:bugaoshan/pages/campus/train_program/models/train_program_model.dart';
-import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/scu_auth_service.dart';
-import 'package:bugaoshan/utils/constants.dart';
-import 'package:bugaoshan/utils/session_expiry_handler.dart';
+import 'package:bugaoshan/services/api/zhjw_api_service.dart';
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 enum TrainProgramLoadState { idle, loading, loaded, error }
 
 class TrainProgramProvider extends ChangeNotifier {
-  final ScuAuthProvider _authProvider;
+  final ZhjwApiService _zhjwApi;
 
-  TrainProgramProvider(this._authProvider);
+  TrainProgramProvider(this._zhjwApi);
 
   List<College> _colleges = [];
   List<Grade> _grades = [];
@@ -27,14 +24,16 @@ class TrainProgramProvider extends ChangeNotifier {
   TrainProgramLoadState _detailState = TrainProgramLoadState.idle;
   TrainProgramLoadState _courseDetailState = TrainProgramLoadState.idle;
 
-  String? _collegesError;
-  String? _gradesError;
-  String? _programsError;
-  String? _detailError;
-  String? _courseDetailError;
+  LoadErrorType? _collegesError;
+  LoadErrorType? _gradesError;
+  LoadErrorType? _programsError;
+  LoadErrorType? _detailError;
+  LoadErrorType? _courseDetailError;
 
   String? _selectedCollege;
   String? _selectedGrade;
+  int _detailGeneration = 0;
+  int _courseDetailGeneration = 0;
 
   List<College> get colleges => _colleges;
   List<Grade> get grades => _grades;
@@ -48,11 +47,11 @@ class TrainProgramProvider extends ChangeNotifier {
   TrainProgramLoadState get detailState => _detailState;
   TrainProgramLoadState get courseDetailState => _courseDetailState;
 
-  String? get collegesError => _collegesError;
-  String? get gradesError => _gradesError;
-  String? get programsError => _programsError;
-  String? get detailError => _detailError;
-  String? get courseDetailError => _courseDetailError;
+  LoadErrorType? get collegesError => _collegesError;
+  LoadErrorType? get gradesError => _gradesError;
+  LoadErrorType? get programsError => _programsError;
+  LoadErrorType? get detailError => _detailError;
+  LoadErrorType? get courseDetailError => _courseDetailError;
 
   String? get selectedCollege => _selectedCollege;
   String? get selectedGrade => _selectedGrade;
@@ -84,87 +83,32 @@ class TrainProgramProvider extends ChangeNotifier {
     _safeNotify();
 
     try {
-      final client = await _authProvider.service.bindSession();
-      try {
-        final resp = await client.get(
-          Uri.parse(
-            'http://zhjw.scu.edu.cn/student/comprehensiveQuery/search/trainProgram/index',
-          ),
-          headers: {
-            'Accept': 'text/html,*/*',
-            'Referer': 'http://zhjw.scu.edu.cn/',
-            'User-Agent': kDefaultUserAgent,
-          },
-        );
-
-        final body = resp.body;
-        _colleges = _parseOptions(body, 'xsh');
-        _grades = _parseGradeOptions(body, 'nj');
-
-        _collegesState = TrainProgramLoadState.loaded;
-        _gradesState = TrainProgramLoadState.loaded;
-      } finally {
-        client.close();
-      }
-    } on ScuLoginException catch (e) {
-      if (e.sessionExpired) {
-        await SessionExpiryHandler.handle(_authProvider);
-      }
+      // 学院和年级来自同一个页面，并行获取
+      final results = await Future.wait([
+        _zhjwApi.fetchColleges(),
+        _zhjwApi.fetchGrades(),
+      ]);
+      _colleges = results[0] as List<College>;
+      _grades = results[1] as List<Grade>;
+      _collegesState = TrainProgramLoadState.loaded;
+      _gradesState = TrainProgramLoadState.loaded;
+    } on UnauthenticatedException {
       _collegesState = TrainProgramLoadState.error;
       _gradesState = TrainProgramLoadState.error;
-      _collegesError = e.toString();
-      _gradesError = e.toString();
-    } catch (e) {
+      _collegesError = LoadErrorType.sessionExpired;
+      _gradesError = LoadErrorType.sessionExpired;
+    } on ServiceException catch (_) {
       _collegesState = TrainProgramLoadState.error;
       _gradesState = TrainProgramLoadState.error;
-      _collegesError = e.toString();
-      _gradesError = e.toString();
+      _collegesError = campusNetworkErrorType(LoadErrorType.loadFailed);
+      _gradesError = campusNetworkErrorType(LoadErrorType.loadFailed);
+    } catch (_) {
+      _collegesState = TrainProgramLoadState.error;
+      _gradesState = TrainProgramLoadState.error;
+      _collegesError = campusNetworkErrorType(LoadErrorType.loadFailed);
+      _gradesError = campusNetworkErrorType(LoadErrorType.loadFailed);
     }
     _safeNotify();
-  }
-
-  List<College> _parseOptions(String html, String selectId) {
-    final selectRegex = RegExp(
-      '''<select[^>]*name="$selectId"[^>]*>([\\s\\S]*?)</select>''',
-    );
-    final match = selectRegex.firstMatch(html);
-    if (match == null) return [];
-
-    final optionsRegex = RegExp(
-      '''<option[^>]*value="([^"]*)"[^>]*>(.*?)</option>''',
-    );
-    final options = optionsRegex.allMatches(match.group(1)!);
-    return options
-        .where((m) => m.group(1)!.isNotEmpty)
-        .map(
-          (m) => College(
-            value: m.group(1)!,
-            name: m.group(2)!.replaceAll(RegExp(r'<[^>]+>'), '').trim(),
-          ),
-        )
-        .toList();
-  }
-
-  List<Grade> _parseGradeOptions(String html, String selectId) {
-    final selectRegex = RegExp(
-      '''<select[^>]*name="$selectId"[^>]*>([\\s\\S]*?)</select>''',
-    );
-    final match = selectRegex.firstMatch(html);
-    if (match == null) return [];
-
-    final optionsRegex = RegExp(
-      '''<option[^>]*value="([^"]*)"[^>]*>(.*?)</option>''',
-    );
-    final options = optionsRegex.allMatches(match.group(1)!);
-    return options
-        .where((m) => m.group(1)!.isNotEmpty)
-        .map(
-          (m) => Grade(
-            value: m.group(1)!,
-            label: m.group(2)!.replaceAll(RegExp(r'<[^>]+>'), '').trim(),
-          ),
-        )
-        .toList();
   }
 
   Future<void> searchPrograms() async {
@@ -174,150 +118,91 @@ class TrainProgramProvider extends ChangeNotifier {
     _safeNotify();
 
     try {
-      final client = await _authProvider.service.bindSession();
-      try {
-        final resp = await client.post(
-          Uri.parse(
-            'http://zhjw.scu.edu.cn/student/comprehensiveQuery/search/trainProgram/load',
-          ),
-          headers: {
-            'Accept': 'application/json, */*',
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'Referer':
-                'http://zhjw.scu.edu.cn/student/comprehensiveQuery/search/trainProgram/index',
-            'User-Agent': kDefaultUserAgent,
-          },
-          body:
-              'famc=&jhmc=&nj=${_selectedGrade ?? ''}&xw=&xzlx=&xdlx=00001&xsh=${_selectedCollege ?? ''}&pageNum=1&pageSize=100',
-        );
-
-        final body = resp.body.trim();
-        if (body.startsWith('<')) {
-          throw ScuLoginException('登录已过期，请重新登录', sessionExpired: true);
-        }
-
-        final json = jsonDecode(body) as Map<String, dynamic>;
-        final records = json['data']['records'] as List<dynamic>? ?? [];
-        _programs = records
-            .map((e) => TrainProgram.fromJson(e as Map<String, dynamic>))
-            .toList();
-        _programsState = TrainProgramLoadState.loaded;
-      } finally {
-        client.close();
-      }
-    } on ScuLoginException catch (e) {
-      if (e.sessionExpired) {
-        await SessionExpiryHandler.handle(_authProvider);
-      }
+      _programs = await _zhjwApi.searchPrograms(
+        college: _selectedCollege,
+        grade: _selectedGrade,
+      );
+      _programsState = TrainProgramLoadState.loaded;
+    } on UnauthenticatedException {
       _programsState = TrainProgramLoadState.error;
-      _programsError = e.toString();
-    } catch (e) {
+      _programsError = LoadErrorType.sessionExpired;
+    } on ServiceException catch (_) {
       _programsState = TrainProgramLoadState.error;
-      _programsError = e.toString();
+      _programsError = campusNetworkErrorType(LoadErrorType.loadFailed);
+    } catch (_) {
+      _programsState = TrainProgramLoadState.error;
+      _programsError = campusNetworkErrorType(LoadErrorType.loadFailed);
     }
     _safeNotify();
   }
 
   Future<void> fetchProgramDetail(String fajhh) async {
-    if (_detailState == TrainProgramLoadState.loading) return;
+    final generation = ++_detailGeneration;
     _detailState = TrainProgramLoadState.loading;
     _detailError = null;
     _safeNotify();
 
     try {
-      final client = await _authProvider.service.bindSession();
-      try {
-        final resp = await client.post(
-          Uri.parse(
-            'http://zhjw.scu.edu.cn/student/comprehensiveQuery/search/trainProgram/detail',
-          ),
-          headers: {
-            'Accept': 'application/json, */*',
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'Referer':
-                'http://zhjw.scu.edu.cn/student/comprehensiveQuery/search/trainProgram/index',
-            'User-Agent': kDefaultUserAgent,
-          },
-          body: 'fajhh=$fajhh&lx=1',
-        );
-
-        final body = resp.body.trim();
-        if (body.startsWith('<')) {
-          throw ScuLoginException('登录已过期，请重新登录', sessionExpired: true);
-        }
-
-        final json = jsonDecode(body) as Map<String, dynamic>;
-        _currentDetail = TrainProgramDetail.fromJson(json);
-        _detailState = TrainProgramLoadState.loaded;
-      } finally {
-        client.close();
-      }
-    } on ScuLoginException catch (e) {
-      if (e.sessionExpired) {
-        await SessionExpiryHandler.handle(_authProvider);
-      }
+      final detail = await _zhjwApi.fetchProgramDetail(fajhh);
+      if (generation != _detailGeneration) return;
+      _currentDetail = detail;
+      _detailState = TrainProgramLoadState.loaded;
+    } on UnauthenticatedException {
+      if (generation != _detailGeneration) return;
       _detailState = TrainProgramLoadState.error;
-      _detailError = e.toString();
-    } catch (e) {
+      _detailError = LoadErrorType.sessionExpired;
+    } on ServiceException catch (_) {
+      if (generation != _detailGeneration) return;
       _detailState = TrainProgramLoadState.error;
-      _detailError = e.toString();
+      _detailError = campusNetworkErrorType(LoadErrorType.loadFailed);
+    } catch (_) {
+      if (generation != _detailGeneration) return;
+      _detailState = TrainProgramLoadState.error;
+      _detailError = campusNetworkErrorType(LoadErrorType.loadFailed);
     }
     _safeNotify();
   }
 
   void clearDetail() {
+    _detailGeneration++;
     _currentDetail = null;
     _detailState = TrainProgramLoadState.idle;
+    _detailError = null;
     _safeNotify();
   }
 
   Future<void> fetchCourseDetail(String urlPath) async {
-    if (_courseDetailState == TrainProgramLoadState.loading) return;
+    final generation = ++_courseDetailGeneration;
     _courseDetailState = TrainProgramLoadState.loading;
     _courseDetailError = null;
     _safeNotify();
 
     try {
-      final client = await _authProvider.service.bindSession();
-      try {
-        final fullUrl = 'http://zhjw.scu.edu.cn$urlPath';
-        final resp = await client.get(
-          Uri.parse(fullUrl),
-          headers: {
-            'Accept': 'application/json, */*',
-            'Referer':
-                'http://zhjw.scu.edu.cn/student/comprehensiveQuery/search/trainProgram/index',
-            'User-Agent': kDefaultUserAgent,
-          },
-        );
-
-        final body = resp.body.trim();
-        if (body.startsWith('<')) {
-          throw ScuLoginException('登录已过期，请重新登录', sessionExpired: true);
-        }
-
-        final json = jsonDecode(body) as Map<String, dynamic>;
-        _currentCourseDetail = CourseDetail.fromJson(json);
-        _courseDetailState = TrainProgramLoadState.loaded;
-      } finally {
-        client.close();
-      }
-    } on ScuLoginException catch (e) {
-      if (e.sessionExpired) {
-        await SessionExpiryHandler.handle(_authProvider);
-      }
+      final detail = await _zhjwApi.fetchCourseDetail(urlPath);
+      if (generation != _courseDetailGeneration) return;
+      _currentCourseDetail = detail;
+      _courseDetailState = TrainProgramLoadState.loaded;
+    } on UnauthenticatedException {
+      if (generation != _courseDetailGeneration) return;
       _courseDetailState = TrainProgramLoadState.error;
-      _courseDetailError = e.toString();
-    } catch (e) {
+      _courseDetailError = LoadErrorType.sessionExpired;
+    } on ServiceException catch (_) {
+      if (generation != _courseDetailGeneration) return;
       _courseDetailState = TrainProgramLoadState.error;
-      _courseDetailError = e.toString();
+      _courseDetailError = campusNetworkErrorType(LoadErrorType.loadFailed);
+    } catch (_) {
+      if (generation != _courseDetailGeneration) return;
+      _courseDetailState = TrainProgramLoadState.error;
+      _courseDetailError = campusNetworkErrorType(LoadErrorType.loadFailed);
     }
     _safeNotify();
   }
 
   void clearCourseDetail() {
+    _courseDetailGeneration++;
     _currentCourseDetail = null;
     _courseDetailState = TrainProgramLoadState.idle;
+    _courseDetailError = null;
     _safeNotify();
   }
 }

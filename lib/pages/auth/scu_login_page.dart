@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/scu_auth_service.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
+import 'package:bugaoshan/services/auth/scu_auth.dart' show CaptchaResult;
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
+import 'package:bugaoshan/services/ocr_service.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 
 class ScuLoginPage extends StatefulWidget {
   const ScuLoginPage({super.key});
@@ -32,6 +34,9 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
   @override
   void initState() {
     super.initState();
+    OcrService.init().catchError((e) {
+      debugPrint('OCR Init error: $e');
+    });
     _loadSaved();
     _loadCaptcha();
   }
@@ -41,6 +46,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     _captchaCtrl.dispose();
+    OcrService.dispose();
     super.dispose();
   }
 
@@ -48,32 +54,44 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
     final authProvider = getIt<ScuAuthProvider>();
     final credentials = await authProvider.getSavedCredentials();
     final autoLoginEnabled = await authProvider.isAutoLoginEnabled();
-    final effectiveAutoLogin = AppPlatform.supportsAutoLogin
-        ? autoLoginEnabled
-        : false;
     if (!mounted) return;
     if (credentials != null) {
       setState(() {
         _rememberPassword = true;
         _usernameCtrl.text = credentials['username']!;
         _passwordCtrl.text = credentials['password']!;
-        _autoLogin = effectiveAutoLogin;
+        _autoLogin = autoLoginEnabled;
       });
     } else {
-      setState(() => _autoLogin = effectiveAutoLogin);
+      setState(() => _autoLogin = autoLoginEnabled);
     }
   }
 
   Future<void> _loadCaptcha() async {
     setState(() => _captchaLoading = true);
     try {
-      final captcha = await getIt<ScuAuthProvider>().service.fetchCaptcha();
+      final captcha = await getIt<ScuAuthProvider>().fetchCaptcha();
+      String? recognizedText;
+      try {
+        final comma = captcha.captchaBase64.indexOf(',');
+        final raw = comma >= 0
+            ? captcha.captchaBase64.substring(comma + 1)
+            : captcha.captchaBase64;
+        final imageBytes = base64.decode(raw);
+        recognizedText = await OcrService.performOcr(imageBytes);
+      } catch (e) {
+        debugPrint('OCR error: $e');
+      }
 
       if (!mounted) return;
 
       setState(() {
         _captcha = captcha;
-        _captchaCtrl.clear();
+        if (recognizedText != null && recognizedText.isNotEmpty) {
+          _captchaCtrl.text = recognizedText;
+        } else {
+          _captchaCtrl.clear();
+        }
       });
     } catch (e) {
       debugPrint('Captcha load error: $e');
@@ -105,7 +123,6 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
 
     try {
       final authProvider = getIt<ScuAuthProvider>();
-      final effectiveAutoLogin = _autoLogin && AppPlatform.supportsAutoLogin;
       await authProvider.login(
         username: username,
         password: password,
@@ -115,7 +132,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
 
       if (_rememberPassword) {
         await authProvider.saveCredentials(username, password);
-        await authProvider.setAutoLogin(effectiveAutoLogin);
+        await authProvider.setAutoLogin(_autoLogin);
       } else {
         await authProvider.clearCredentials();
         await authProvider.setAutoLogin(false);
@@ -124,9 +141,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
       if (!logicRootContext.mounted) return;
       Navigator.of(logicRootContext).pop(true);
     } on ScuLoginException catch (e) {
-      debugPrint(
-        'Login failed: ${e.message} (sessionExpired=${e.sessionExpired})',
-      );
+      debugPrint('Login failed: ${e.message}');
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() => _errorMsg = _localizeLoginError(e, l10n));
@@ -143,7 +158,6 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
   }
 
   String _localizeLoginError(ScuLoginException e, AppLocalizations l10n) {
-    if (e.sessionExpired) return l10n.sessionExpiredMessage;
     switch (e.message) {
       case 'invalid_captcha':
         return l10n.invalidCaptcha;
@@ -170,7 +184,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
       Container(
         width: 88,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppShapes.medium),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
@@ -180,8 +194,8 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset('assets/scu.jpg', fit: BoxFit.cover),
+          borderRadius: BorderRadius.circular(AppShapes.medium),
+          child: Image.asset('assets/scu.webp', fit: BoxFit.cover),
         ),
       ),
       const SizedBox(height: 2),
@@ -234,9 +248,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
             value: _rememberPassword,
             onChanged: (v) => setState(() {
               _rememberPassword = v ?? false;
-              if (!_rememberPassword || !AppPlatform.supportsAutoLogin) {
-                _autoLogin = false;
-              }
+              if (!_rememberPassword) _autoLogin = false;
             }),
           ),
           Text(l10n.rememberPassword),
@@ -247,9 +259,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
           children: [
             Checkbox(
               value: _autoLogin,
-              onChanged: AppPlatform.supportsAutoLogin
-                  ? (v) => setState(() => _autoLogin = v ?? false)
-                  : null,
+              onChanged: (v) => setState(() => _autoLogin = v ?? false),
             ),
             Text(l10n.autoLogin),
           ],
@@ -257,7 +267,9 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
       if (_errorMsg != null)
         Text(
           _errorMsg!,
-          style: TextStyle(color: Theme.of(context).colorScheme.error),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.error,
+          ),
           textAlign: TextAlign.center,
         ),
       FilledButton(
@@ -274,6 +286,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _DisclaimerRow('· ${l10n.scuLoginDisclaimerPwd}'),
+          _DisclaimerRow('· ${l10n.scuLoginDisclaimerOcr}'),
           _DisclaimerRow('· ${l10n.scuLoginDisclaimerPrivacy}'),
         ],
       ),
@@ -369,7 +382,7 @@ class _CaptchaRow extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               border: Border.all(color: Theme.of(context).dividerColor),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppShapes.xs),
             ),
             child: loading
                 ? const Center(
@@ -381,7 +394,7 @@ class _CaptchaRow extends StatelessWidget {
                   )
                 : captcha != null
                 ? ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(AppShapes.small),
                     child: Image.memory(
                       _decodeBase64Image(captcha!.captchaBase64),
                       fit: BoxFit.contain,

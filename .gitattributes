@@ -1,6 +1,5 @@
 # Set the default behavior, in case people don't have core.autocrlf set.
 * text=auto eol=lf
-
 # Explicitly declare text files you want to always be LF
 *.dart text eol=lf
 *.yaml text eol=lf
@@ -17,7 +16,6 @@
 *.cmake text eol=lf
 *.txt text eol=lf
 *.arb text eol=lf
-
 # Denote all files that are truly binary and should not be modified.
 *.png binary
 *.jpg binary
@@ -39,3 +37,4 @@
 *.woff2 binary
 *.eot binary
 *.pdf binary
+screenshot/**/* filter=lfs diff=lfs merge=lfs -text

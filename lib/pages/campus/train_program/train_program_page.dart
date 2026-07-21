@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/campus/train_program/models/train_program.dart';
@@ -6,7 +7,7 @@ import 'package:bugaoshan/providers/train_program_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
-import 'package:bugaoshan/widgets/common/error_widgets.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/info_row.dart';
 
 class TrainProgramPage extends StatefulWidget {
@@ -204,7 +205,7 @@ class _TrainProgramPageState extends State<TrainProgramPage> {
         child: CircularProgressIndicator(),
       ),
       TrainProgramLoadState.error => RetryableErrorWidget(
-        message: _provider.programsError ?? l10n.trainProgramLoadFailed,
+        errorType: _provider.programsError!,
         onRetry: () => _provider.searchPrograms(),
         iconSize: 56,
       ),
@@ -230,7 +231,7 @@ class _TrainProgramPageState extends State<TrainProgramPage> {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppShapes.small),
                         ),
                         child: Icon(
                           Icons.school_outlined,
@@ -302,7 +303,7 @@ class _TrainProgramDetailPageState extends State<TrainProgramDetailPage> {
             TrainProgramLoadState.idle || TrainProgramLoadState.loading =>
               const Center(child: CircularProgressIndicator()),
             TrainProgramLoadState.error => RetryableErrorWidget(
-              message: _provider.detailError ?? l10n.trainProgramLoadFailed,
+              errorType: _provider.detailError!,
               onRetry: () => _provider.fetchProgramDetail(widget.fajhh),
               iconSize: 56,
             ),
@@ -493,12 +494,16 @@ class _TrainProgramDetailPageState extends State<TrainProgramDetailPage> {
         ),
         title: Text(plainName, style: Theme.of(context).textTheme.bodyMedium),
         dense: true,
-        onTap: () => _showCourseDetail(context, node.urlPath),
+        onTap: () => _showCourseDetail(context, node.urlPath, plainName),
       );
     }
   }
 
-  void _showCourseDetail(BuildContext context, String urlPath) {
+  void _showCourseDetail(
+    BuildContext context,
+    String urlPath,
+    String? fallbackName,
+  ) {
     _provider.fetchCourseDetail(urlPath);
     showModalBottomSheet(
       context: context,
@@ -516,7 +521,7 @@ class _TrainProgramDetailPageState extends State<TrainProgramDetailPage> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
+                    top: Radius.circular(AppShapes.large),
                   ),
                 ),
                 child: Column(
@@ -527,13 +532,14 @@ class _TrainProgramDetailPageState extends State<TrainProgramDetailPage> {
                       height: 4,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        borderRadius: BorderRadius.circular(2),
+                        borderRadius: BorderRadius.circular(AppShapes.small),
                       ),
                     ),
                     Expanded(
                       child: _buildCourseDetailContent(
                         context,
                         scrollController,
+                        fallbackName,
                       ),
                     ),
                   ],
@@ -549,19 +555,19 @@ class _TrainProgramDetailPageState extends State<TrainProgramDetailPage> {
   Widget _buildCourseDetailContent(
     BuildContext context,
     ScrollController scrollController,
+    String? fallbackName,
   ) {
-    final l10n = AppLocalizations.of(context)!;
-
     return switch (_provider.courseDetailState) {
       TrainProgramLoadState.idle || TrainProgramLoadState.loading =>
         const Center(child: CircularProgressIndicator()),
       TrainProgramLoadState.error => RetryableErrorWidget(
-        message: _provider.courseDetailError ?? l10n.trainProgramLoadFailed,
+        errorType: _provider.courseDetailError!,
         onRetry: () => Navigator.pop(context),
       ),
       TrainProgramLoadState.loaded => _buildCourseDetailLoaded(
         context,
         scrollController,
+        fallbackName,
       ),
     };
   }
@@ -569,6 +575,7 @@ class _TrainProgramDetailPageState extends State<TrainProgramDetailPage> {
   Widget _buildCourseDetailLoaded(
     BuildContext context,
     ScrollController scrollController,
+    String? fallbackName,
   ) {
     final l10n = AppLocalizations.of(context)!;
     final detail = _provider.currentCourseDetail!;
@@ -585,7 +592,7 @@ class _TrainProgramDetailPageState extends State<TrainProgramDetailPage> {
             children: [
               Expanded(
                 child: Text(
-                  kc.kcm,
+                  kc.kcm == '' ? fallbackName ?? '' : kc.kcm,
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
@@ -784,7 +791,7 @@ class _TrainProgramDetailPageState extends State<TrainProgramDetailPage> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppShapes.xs),
       ),
       child: Text(
         '$label:$value',

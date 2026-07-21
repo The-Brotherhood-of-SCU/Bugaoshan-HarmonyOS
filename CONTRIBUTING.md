@@ -4,7 +4,7 @@
 
 ## 📥 下载体验
 
-**前往 [Release 页面](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases) 下载最新版本**
+**前往 [Release 页面](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/latest) 下载最新版本**
 
 ---
 
@@ -12,33 +12,37 @@
 
 ### 环境要求
 
-- [Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.x
-- [Dart SDK](https://dart.dev/get-dart) >= 3.x
-- HarmonyOS 使用 CPF Flutter 3.41.9，具体版本和环境配置见 [HarmonyOS 开发指南](docs/HARMONYOS.md)
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.44（Dart SDK 3.10+）
+- [Dart SDK](https://dart.dev/get-dart) >= 3.10.4
 - [Nuget CLI](https://learn.microsoft.com/en-us/nuget/install-nuget-client-tools?tabs=windows#nugetexe-cli)  required by `flutter_inappwebview` (windows target)
-
-### Pre-commit Hook
-
-项目内置了 pre-commit hook，会在提交时自动对暂存的 `.dart` 文件执行 `dart format`。
-
-克隆仓库后，将 hook 链接到 `.git/hooks/`：
-
-```bash
-# Linux / macOS
-ln -sf ../../.githooks/pre-commit .git/hooks/pre-commit
-
-# Windows (Git Bash)
-cp .githooks/pre-commit .git/hooks/pre-commit
-```
 
 ### 安装运行
 
 ```bash
 # 克隆仓库
 git clone git@github.com:The-Brotherhood-of-SCU/Bugaoshan.git
+# 或
+git clone https://github.com/The-Brotherhood-of-SCU/Bugaoshan.git
+
 cd Bugaoshan
 ```
 
+> #### Pre-commit Hook
+>
+> 项目内置了 pre-commit hook，会在提交时自动对暂存的 `.dart` 文件执行 `dart format`。
+>
+> 克隆仓库后，将 hook 链接或复制到 `.git/hooks/`：
+>
+> ```bash
+> # Linux / macOS
+> ln -sf .githooks/pre-commit .git/hooks/pre-commit
+>
+> # Windows (Git Bash)
+> cp .githooks/pre-commit .git/hooks/pre-commit
+> ```
+
+> #### 设置镜像源
+>
 > 安装依赖前设置国内镜像源，否则 `pubspec.lock` 会变国际源，导致工作区产生不必要的 diff。
 >
 > 持久化设置：
@@ -58,21 +62,10 @@ cd Bugaoshan
 flutter pub get
 
 # 运行代码生成（DI & 国际化）
-dart run build_runner build
+flutter pub run build_runner build --delete-conflicting-outputs
 
 # 运行 App
 flutter run
-```
-
-HarmonyOS 构建：
-
-```bash
-# CI/编译验证，无需签名
-cp ohos/build-profile.json5.example ohos/build-profile.json5
-flutter build hap --debug --no-codesign
-
-# DevEco Studio 配置自动签名后运行真机
-flutter run --debug -d <device-id>
 ```
 
 ---
@@ -97,16 +90,16 @@ lib/
 
 ## 🛠️ 技术栈
 
-| 类别 | 技术 |
-|------|------|
-| 框架 | [Flutter](https://flutter.dev) |
-| 状态管理 | Provider / ChangeNotifier |
-| 依赖注入 | [GetIt](https://pub.dev/packages/get_it) + [Injectable](https://pub.dev/packages/injectable) |
-| 网络请求 | [Dio](https://pub.dev/packages/dio) + Cookie Manager |
+| 类别     | 技术                                                                                                         |
+| -------- | ------------------------------------------------------------------------------------------------------------ |
+| 框架     | [Flutter](https://flutter.dev)                                                                               |
+| 状态管理 | Provider / ChangeNotifier                                                                                    |
+| 依赖注入 | [GetIt](https://pub.dev/packages/get_it) + [Injectable](https://pub.dev/packages/injectable)                 |
+| 网络请求 | [Dio](https://pub.dev/packages/dio) + Cookie Manager                                                         |
 | 本地存储 | [SQLite](https://pub.dev/packages/sqflite)、[SharedPreferences](https://pub.dev/packages/shared_preferences) |
-| 国际化 | Flutter `flutter_localizations` |
-| 国密算法 | [dart_sm](https://pub.dev/packages/dart_sm)（SM2/SM3/SM4） |
-| OCR | [flutter_litert](https://pub.dev/packages/flutter_litert)（TFLite 模型） |
+| 国际化   | Flutter `flutter_localizations`                                                                              |
+| 国密算法 | [dart_sm](https://pub.dev/packages/dart_sm)（SM2/SM3/SM4）                                                   |
+| OCR      | [scu_ocr_lite](https://github.com/The-Brotherhood-of-SCU/scu_ocr_lite_dart)（纯 Dart 实现）                  |
 
 ---
 

@@ -1,17 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
-import 'package:bugaoshan/models/dock_item_config.dart';
+import 'package:bugaoshan/models/campus_item_config.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/app_info_provider.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/update_service.dart';
+import 'package:bugaoshan/providers/update_provider.dart';
+import 'package:bugaoshan/services/auth/auth_coordinator.dart';
 import 'package:bugaoshan/services/widget_update_service.dart';
 import 'package:bugaoshan/utils/constants.dart';
-import 'package:bugaoshan/utils/dock_utils.dart';
 import 'package:bugaoshan/utils/platform_utils.dart';
-import 'package:bugaoshan/widgets/dialog/eula_dialog.dart';
+import 'package:bugaoshan/widgets/common/auth_scoped_indexed_stack.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,26 +25,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final _courseProvider = getIt<CourseProvider>();
-  final Map<String, Widget> _pageCache = {};
-
-  /// Lazily builds and returns an [IndexedStack] of all visited pages.
-  /// Only the page at [selectedIndex] is visible; others are kept alive.
-  Widget _buildIndexedStack(List<String> visibleIds, int selectedIndex) {
-    for (final id in visibleIds) {
-      _pageCache.putIfAbsent(id, () => buildDockPage(id));
-    }
-    // Clean up pages no longer visible
-    _pageCache.keys
-        .where((id) => !visibleIds.contains(id))
-        .toList()
-        .forEach(_pageCache.remove);
-    return IndexedStack(
-      index: selectedIndex.clamp(0, visibleIds.length - 1),
-      children: visibleIds.map((id) => _pageCache[id]!).toList(),
-    );
-  }
-
-  bool _eulaChecked = false;
 
   @override
   void initState() {
@@ -52,27 +34,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _attemptAutoLogin();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_eulaChecked) {
-      _eulaChecked = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _checkEulaAgreement();
-      });
-    }
-  }
-
-  Future<void> _checkEulaAgreement() async {
-    if (!mounted) return;
-    await ensureEulaAgreement(context);
-  }
-
   Future<void> _attemptAutoLogin() async {
     try {
       await getIt.isReady<ScuAuthProvider>();
       final authProvider = getIt<ScuAuthProvider>();
-      if (authProvider.isLoggedIn) return;
+      if (authProvider.isLoggedIn) {
+        unawaited(getIt<AuthCoordinator>().warmUpAll());
+        return;
+      }
       await authProvider.autoLogin();
     } catch (e) {
       debugPrint('Auto login attempt error: $e');
@@ -80,18 +49,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _checkForUpdateInBackground() async {
+    if (AppPlatform.isHarmony) return;
     try {
       await Future.wait([
         getIt.isReady<AppInfoProvider>(),
-        getIt.isReady<UpdateService>(),
+        getIt.isReady<UpdateProvider>(),
         getIt.isReady<AppConfigProvider>(),
       ]);
-      final updateService = getIt<UpdateService>();
-      final appInfo = getIt<AppInfoProvider>();
+      final updateProvider = getIt<UpdateProvider>();
       final appConfig = getIt<AppConfigProvider>();
-      final result = await updateService.checkStableUpdate(
-        appInfo.currentVersion,
-      );
+      final result = await updateProvider.checkForUpdate();
       if (result.hasUpdate) {
         appConfig.hasUpdateNotification.value = true;
       }
@@ -111,11 +78,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
-  void _updateWidget() {
+  Future<void> _updateWidget() async {
     if (AppPlatform.supportsHomeWidget) {
       try {
-        getIt<WidgetUpdateService>().updateWidgetData();
-      } catch (_) {}
+        await getIt<WidgetUpdateService>().updateWidgetData();
+      } catch (e) {
+        debugPrint('Widget update failed: $e');
+      }
     }
   }
 
@@ -125,12 +94,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildUpdateBadge({required Widget child, required bool showBadge}) {
-    if (!showBadge) return child;
+    if (AppPlatform.isHarmony || !showBadge) return child;
     return Badge(child: child);
   }
 
   Widget _buildMainScreen() {
     final appConfig = getIt<AppConfigProvider>();
+    final authProvider = getIt<ScuAuthProvider>();
     final l10n = AppLocalizations.of(context)!;
 
     return ValueListenableBuilder<List<String>>(
@@ -146,9 +116,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 final isWide = constraints.maxWidth >= 600;
                 final showRail = isWide && visibleIds.length >= 2;
                 final showBar = !isWide && visibleIds.length >= 2;
-                final pageContent = _buildIndexedStack(
-                  visibleIds,
-                  _currentIndex,
+                final pageContent = AuthScopedIndexedStack(
+                  authListenable: authProvider,
+                  isAuthenticated: () => authProvider.isLoggedIn,
+                  visibleIds: visibleIds,
+                  selectedIndex: _currentIndex,
+                  pageBuilder: (id) => campusItemConfigById(id).page(),
                 );
                 return Scaffold(
                   body: Row(
@@ -216,7 +189,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     bool hasUpdate,
     AppLocalizations l10n,
   ) {
-    final config = dockConfigById(id);
+    final config = campusItemConfigById(id);
     final isProfile = id == dockIdProfile;
     return NavigationRailDestination(
       icon: isProfile
@@ -228,7 +201,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               child: Icon(config.selectedIcon),
             )
           : Icon(config.selectedIcon),
-      label: Text(dockLabel(id, l10n)),
+      label: Text(config.dockLabel(l10n)),
     );
   }
 
@@ -237,7 +210,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     bool hasUpdate,
     AppLocalizations l10n,
   ) {
-    final config = dockConfigById(id);
+    final config = campusItemConfigById(id);
     final isProfile = id == dockIdProfile;
     return NavigationDestination(
       icon: isProfile
@@ -249,7 +222,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               child: Icon(config.selectedIcon),
             )
           : Icon(config.selectedIcon),
-      label: dockLabel(id, l10n),
+      label: config.dockLabel(l10n),
+      tooltip: '',
     );
   }
 

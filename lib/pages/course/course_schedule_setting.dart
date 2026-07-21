@@ -4,11 +4,15 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/pages/course/time_slot_setting_page.dart';
+import 'package:bugaoshan/pages/settings/set_course_style_page.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/scu_auth_service.dart';
-import 'package:bugaoshan/utils/session_expiry_handler.dart';
-import 'package:bugaoshan/widgets/common/styled_card.dart';
+import 'package:bugaoshan/services/api/zhjw_api_service.dart';
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
+import 'package:bugaoshan/widgets/common/info_card.dart';
+import 'package:bugaoshan/widgets/common/styled_tile.dart';
+import 'package:bugaoshan/widgets/route/router_utils.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 
 class CourseScheduleSetting extends StatefulWidget {
   const CourseScheduleSetting({super.key});
@@ -30,10 +34,6 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
   late int _breakDuration;
   late bool _autoSyncTime;
   late List<TimeSlot> _timeSlots;
-  late bool _showTeacher;
-  late bool _showLocation;
-  late bool _showWeekend;
-  late bool _showNonCurrentWeekCourses;
   bool _fetchingCurrentWeek = false;
 
   void _loadConfig() {
@@ -47,10 +47,6 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
     _breakDuration = config.breakDuration;
     _autoSyncTime = config.autoSyncTime;
     _timeSlots = List.from(config.timeSlots);
-    _showTeacher = config.showTeacherName;
-    _showLocation = config.showLocation;
-    _showWeekend = config.showWeekend;
-    _showNonCurrentWeekCourses = config.showNonCurrentWeekCourses;
   }
 
   @override
@@ -63,9 +59,8 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
     if (!authProvider.isLoggedIn) return;
     setState(() => _fetchingCurrentWeek = true);
     try {
-      final week = await authProvider.service.fetchCurrentWeek();
+      final week = await getIt<ZhjwApiService>().fetchCurrentWeek();
       if (!mounted) return;
-      // 根据获取到的周数反推学期开始日期（教务系统以周日为每周第一天）
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final currentSunday = today.toSunday();
@@ -76,15 +71,11 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
         _startDate = newStartDate;
       });
       _save();
-    } on ScuLoginException catch (e) {
+    } on ScuException catch (e) {
       if (!mounted) return;
-      if (e.sessionExpired) {
-        await SessionExpiryHandler.handle(authProvider, context: context);
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
-      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -96,117 +87,76 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
   }
 
   @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.scheduleSetting)),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 16,
-          children: [
-            // Semester config section
-            _SectionTitle(l10n.semesterConfig),
-            _DatePickerField(
-              label: l10n.semesterStartDate,
-              date: _startDate,
-              onTap: () => _pickDate(context),
-            ),
-            _buildSetCurrentWeekField(context, l10n),
-            _buildAutoFetchWeekButton(context, l10n),
-            _buildTotalWeeksPicker(context, l10n),
-            const Divider(),
-            // Time slots
-            _SectionTitle(l10n.timeSlot),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.timeSlot),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => TimeSlotSettingPage(
-                      morningSections: _morningSections,
-                      afternoonSections: _afternoonSections,
-                      eveningSections: _eveningSections,
-                      initialCourseDuration: _courseDuration,
-                      initialBreakDuration: _breakDuration,
-                      initialAutoSyncTime: _autoSyncTime,
-                      initialTimeSlots: _timeSlots,
-                    ),
-                  ),
-                );
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        children: [
+          // Semester config section
+          _SectionTitle(title: l10n.semesterConfig),
+          _buildSemesterConfigGroup(context, l10n),
+          const SizedBox(height: 14),
 
-                if (mounted) {
-                  setState(() {
-                    _loadConfig();
-                  });
-                }
-              },
-            ),
-            const Divider(),
-            // Display settings
-            _SectionTitle(l10n.displaySetting),
-            // Show teacher
-            SwitchListTile(
-              title: Text(l10n.showTeacher),
-              value: _showTeacher,
-              onChanged: (v) {
-                setState(() => _showTeacher = v);
-                _save();
-              },
-              contentPadding: EdgeInsets.zero,
-            ),
-            // Show location
-            SwitchListTile(
-              title: Text(l10n.showLocation),
-              value: _showLocation,
-              onChanged: (v) {
-                setState(() => _showLocation = v);
-                _save();
-              },
-              contentPadding: EdgeInsets.zero,
-            ),
-            // Show weekend
-            SwitchListTile(
-              title: Text(l10n.showWeekend),
-              value: _showWeekend,
-              onChanged: (v) {
-                setState(() => _showWeekend = v);
-                _save();
-              },
-              contentPadding: EdgeInsets.zero,
-            ),
-            // Show non-current week courses
-            SwitchListTile(
-              title: Text(l10n.showNonCurrentWeekCourses),
-              value: _showNonCurrentWeekCourses,
-              onChanged: (v) {
-                setState(() => _showNonCurrentWeekCourses = v);
-                _save();
-              },
-              contentPadding: EdgeInsets.zero,
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
+          // Time slots
+          _SectionTitle(title: l10n.timeSlot),
+          InfoCard(
+            children: [
+              IconTile(
+                icon: Icons.schedule_rounded,
+                label: l10n.timeSlot,
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TimeSlotSettingPage(
+                        morningSections: _morningSections,
+                        afternoonSections: _afternoonSections,
+                        eveningSections: _eveningSections,
+                        initialCourseDuration: _courseDuration,
+                        initialBreakDuration: _breakDuration,
+                        initialAutoSyncTime: _autoSyncTime,
+                        initialTimeSlots: _timeSlots,
+                      ),
+                    ),
+                  );
+                  if (mounted) {
+                    setState(() {
+                      _loadConfig();
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Course style entry
+          _SectionTitle(title: l10n.courseStyleSetting),
+          InfoCard(
+            children: [
+              IconTile(
+                icon: Icons.style,
+                label: l10n.courseStyleSetting,
+                onTap: () =>
+                    popupOrNavigate(context, const SetCourseStylePage()),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
 
-  Widget _buildSetCurrentWeekField(
+  Widget _buildSemesterConfigGroup(
     BuildContext context,
     AppLocalizations l10n,
   ) {
-    // Calculate current week based on _startDate
+    final theme = Theme.of(context);
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final diff = today.difference(_startDate).inDays;
@@ -214,83 +164,102 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
     if (currentWeek < 1) currentWeek = 1;
     if (currentWeek > _totalWeeks) currentWeek = _totalWeeks;
 
-    return StyledCard(
-      onTap: () => _pickCurrentWeek(context, currentWeek, l10n),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.setCurrentWeek),
-                const SizedBox(height: 2),
-                Text(
-                  l10n.setCurrentWeekHint,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            l10n.currentWeek(currentWeek),
-            style: TextStyle(color: Theme.of(context).colorScheme.primary),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAutoFetchWeekButton(
-    BuildContext context,
-    AppLocalizations l10n,
-  ) {
     final isLoggedIn = authProvider.isLoggedIn;
-    return StyledCard(
-      onTap: isLoggedIn && !_fetchingCurrentWeek ? _fetchCurrentWeek : null,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.autoFetchCurrentWeek,
-                  style: TextStyle(
-                    color: isLoggedIn
-                        ? null
-                        : Theme.of(context).colorScheme.outline,
-                  ),
+    final totalWeeksTitle = l10n.totalWeeks(20).split(':')[0];
+    final divider = Divider(
+      height: 1,
+      indent: 0,
+      color: theme.dividerColor.withValues(alpha: 0.08),
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.08)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _SemesterRow(
+              label: l10n.semesterStartDate,
+              trailing: Text(
+                '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  isLoggedIn
-                      ? l10n.autoFetchCurrentWeekHint
-                      : l10n.loginRequired,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
+              ),
+              onTap: () => _pickDate(context),
+            ),
+            divider,
+            _SemesterRow(
+              label: l10n.setCurrentWeek,
+              hint: l10n.setCurrentWeekHint,
+              trailing: Text(
+                l10n.currentWeek(currentWeek),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
                 ),
-              ],
+              ),
+              onTap: () => _pickCurrentWeek(context, currentWeek, l10n),
             ),
-          ),
-          if (_fetchingCurrentWeek)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            Icon(
-              Icons.download,
-              color: isLoggedIn
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.outline,
+            divider,
+            _SemesterRow(
+              label: l10n.autoFetchCurrentWeek,
+              hint: isLoggedIn
+                  ? l10n.autoFetchCurrentWeekHint
+                  : l10n.loginRequired,
+              trailing: _fetchingCurrentWeek
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      Icons.download,
+                      color: isLoggedIn
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline,
+                    ),
+              labelStyle: isLoggedIn
+                  ? null
+                  : TextStyle(color: theme.colorScheme.outline),
+              onTap: isLoggedIn && !_fetchingCurrentWeek
+                  ? _fetchCurrentWeek
+                  : null,
             ),
-        ],
+            divider,
+            _SemesterRow(
+              label: totalWeeksTitle,
+              trailing: Text(
+                '$_totalWeeks',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              onTap: () async {
+                final selected = await _showNumberPicker(
+                  context,
+                  initialValue: _totalWeeks,
+                  minValue: 1,
+                  maxValue: 52,
+                  title: totalWeeksTitle,
+                );
+                if (!mounted) return;
+                if (selected != null && selected != _totalWeeks) {
+                  setState(() {
+                    _totalWeeks = selected;
+                  });
+                  _save();
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -307,7 +276,9 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
       context: context,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppShapes.largeIncreased),
+        ),
       ),
       builder: (BuildContext context) {
         return SizedBox(
@@ -328,7 +299,7 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
                     ),
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -355,7 +326,7 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
                     return Center(
                       child: Text(
                         '${index + minValue}',
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
@@ -403,38 +374,6 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
     }
   }
 
-  Widget _buildTotalWeeksPicker(BuildContext context, AppLocalizations l10n) {
-    final String title = l10n.totalWeeks(20).split(':')[0]; // Get label part
-    return StyledCard(
-      onTap: () async {
-        final selected = await _showNumberPicker(
-          context,
-          initialValue: _totalWeeks,
-          minValue: 1,
-          maxValue: 52,
-          title: title,
-        );
-        if (!mounted) return;
-        if (selected != null && selected != _totalWeeks) {
-          setState(() {
-            _totalWeeks = selected;
-          });
-          _save();
-        }
-      },
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title),
-          Text(
-            '$_totalWeeks',
-            style: TextStyle(color: Theme.of(context).colorScheme.primary),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _pickDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
@@ -446,7 +385,7 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
       DateTime finalDate = picked;
       if (picked.weekday != DateTime.sunday) {
         finalDate = picked.toSunday();
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('已自动调整为该周周日')));
@@ -471,10 +410,6 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
       breakDuration: _breakDuration,
       autoSyncTime: _autoSyncTime,
       timeSlots: _timeSlots,
-      showTeacherName: _showTeacher,
-      showLocation: _showLocation,
-      showWeekend: _showWeekend,
-      showNonCurrentWeekCourses: _showNonCurrentWeekCourses,
     );
     await courseProvider.updateScheduleConfig(config);
   }
@@ -482,17 +417,15 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
 
 class _SectionTitle extends StatelessWidget {
   final String title;
-  const _SectionTitle(this.title);
+  const _SectionTitle({required this.title});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.fromLTRB(12, 0, 10, 8),
       child: Text(
         title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
           color: Theme.of(context).colorScheme.primary,
         ),
       ),
@@ -500,33 +433,57 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _DatePickerField extends StatelessWidget {
+class _SemesterRow extends StatelessWidget {
   final String label;
-  final DateTime date;
-  final VoidCallback onTap;
+  final String? hint;
+  final Widget trailing;
+  final VoidCallback? onTap;
+  final TextStyle? labelStyle;
 
-  const _DatePickerField({
+  const _SemesterRow({
     required this.label,
-    required this.date,
-    required this.onTap,
+    required this.trailing,
+    this.hint,
+    this.onTap,
+    this.labelStyle,
   });
 
   @override
   Widget build(BuildContext context) {
-    return StyledCard(
+    final theme = Theme.of(context);
+    return InkWell(
       onTap: onTap,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label),
-          Text(
-            '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
-            style: TextStyle(color: Theme.of(context).colorScheme.primary),
+      borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(label, style: labelStyle ?? theme.textTheme.bodyLarge),
+                    if (hint != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        hint!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              trailing,
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
-
-// _TimeSlotEditor moved to time_slot_setting_page.dart

@@ -4,11 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/scu_microservice_auth_service.dart';
+import 'package:bugaoshan/services/api/api_request.dart';
+import 'package:bugaoshan/services/auth/cookie_client.dart';
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
+import 'package:bugaoshan/services/auth/wfw_auth.dart';
 import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
-import 'package:bugaoshan/widgets/common/error_widgets.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/info_row.dart';
 
 class NetworkDevicePage extends StatefulWidget {
@@ -21,23 +24,24 @@ class NetworkDevicePage extends StatefulWidget {
 class _NetworkDevicePageState extends State<NetworkDevicePage> {
   static const _base = 'https://wfw.scu.edu.cn';
 
-  final _authService = ScuMicroserviceAuthService();
-
   bool _loading = false;
-  String? _error;
+  LoadErrorType? _error;
   Map<String, dynamic>? _userInfo;
   List<Map<String, dynamic>> _devices = [];
+  bool _privacyHidden = true;
 
   @override
   void initState() {
     super.initState();
     getIt<ScuAuthProvider>().addListener(_onAuthChanged);
+    getIt<WfwAuth>().addListener(_onWfwAuthChanged);
     _loadData();
   }
 
   @override
   void dispose() {
     getIt<ScuAuthProvider>().removeListener(_onAuthChanged);
+    getIt<WfwAuth>().removeListener(_onWfwAuthChanged);
     super.dispose();
   }
 
@@ -50,11 +54,41 @@ class _NetworkDevicePageState extends State<NetworkDevicePage> {
     }
   }
 
+  void _onWfwAuthChanged() {
+    if (getIt<WfwAuth>().isReady && mounted) {
+      _loadData();
+    }
+  }
+
+  /// 通过 WfwAuth 发送带自动重试的请求。
+  ///
+  /// 自动处理两种认证失败：
+  /// - [UnauthenticatedException]：SCU token 过期（由 auth 层抛出，
+  ///   getClient 内部触发续期）
+  /// - 微服务 session 过期（业务响应 e == 10013，见 [_throwIfSessionExpired]）：
+  ///   invalidate 后重新预热 wfw session 并重试一次
+  Future<T> _wfwRequest<T>(Future<T> Function(CookieClient client) fn) {
+    final wfwAuth = getIt<WfwAuth>();
+    return retryOnUnauthenticated(
+      wfwAuth.getClient,
+      fn,
+      invalidate: wfwAuth.invalidate,
+    );
+  }
+
+  /// 微服务 session 失效（e == 10013）时抛 [UnauthenticatedException]，
+  /// 交给 [_wfwRequest] 触发重新认证 + 重试。
+  void _throwIfSessionExpired(Map<String, dynamic> json) {
+    if (json['e'] == 10013 || json['e']?.toString() == '10013') {
+      throw const UnauthenticatedException('微服务登录已失效');
+    }
+  }
+
   Future<void> _loadData() async {
     final auth = getIt<ScuAuthProvider>();
     if (!auth.isLoggedIn) {
       if (auth.isAutoLoggingIn) return;
-      setState(() => _error = 'notLoggedIn');
+      setState(() => _error = LoadErrorType.notLoggedIn);
       return;
     }
 
@@ -64,21 +98,15 @@ class _NetworkDevicePageState extends State<NetworkDevicePage> {
     });
 
     try {
-      final client = await _authService.getAuthenticatedClient();
-      if (client == null) {
-        setState(() {
-          _loading = false;
-          _error = 'authFailed';
-        });
-        return;
-      }
-
-      try {
+      // _wfwRequest 内部通过 WfwAuth.getClient 确保 wfw session 已预热，
+      // session 过期时自动重新认证并重试一次，无需在此等待 isReady。
+      await _wfwRequest((client) async {
         final userResp = await client.get(
           Uri.parse('$_base/uc/wap/user/get-info'),
           headers: _headers,
         );
         final userJson = _parseJson(userResp.body, 'get-info');
+        _throwIfSessionExpired(userJson);
         if (userJson['e'] != 0) {
           throw Exception(userJson['m'] ?? '获取用户信息失败');
         }
@@ -89,25 +117,30 @@ class _NetworkDevicePageState extends State<NetworkDevicePage> {
           headers: _headers,
         );
         final deviceJson = _parseJson(deviceResp.body, 'get-index');
+        _throwIfSessionExpired(deviceJson);
         if (deviceJson['e'] != 0) {
           throw Exception(deviceJson['m'] ?? '获取设备信息失败');
         }
         _devices = (deviceJson['d']['list'] as List)
             .map((e) => e as Map<String, dynamic>)
             .toList();
-
-        if (mounted) {
-          setState(() => _loading = false);
-        }
-      } finally {
-        client.close();
+      });
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    } on UnauthenticatedException catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = LoadErrorType.notLoggedIn;
+        });
       }
     } catch (e) {
       debugPrint('Network device load error: $e');
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = 'networkError';
+          _error = LoadErrorType.networkError;
         });
       }
     }
@@ -139,31 +172,26 @@ class _NetworkDevicePageState extends State<NetworkDevicePage> {
     if (confirm != true) return;
 
     try {
-      final client = await _authService.getAuthenticatedClient();
-      if (client == null) {
-        _showSnackBar('认证失败', isError: true);
-        return;
-      }
-
-      try {
+      await _wfwRequest((client) async {
         final resp = await client.post(
           Uri.parse('$_base/netclient/wap/default/offline'),
           headers: {
             ..._headers,
-            'Content-Type': 'application/x-www-form-urlencoded', // 覆盖
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: 'device_id=${device['device_id']}&ip=${device['ip']}',
         );
         final json = _parseJson(resp.body, 'offline');
+        _throwIfSessionExpired(json);
         if (json['e'] != 0) {
           debugPrint(json.toString());
           throw Exception(json['m'] ?? '操作失败');
         }
-        _showSnackBar(l10n.networkDeviceOperationSuccess);
-        _loadData();
-      } finally {
-        client.close();
-      }
+      });
+      _showSnackBar(l10n.networkDeviceOperationSuccess);
+      _loadData();
+    } on UnauthenticatedException catch (_) {
+      _showSnackBar(l10n.networkOfflineFailed, isError: true);
     } catch (e) {
       debugPrint('Force offline error: $e');
       _showSnackBar(l10n.networkOfflineFailed, isError: true);
@@ -238,16 +266,13 @@ class _NetworkDevicePageState extends State<NetworkDevicePage> {
     }
 
     if (_error != null) {
-      if (_error == 'notLoggedIn') {
+      if (_error == LoadErrorType.notLoggedIn) {
         if (getIt<ScuAuthProvider>().isAutoLoggingIn) {
           return const AutoLoginLoadingWidget();
         }
         return const LoginRequiredWidget();
       }
-      return RetryableErrorWidget(
-        message: _getErrorMessage(l10n, _error!),
-        onRetry: _loadData,
-      );
+      return RetryableErrorWidget(errorType: _error!, onRetry: _loadData);
     }
 
     return RefreshIndicator(
@@ -259,6 +284,42 @@ class _NetworkDevicePageState extends State<NetworkDevicePage> {
           const SizedBox(height: 16),
           _buildDeviceListCard(l10n),
         ],
+      ),
+    );
+  }
+
+  String _maskText(String text, {int visibleStart = 1, int visibleEnd = 0}) {
+    if (text.length <= visibleStart + visibleEnd) return '*' * text.length;
+    final start = text.substring(0, visibleStart);
+    final end = visibleEnd > 0 ? text.substring(text.length - visibleEnd) : '';
+    final masked = '*' * (text.length - visibleStart - visibleEnd);
+    return '$start$masked$end';
+  }
+
+  Widget _buildPrivacyRow(
+    String label,
+    String value, {
+    int visibleStart = 1,
+    int visibleEnd = 0,
+  }) {
+    return GestureDetector(
+      onTap: () => setState(() => _privacyHidden = !_privacyHidden),
+      child: _infoRow(
+        label,
+        _privacyHidden
+            ? _maskText(
+                value,
+                visibleStart: visibleStart,
+                visibleEnd: visibleEnd,
+              )
+            : value,
+        trailing: Icon(
+          _privacyHidden
+              ? Icons.visibility_off_outlined
+              : Icons.visibility_outlined,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -290,12 +351,22 @@ class _NetworkDevicePageState extends State<NetworkDevicePage> {
               ],
             ),
             const Divider(height: 24),
-            _infoRow('姓名', user?['realname'] ?? '-'),
+            _buildPrivacyRow('姓名', user?['realname'] ?? '-'),
             _infoRow('性别', user?['sex'] ?? '-'),
-            _infoRow('学号', role?['number'] ?? '-'),
+            _buildPrivacyRow(
+              '学号',
+              role?['number'] ?? '-',
+              visibleStart: 2,
+              visibleEnd: 2,
+            ),
             _infoRow('身份', role?['identity'] ?? '-'),
-            _infoRow('邮箱', user?['email'] ?? '-'),
-            _infoRow('手机', user?['mobile'] ?? '-'),
+            _buildPrivacyRow('邮箱', user?['email'] ?? '-'),
+            _buildPrivacyRow(
+              '手机',
+              user?['mobile'] ?? '-',
+              visibleStart: 3,
+              visibleEnd: 2,
+            ),
             _infoRow('学院', departs?.values.join(', ') ?? '-'),
           ],
         ),
@@ -303,8 +374,8 @@ class _NetworkDevicePageState extends State<NetworkDevicePage> {
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return InfoRow(label: label, value: value);
+  Widget _infoRow(String label, String value, {Widget? trailing}) {
+    return InfoRow(label: label, value: value, trailing: trailing);
   }
 
   Widget _buildDeviceListCard(AppLocalizations l10n) {
@@ -336,7 +407,7 @@ class _NetworkDevicePageState extends State<NetworkDevicePage> {
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     l10n.noData,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -390,20 +461,5 @@ class _NetworkDevicePageState extends State<NetworkDevicePage> {
         ],
       ),
     );
-  }
-
-  String _getErrorMessage(AppLocalizations l10n, String errorKey) {
-    switch (errorKey) {
-      case 'networkError':
-        return l10n.networkError;
-      case 'ccylBindFailed':
-        return l10n.ccylBindFailed;
-      case 'ccylActivityLoadFailed':
-        return l10n.ccylActivityLoadFailed;
-      case 'campusNetworkRequired':
-        return l10n.campusNetworkRequired;
-      default:
-        return l10n.loadFailed;
-    }
   }
 }

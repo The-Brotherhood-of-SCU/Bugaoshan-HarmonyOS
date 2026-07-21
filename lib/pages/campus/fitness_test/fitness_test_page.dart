@@ -1,15 +1,18 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/scu_auth_service.dart';
+import 'package:bugaoshan/services/auth/fitness_auth.dart';
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
+import 'package:bugaoshan/services/auth/cookie_client.dart';
 import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
-import 'package:bugaoshan/widgets/common/error_widgets.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/info_row.dart';
 
 class FitnessTestPage extends StatefulWidget {
@@ -17,6 +20,10 @@ class FitnessTestPage extends StatefulWidget {
 
   @override
   State<FitnessTestPage> createState() => _FitnessTestPageState();
+}
+
+class _FitnessSessionExpiredException implements Exception {
+  const _FitnessSessionExpiredException();
 }
 
 class _FitnessTestPageState extends State<FitnessTestPage>
@@ -28,7 +35,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
   late final TabController _tabController;
 
   bool _loading = false;
-  String? _error;
+  LoadErrorType? _error;
 
   // Notices
   List<Map<String, dynamic>> _notices = [];
@@ -37,7 +44,8 @@ class _FitnessTestPageState extends State<FitnessTestPage>
   int _selectedYear = DateTime.now().year;
   Map<String, dynamic>? _scoreData;
   bool _scoreLoading = false;
-  String? _scoreError;
+  Object? _scoreError;
+  bool _privacyHidden = true;
 
   @override
   void initState() {
@@ -49,6 +57,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
       _selectedYear = savedYear;
     }
     getIt<ScuAuthProvider>().addListener(_onAuthChanged);
+    getIt<FitnessAuth>().addListener(_onFitnessAuthChanged);
     _loadData();
   }
 
@@ -56,20 +65,8 @@ class _FitnessTestPageState extends State<FitnessTestPage>
   void dispose() {
     _tabController.dispose();
     getIt<ScuAuthProvider>().removeListener(_onAuthChanged);
+    getIt<FitnessAuth>().removeListener(_onFitnessAuthChanged);
     super.dispose();
-  }
-
-  String _getErrorMessage(AppLocalizations l10n, String errorKey) {
-    switch (errorKey) {
-      case 'networkError':
-        return l10n.networkError;
-      case 'campusNetworkRequiredAtNight':
-        return l10n.fitnessTestCampusNetworkRequiredAtNight;
-      case 'authFailed':
-        return l10n.loadFailed;
-      default:
-        return l10n.loadFailed;
-    }
   }
 
   void _onAuthChanged() {
@@ -81,77 +78,105 @@ class _FitnessTestPageState extends State<FitnessTestPage>
     }
   }
 
-  Future<CookieClient?> _ensureClient() async {
-    final auth = getIt<ScuAuthProvider>();
-    if (auth.accessToken == null) return null;
-    final client = await auth.service.bindSession();
-    // Follow SSO redirect to activate fitness test session
-    await client.followRedirects(
-      Uri.parse('$_baseUrl/index/login/scuMsLogin'),
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml,*/*',
-        'User-Agent': _headers['User-Agent']!,
-        'Authorization': 'Bearer ${auth.accessToken}',
-      },
-    );
-    return client;
+  void _onFitnessAuthChanged() {
+    if (getIt<FitnessAuth>().isReady && mounted) {
+      _loadData();
+    }
+  }
+
+  /// 检查体测 API 响应是否表示 session 过期。
+  bool _isSessionExpired(Map<String, dynamic> json) {
+    if (json['status'] != 1) {
+      final info = json['info']?.toString() ?? '';
+      return info.contains('登录信息失效') || info.contains('请重新登录');
+    }
+    return false;
+  }
+
+  /// 通过 FitnessAuth 发送带自动重试的请求。
+  /// [fn] 接收已认证的 CookieClient 并返回响应数据。
+  ///
+  /// 自动处理两种认证失败：
+  /// - [UnauthenticatedException]：SCU token 过期（由 auth 层抛出）
+  /// - [_FitnessSessionExpiredException]：体测服务端 session 过期（业务响应）
+  Future<T> _fitnessRequest<T>(
+    Future<T> Function(CookieClient client) fn,
+  ) async {
+    Future<T> execute() async {
+      final client = await getIt<FitnessAuth>().getClient();
+      return await fn(client);
+    }
+
+    try {
+      return await execute();
+    } on UnauthenticatedException {
+      return await execute();
+    } on _FitnessSessionExpiredException {
+      getIt<FitnessAuth>().invalidate();
+      return await execute();
+    }
   }
 
   Future<void> _loadData() async {
     final auth = getIt<ScuAuthProvider>();
     if (!auth.isLoggedIn) {
       if (auth.isAutoLoggingIn) return;
-      setState(() => _error = 'notLoggedIn');
+      setState(() => _error = LoadErrorType.notLoggedIn);
       return;
     }
 
+    // 不在此等待 FitnessAuth.isReady：_fitnessRequest 内部通过
+    // FitnessAuth.getClient 自驱动 SSO 认证，预热失败会走 catch 分支
+    // 显示可重试的错误页，避免预热曾失败时永远停留在加载态。
     setState(() {
       _loading = true;
       _error = null;
     });
 
     try {
-      final client = await _ensureClient();
-      if (client == null) {
-        setState(() {
-          _loading = false;
-          _error = 'authFailed';
-        });
-        return;
-      }
-
-      try {
-        // Load notices
+      await _fitnessRequest((client) async {
         final noticeResp = await client.post(
           Uri.parse('$_baseUrl/index/News/getSchoolNoticeList'),
           headers: _headers,
         );
         final noticeJson = _parseJson(noticeResp.body, 'getSchoolNoticeList');
         if (noticeJson['status'] != 1) {
+          if (_isSessionExpired(noticeJson)) {
+            throw const _FitnessSessionExpiredException();
+          }
           throw Exception(noticeJson['info'] ?? '获取通知失败');
         }
         _notices = (noticeJson['data'] as List)
             .map((e) => e as Map<String, dynamic>)
             .toList();
 
-        // Load scores for selected year
         await _loadScore(client);
 
         if (mounted) {
           setState(() => _loading = false);
         }
-      } finally {
-        client.close();
+        return true;
+      });
+    } on UnauthenticatedException catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = LoadErrorType.notLoggedIn;
+        });
+      }
+    } on _FitnessSessionExpiredException catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = LoadErrorType.notLoggedIn;
+        });
       }
     } catch (e) {
       debugPrint('Fitness test load error: $e');
       if (mounted) {
-        final hour = DateTime.now().hour;
         setState(() {
           _loading = false;
-          _error = (hour >= 23 || hour < 6)
-              ? 'campusNetworkRequiredAtNight'
-              : 'networkError';
+          _error = campusNetworkErrorType(LoadErrorType.networkError);
         });
       }
     }
@@ -171,6 +196,13 @@ class _FitnessTestPageState extends State<FitnessTestPage>
       );
       final json = _parseJson(resp.body, 'getStudentScore');
       if (json['status'] != 1) {
+        if (_isSessionExpired(json)) {
+          setState(() {
+            _scoreLoading = false;
+            _scoreError = json['info'] ?? '查询失败';
+          });
+          throw const _FitnessSessionExpiredException();
+        }
         setState(() {
           _scoreLoading = false;
           _scoreError = json['info'] ?? '查询失败';
@@ -182,14 +214,13 @@ class _FitnessTestPageState extends State<FitnessTestPage>
         _scoreData = data is Map<String, dynamic> ? data : null;
         _scoreLoading = false;
       });
+    } on _FitnessSessionExpiredException {
+      rethrow;
     } catch (e) {
       debugPrint('Fitness test score error: $e');
-      final hour = DateTime.now().hour;
       setState(() {
         _scoreLoading = false;
-        _scoreError = (hour >= 23 || hour < 6)
-            ? 'campusNetworkRequiredAtNight'
-            : 'networkError';
+        _scoreError = campusNetworkErrorType(LoadErrorType.networkError);
       });
     }
   }
@@ -198,13 +229,10 @@ class _FitnessTestPageState extends State<FitnessTestPage>
     final auth = getIt<ScuAuthProvider>();
     if (!auth.isLoggedIn) return;
     try {
-      final client = await _ensureClient();
-      if (client == null) return;
-      try {
+      await _fitnessRequest((client) async {
         await _loadScore(client);
-      } finally {
-        client.close();
-      }
+        return true;
+      });
     } catch (e) {
       debugPrint('Retry score error: $e');
     }
@@ -217,13 +245,10 @@ class _FitnessTestPageState extends State<FitnessTestPage>
     if (!auth.isLoggedIn) return;
 
     try {
-      final client = await _ensureClient();
-      if (client == null) return;
-      try {
+      await _fitnessRequest((client) async {
         await _loadScore(client);
-      } finally {
-        client.close();
-      }
+        return true;
+      });
     } catch (e) {
       debugPrint('Year change error: $e');
     }
@@ -286,16 +311,13 @@ class _FitnessTestPageState extends State<FitnessTestPage>
     }
 
     if (_error != null) {
-      if (_error == 'notLoggedIn') {
+      if (_error == LoadErrorType.notLoggedIn) {
         if (getIt<ScuAuthProvider>().isAutoLoggingIn) {
           return const AutoLoginLoadingWidget();
         }
         return const LoginRequiredWidget();
       }
-      return RetryableErrorWidget(
-        message: _getErrorMessage(l10n, _error!),
-        onRetry: _loadData,
-      );
+      return RetryableErrorWidget(errorType: _error!, onRetry: _loadData);
     }
 
     return TabBarView(
@@ -311,7 +333,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
       return Center(
         child: Text(
           l10n.noData,
-          style: TextStyle(
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
@@ -336,7 +358,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
         onTap: () => _showNoticeDetail(notice, l10n),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppShapes.medium),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -352,7 +374,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
                       ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(AppShapes.xs),
                       ),
                       child: Text(
                         l10n.fitnessTestSticky,
@@ -566,10 +588,15 @@ class _FitnessTestPageState extends State<FitnessTestPage>
     if (_scoreError != null) {
       return Padding(
         padding: const EdgeInsets.all(32),
-        child: RetryableErrorWidget(
-          message: _getErrorMessage(l10n, _scoreError!),
-          onRetry: _retryScore,
-        ),
+        child: _scoreError is LoadErrorType
+            ? RetryableErrorWidget(
+                errorType: _scoreError as LoadErrorType,
+                onRetry: _retryScore,
+              )
+            : RetryableErrorWidget.message(
+                message: _scoreError as String,
+                onRetry: _retryScore,
+              ),
       );
     }
 
@@ -579,7 +606,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
           padding: const EdgeInsets.all(32),
           child: Text(
             l10n.fitnessTestNoScore,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
@@ -644,11 +671,11 @@ class _FitnessTestPageState extends State<FitnessTestPage>
                     ),
                     decoration: BoxDecoration(
                       color: gradeColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppShapes.medium),
                     ),
                     child: Text(
                       totalGrade,
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: gradeColor,
                         fontWeight: FontWeight.w600,
                       ),
@@ -663,19 +690,52 @@ class _FitnessTestPageState extends State<FitnessTestPage>
     );
   }
 
+  String _maskText(String text, {int visibleStart = 1, int visibleEnd = 0}) {
+    if (text.length <= visibleStart + visibleEnd) return '*' * text.length;
+    final start = text.substring(0, visibleStart);
+    final end = visibleEnd > 0 ? text.substring(text.length - visibleEnd) : '';
+    final masked = '*' * (text.length - visibleStart - visibleEnd);
+    return '$start$masked$end';
+  }
+
   Widget _buildInfoCard(AppLocalizations l10n) {
+    final name = _scoreData!['student_name'] ?? '-';
+    final studentNum = _scoreData!['student_num'] ?? '-';
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _infoRow(
-              l10n.fitnessTestStudentName,
-              _scoreData!['student_name'] ?? '-',
+            GestureDetector(
+              onTap: () => setState(() => _privacyHidden = !_privacyHidden),
+              child: _infoRow(
+                l10n.fitnessTestStudentName,
+                _privacyHidden ? _maskText(name) : name,
+                trailing: Icon(
+                  _privacyHidden
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
-            _infoRow(
-              l10n.fitnessTestStudentNum,
-              _scoreData!['student_num'] ?? '-',
+            GestureDetector(
+              onTap: () => setState(() => _privacyHidden = !_privacyHidden),
+              child: _infoRow(
+                l10n.fitnessTestStudentNum,
+                _privacyHidden
+                    ? _maskText(studentNum, visibleStart: 2, visibleEnd: 2)
+                    : studentNum,
+                trailing: Icon(
+                  _privacyHidden
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
             _infoRow(l10n.fitnessTestSex, _scoreData!['sex'] ?? '-'),
             _infoRow(
@@ -696,8 +756,8 @@ class _FitnessTestPageState extends State<FitnessTestPage>
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return InfoRow(label: label, value: value);
+  Widget _infoRow(String label, String value, {Widget? trailing}) {
+    return InfoRow(label: label, value: value, trailing: trailing);
   }
 
   Widget _buildScoreItemsCard(AppLocalizations l10n) {

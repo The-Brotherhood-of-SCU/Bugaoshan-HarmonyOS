@@ -1,0 +1,184 @@
+name: Build HarmonyOS
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/configure_flutter_ohos.py"
+      - ".github/workflows/build-ohos.yml"
+      - "assets/**"
+      - "lib/**"
+      - "ohos/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+  workflow_dispatch:
+    inputs:
+      build_hap:
+        description: "Build an unsigned HAP on the API 24 Release self-hosted runner"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_OH_REPO: https://gitcode.com/CPF-Flutter/flutter_flutter.git
+  FLUTTER_OH_REF: aa33b6e2a6ed5e2672e45eef43d1221310a96878
+  PUB_HOSTED_URL: https://pub.flutter-io.cn
+  FLUTTER_STORAGE_BASE_URL: https://storage.flutter-io.cn
+  FLUTTER_GIT_URL: https://gitcode.com/CPF-Flutter/flutter_flutter.git
+
+jobs:
+  verify-cpf:
+    name: Verify CPF dependencies and generators
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Checkout pinned CPF Flutter
+        env:
+          FLUTTER_OH_ROOT: ${{ runner.temp }}/flutter-ohos-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          git init "$FLUTTER_OH_ROOT"
+          git -C "$FLUTTER_OH_ROOT" remote add origin "$FLUTTER_OH_REPO"
+          git -C "$FLUTTER_OH_ROOT" fetch --depth 1 origin "$FLUTTER_OH_REF"
+          git -C "$FLUTTER_OH_ROOT" checkout --detach FETCH_HEAD
+          echo "$FLUTTER_OH_ROOT/bin" >> "$GITHUB_PATH"
+          FLUTTER_OH_ROOT="$FLUTTER_OH_ROOT" \
+            python3 .github/scripts/configure_flutter_ohos.py
+
+      - name: Verify dependencies and generated sources
+        run: |
+          flutter --version
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+          flutter gen-l10n
+          flutter analyze
+          flutter test
+
+  build-hap:
+    name: Build unsigned release HAP
+    needs: verify-cpf
+    if: github.event_name == 'workflow_dispatch' && inputs.build_hap
+    runs-on: [self-hosted, macOS, harmonyos-api-24-release]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Expose DevEco Studio tools
+        run: |
+          : "${DEVECO_SDK_HOME:?Set DEVECO_SDK_HOME to the DevEco Studio 6.1.1 Release Contents/sdk directory}"
+          TOOL_HOME="$(dirname "$DEVECO_SDK_HOME")"
+          for tool_dir in \
+            "$TOOL_HOME/tools/ohpm/bin" \
+            "$TOOL_HOME/tools/hvigor/bin" \
+            "$TOOL_HOME/tools/node/bin" \
+            "$DEVECO_SDK_HOME/default/openharmony/toolchains"; do
+            test -d "$tool_dir"
+            echo "$tool_dir" >> "$GITHUB_PATH"
+          done
+          echo "HOS_SDK_HOME=$DEVECO_SDK_HOME" >> "$GITHUB_ENV"
+          echo "OHOS_SDK_HOME=$DEVECO_SDK_HOME" >> "$GITHUB_ENV"
+
+      - name: Validate HarmonyOS API 24 Release SDK
+        run: |
+          python3 - "$DEVECO_SDK_HOME" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          sdk = Path(sys.argv[1]) / "default/openharmony"
+          for component in ("ets", "native"):
+              metadata = sdk / component / "oh-uni-package.json"
+              data = json.loads(metadata.read_text(encoding="utf-8"))
+              if str(data.get("apiVersion")) != "24" or data.get("releaseType") != "Release":
+                  raise SystemExit(
+                      f"{metadata} must be HarmonyOS API 24 Release, found "
+                      f"API {data.get('apiVersion')} {data.get('releaseType')}"
+                  )
+              print(f"Validated {component}: {data.get('version')} API 24 Release")
+          PY
+          command -v ohpm
+          command -v hvigorw
+          command -v node
+
+      - name: Checkout pinned CPF Flutter
+        env:
+          FLUTTER_OH_ROOT: ${{ runner.temp }}/flutter-ohos-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          git init "$FLUTTER_OH_ROOT"
+          git -C "$FLUTTER_OH_ROOT" remote add origin "$FLUTTER_OH_REPO"
+          git -C "$FLUTTER_OH_ROOT" fetch --depth 1 origin "$FLUTTER_OH_REF"
+          git -C "$FLUTTER_OH_ROOT" checkout --detach FETCH_HEAD
+          echo "$FLUTTER_OH_ROOT/bin" >> "$GITHUB_PATH"
+          FLUTTER_OH_ROOT="$FLUTTER_OH_ROOT" \
+            python3 .github/scripts/configure_flutter_ohos.py
+
+      - name: Configure CPF Flutter and OHOS project
+        env:
+          FLUTTER_OH_ROOT: ${{ runner.temp }}/flutter-ohos-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          flutter config --ohos-sdk "$DEVECO_SDK_HOME"
+          flutter doctor -v
+          cp ohos/build-profile.json5.example ohos/build-profile.json5
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          flutter_root = Path(os.environ["FLUTTER_OH_ROOT"])
+          package = {
+              "dependencies": {
+                  "flutter-hvigor-plugin": (
+                      f"file:{flutter_root}/packages/flutter_tools/hvigor"
+                  )
+              }
+          }
+          Path("ohos/package.json").write_text(
+              json.dumps(package, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Resolve dependencies and generate sources
+        run: |
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+          flutter gen-l10n
+
+      - name: Extract build metadata
+        id: git_meta
+        run: python3 .github/scripts/git_meta.py
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+      - name: Build unsigned release HAP
+        run: |
+          flutter build hap --release --no-codesign \
+            --dart-define=GIT_TAG=${{ steps.git_meta.outputs.GIT_TAG }} \
+            --dart-define=GIT_COMMIT=${{ steps.git_meta.outputs.GIT_COMMIT }} \
+            --dart-define=GIT_COMMIT_DATE=${{ steps.git_meta.outputs.GIT_COMMIT_DATE }} \
+            --dart-define=BUILD_TIME=${{ steps.git_meta.outputs.BUILD_TIME }}
+
+      - name: Upload verification HAP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ohos-unsigned-verification-hap
+          path: build/ohos/hap/*-unsigned.hap
+          if-no-files-found: error
+          retention-days: 7

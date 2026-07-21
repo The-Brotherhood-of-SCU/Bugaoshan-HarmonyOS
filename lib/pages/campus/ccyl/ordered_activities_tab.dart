@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/ccyl_provider.dart';
-import 'package:bugaoshan/services/ccyl_service.dart';
+import 'package:bugaoshan/pages/campus/ccyl/models/ccyl_models.dart';
 import 'package:bugaoshan/pages/campus/ccyl/activity_lib_detail_page.dart';
-import 'package:bugaoshan/widgets/common/error_widgets.dart';
+import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 class OrderedActivitiesTab extends StatefulWidget {
   const OrderedActivitiesTab({super.key});
@@ -16,7 +17,7 @@ class OrderedActivitiesTab extends StatefulWidget {
 class _OrderedActivitiesTabState extends State<OrderedActivitiesTab> {
   List<CyclActivity> _activities = [];
   bool _loading = false;
-  String? _error;
+  LoadErrorType? _error;
   int _pageNum = 1;
   bool _hasMore = true;
   final _scrollController = ScrollController();
@@ -71,11 +72,8 @@ class _OrderedActivitiesTabState extends State<OrderedActivitiesTab> {
     } catch (e) {
       debugPrint('Ordered activities load error: $e');
       if (mounted) {
-        final hour = DateTime.now().hour;
         setState(() {
-          _error = (hour >= 0 && hour < 6)
-              ? 'campusNetworkRequiredAtNight'
-              : 'ccylActivityLoadFailed';
+          _error = campusNetworkErrorType(LoadErrorType.ccylActivityLoadFailed);
         });
       }
     } finally {
@@ -93,10 +91,7 @@ class _OrderedActivitiesTabState extends State<OrderedActivitiesTab> {
 
     // 错误态：单独展示，不需要下拉刷新
     if (_error != null) {
-      return RetryableErrorWidget(
-        message: _getErrorMessage(l10n, _error!),
-        onRetry: _loadActivities,
-      );
+      return RetryableErrorWidget(errorType: _error!, onRetry: _loadActivities);
     }
 
     // 正常态：RefreshIndicator 包裹统一的 ListView，始终挂载 _scrollController
@@ -138,17 +133,6 @@ class _OrderedActivitiesTabState extends State<OrderedActivitiesTab> {
       ),
     );
   }
-
-  String _getErrorMessage(AppLocalizations l10n, String errorKey) {
-    switch (errorKey) {
-      case 'ccylActivityLoadFailed':
-        return l10n.ccylActivityLoadFailed;
-      case 'campusNetworkRequiredAtNight':
-        return l10n.campusNetworkRequiredAtNight;
-      default:
-        return l10n.loadFailed;
-    }
-  }
 }
 
 class _OrderedActivityCard extends StatelessWidget {
@@ -171,7 +155,7 @@ class _OrderedActivityCard extends StatelessWidget {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppShapes.medium),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -205,7 +189,7 @@ class _OrderedActivityCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(AppShapes.xs),
                       ),
                       child: Text(
                         activity.levelName!,

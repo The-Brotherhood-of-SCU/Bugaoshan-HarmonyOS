@@ -127,6 +127,24 @@ abstract class AppLocalizations {
   /// **'Your campus assistant: schedules, grades and campus services in one place'**
   String get wizardWelcomeDesc;
 
+  /// Section title for the onboarding wizard (short). Shown in the Test page and headings.
+  ///
+  /// In en, this message translates to:
+  /// **'Wizard'**
+  String get wizard;
+
+  /// Title for the action that resets the onboarding/wizard status so the wizard runs again.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Wizard Status'**
+  String get resetWizardTitle;
+
+  /// No description provided for @resetWizardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'After resetting, you will enter the Wizard page'**
+  String get resetWizardSubtitle;
+
   /// No description provided for @wizardLoginTitle.
   ///
   /// In en, this message translates to:
@@ -162,6 +180,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import Schedule'**
   String get wizardImportButton;
+
+  /// No description provided for @wizardHasSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule Exists'**
+  String get wizardHasSchedule;
 
   /// No description provided for @wizardImportHint.
   ///
@@ -331,6 +355,12 @@ abstract class AppLocalizations {
   /// **'Free'**
   String get free;
 
+  /// No description provided for @currentlyFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Currently Free'**
+  String get currentlyFree;
+
   /// No description provided for @inClass.
   ///
   /// In en, this message translates to:
@@ -391,6 +421,36 @@ abstract class AppLocalizations {
   /// **'Period'**
   String get period;
 
+  /// Period number format
+  ///
+  /// In en, this message translates to:
+  /// **'Period {n}'**
+  String periodN(int n);
+
+  /// No description provided for @periodStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get periodStart;
+
+  /// No description provided for @periodEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get periodEnd;
+
+  /// No description provided for @periodUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Any'**
+  String get periodUnlimited;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
   /// No description provided for @loading.
   ///
   /// In en, this message translates to:
@@ -418,7 +478,7 @@ abstract class AppLocalizations {
   /// No description provided for @campusNetworkRequiredAtNight.
   ///
   /// In en, this message translates to:
-  /// **'Access is restricted to campus network during 0:00-6:00. Please connect to campus Wi-Fi or use the school VPN.'**
+  /// **'Access is restricted to campus network during 23:00-6:00. Please connect to campus Wi-Fi or use the school VPN.'**
   String get campusNetworkRequiredAtNight;
 
   /// No description provided for @appOnly.
@@ -685,6 +745,18 @@ abstract class AppLocalizations {
   /// **'Update to Latest (Include Preview)'**
   String get updateToPreview;
 
+  /// Toggle in the test page that makes the home/about update checks target the preview release channel.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Preview Release Source'**
+  String get usePreviewUpdateSource;
+
+  /// No description provided for @usePreviewUpdateSourceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Affects only the automatic checks on the home and about pages. The test page always checks both channels.'**
+  String get usePreviewUpdateSourceHint;
+
   /// No description provided for @downloading.
   ///
   /// In en, this message translates to:
@@ -696,6 +768,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Update failed'**
   String get updateFailed;
+
+  /// No description provided for @notificationDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading... {percent}%'**
+  String notificationDownloading(int percent);
+
+  /// No description provided for @notificationInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing...'**
+  String get notificationInstalling;
+
+  /// No description provided for @notificationUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Update failed: {error}'**
+  String notificationUpdateFailed(String error);
 
   /// No description provided for @preReleaseWarning.
   ///
@@ -733,17 +823,41 @@ abstract class AppLocalizations {
   /// **'Environment Info'**
   String get environmentInfo;
 
-  /// No description provided for @testPage.
+  /// No description provided for @devPage.
   ///
   /// In en, this message translates to:
-  /// **'Test Page'**
-  String get testPage;
+  /// **'Developer Page'**
+  String get devPage;
 
   /// No description provided for @forceUpdate.
   ///
   /// In en, this message translates to:
   /// **'Update to Latest (Include Preview)'**
   String get forceUpdate;
+
+  /// No description provided for @authLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Auth Log'**
+  String get authLog;
+
+  /// No description provided for @viewAuthLog.
+  ///
+  /// In en, this message translates to:
+  /// **'View Auth Log'**
+  String get viewAuthLog;
+
+  /// No description provided for @authLogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No auth log yet.'**
+  String get authLogEmpty;
+
+  /// No description provided for @authLogLastEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'{level} · {tag} · {time}'**
+  String authLogLastEntry(String time, String level, String tag);
 
   /// No description provided for @scheduleSetting.
   ///
@@ -762,6 +876,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Global Setting'**
   String get globalSetting;
+
+  /// No description provided for @noSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'No schedule yet'**
+  String get noSchedule;
+
+  /// No description provided for @noScheduleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Import or create a schedule to get started'**
+  String get noScheduleHint;
+
+  /// No description provided for @addSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Schedule'**
+  String get addSchedule;
 
   /// No description provided for @addCourse.
   ///
@@ -904,7 +1036,7 @@ abstract class AppLocalizations {
   /// No description provided for @weekRange.
   ///
   /// In en, this message translates to:
-  /// **'Week {start} - {end}'**
+  /// **'Week {start}-{end}'**
   String weekRange(int start, int end);
 
   /// No description provided for @weekType.
@@ -936,6 +1068,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sec'**
   String get section;
+
+  /// Section range display, e.g. 'Sec 1-2'
+  ///
+  /// In en, this message translates to:
+  /// **'Sec {start}-{end}'**
+  String sectionRange(int start, int end);
 
   /// No description provided for @sectionCount.
   ///
@@ -1045,11 +1183,53 @@ abstract class AppLocalizations {
   /// **'Course Grid'**
   String get courseGridSection;
 
+  /// No description provided for @courseStyleSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Style'**
+  String get courseStyleSetting;
+
   /// No description provided for @otherSection.
   ///
   /// In en, this message translates to:
   /// **'Other'**
   String get otherSection;
+
+  /// No description provided for @settingsGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get settingsGeneral;
+
+  /// No description provided for @settingsStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Style'**
+  String get settingsStyle;
+
+  /// No description provided for @setFont.
+  ///
+  /// In en, this message translates to:
+  /// **'Font'**
+  String get setFont;
+
+  /// No description provided for @useGoogleFonts.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Google Fonts'**
+  String get useGoogleFonts;
+
+  /// No description provided for @fontHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Font size and weight can be adjusted in system settings'**
+  String get fontHint;
+
+  /// No description provided for @settingsDanger.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger Zone'**
+  String get settingsDanger;
 
   /// No description provided for @colorOpacity.
   ///
@@ -1159,6 +1339,12 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get cancel;
 
+  /// No description provided for @downloadInBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Download in Background'**
+  String get downloadInBackground;
+
   /// No description provided for @back.
   ///
   /// In en, this message translates to:
@@ -1218,6 +1404,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Schedule name already exists'**
   String get duplicateScheduleName;
+
+  /// No description provided for @importNameConflictAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule \"{name}\" already exists, please choose:'**
+  String importNameConflictAction(Object name);
+
+  /// No description provided for @importNameConflictAddSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'Import with suffix'**
+  String get importNameConflictAddSuffix;
+
+  /// No description provided for @importNameConflictUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update existing schedule'**
+  String get importNameConflictUpdate;
+
+  /// No description provided for @importAllConflictAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Some schedule names conflict, please choose how to proceed:'**
+  String get importAllConflictAction;
+
+  /// No description provided for @importAllConflictAddSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'Add suffix to all'**
+  String get importAllConflictAddSuffix;
+
+  /// No description provided for @importAllConflictUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update all'**
+  String get importAllConflictUpdate;
 
   /// No description provided for @importSchedule.
   ///
@@ -1291,6 +1513,12 @@ abstract class AppLocalizations {
   /// **'Export Schedule'**
   String get exportSchedule;
 
+  /// No description provided for @exportExamPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Exam Schedule'**
+  String get exportExamPlan;
+
   /// No description provided for @exportScheduleAsCopy.
   ///
   /// In en, this message translates to:
@@ -1308,6 +1536,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Schedule data copied to clipboard'**
   String get exportScheduleAsCopySuccess;
+
+  /// No description provided for @exportExamPlanAsCopySuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam schedule data copied to clipboard'**
+  String get exportExamPlanAsCopySuccess;
 
   /// No description provided for @exportScheduleAsCopyFailed.
   ///
@@ -1362,6 +1596,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import failed'**
   String get exportScheduleAddToCalendarFailed;
+
+  /// No description provided for @exportScheduleSelectCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Calendar'**
+  String get exportScheduleSelectCalendar;
+
+  /// No description provided for @exportScheduleCalendarDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default calendar'**
+  String get exportScheduleCalendarDefault;
 
   /// No description provided for @copySuffix.
   ///
@@ -1645,12 +1891,6 @@ abstract class AppLocalizations {
   /// **'No grade data'**
   String get gradesNoData;
 
-  /// No description provided for @gradesLoadFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed to load grades'**
-  String get gradesLoadFailed;
-
   /// No description provided for @gradesRefreshFailed.
   ///
   /// In en, this message translates to:
@@ -1662,6 +1902,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No passing grade data'**
   String get gradesNoPassingData;
+
+  /// No description provided for @gradesSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search course name'**
+  String get gradesSearchHint;
+
+  /// No description provided for @gradesNoSearchResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching courses found'**
+  String get gradesNoSearchResults;
+
+  /// No description provided for @customStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Stats'**
+  String get customStats;
+
+  /// No description provided for @deselectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Deselect All'**
+  String get deselectAll;
+
+  /// No description provided for @customStatsSelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select courses to calculate custom statistics'**
+  String get customStatsSelectHint;
+
+  /// No description provided for @selectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String selectedCount(Object count);
 
   /// No description provided for @gradesGet.
   ///
@@ -2431,6 +2707,12 @@ abstract class AppLocalizations {
   /// **'No Data'**
   String get noData;
 
+  /// No description provided for @noFreeClassrooms.
+  ///
+  /// In en, this message translates to:
+  /// **'No free classrooms right now'**
+  String get noFreeClassrooms;
+
   /// No description provided for @networkDeviceQuery.
   ///
   /// In en, this message translates to:
@@ -2548,31 +2830,31 @@ abstract class AppLocalizations {
   /// No description provided for @balanceQuery.
   ///
   /// In en, this message translates to:
-  /// **'Balance Query'**
+  /// **'Electricity Query'**
   String get balanceQuery;
 
   /// No description provided for @balanceQueryDesc.
   ///
   /// In en, this message translates to:
-  /// **'Query electricity and AC fee balance'**
+  /// **'Query lighting and AC electricity balance'**
   String get balanceQueryDesc;
 
   /// No description provided for @electricityFee.
   ///
   /// In en, this message translates to:
-  /// **'Electricity'**
+  /// **'Lighting'**
   String get electricityFee;
 
   /// No description provided for @acFee.
   ///
   /// In en, this message translates to:
-  /// **'AC Fee'**
+  /// **'AC Power'**
   String get acFee;
 
   /// No description provided for @balance.
   ///
   /// In en, this message translates to:
-  /// **'Balance'**
+  /// **'Remaining'**
   String get balance;
 
   /// No description provided for @unitKwh.
@@ -2688,6 +2970,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You haven\'t bound any room yet, please bind first'**
   String get balanceQueryNoBinding;
+
+  /// No description provided for @balanceTrend.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage Trend'**
+  String get balanceTrend;
+
+  /// No description provided for @balanceTrendTitleElectric.
+  ///
+  /// In en, this message translates to:
+  /// **'Lighting Electricity Trend'**
+  String get balanceTrendTitleElectric;
+
+  /// No description provided for @balanceTrendTitleAc.
+  ///
+  /// In en, this message translates to:
+  /// **'AC Electricity Trend'**
+  String get balanceTrendTitleAc;
+
+  /// No description provided for @balanceTrendDailyAvgCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Avg Cost'**
+  String get balanceTrendDailyAvgCost;
+
+  /// No description provided for @balanceTrendDailyAvgKwh.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Avg Consumption'**
+  String get balanceTrendDailyAvgKwh;
+
+  /// No description provided for @balanceTrendTotalCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Cost'**
+  String get balanceTrendTotalCost;
+
+  /// No description provided for @balanceTrendTotalKwh.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Consumption'**
+  String get balanceTrendTotalKwh;
+
+  /// No description provided for @balanceTrendTotalDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistical Days'**
+  String get balanceTrendTotalDays;
+
+  /// No description provided for @balanceTrendCurrentPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Price'**
+  String get balanceTrendCurrentPrice;
+
+  /// No description provided for @balanceTrendRecordCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw Record Count'**
+  String get balanceTrendRecordCount;
+
+  /// No description provided for @balanceTrendRecordRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Record Time Range'**
+  String get balanceTrendRecordRange;
+
+  /// No description provided for @balanceTrendSkippedRecharge.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped Recharge Segments'**
+  String get balanceTrendSkippedRecharge;
+
+  /// No description provided for @balanceTrendNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No history data yet. Refresh the page to start recording.'**
+  String get balanceTrendNoData;
+
+  /// No description provided for @balanceTrendTimeRange7.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7d'**
+  String get balanceTrendTimeRange7;
+
+  /// No description provided for @balanceTrendTimeRange30.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30d'**
+  String get balanceTrendTimeRange30;
+
+  /// No description provided for @balanceTrendTimeRange90.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 90d'**
+  String get balanceTrendTimeRange90;
+
+  /// No description provided for @balanceTrendTimeRangeCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get balanceTrendTimeRangeCustom;
+
+  /// No description provided for @balanceTrendChangeRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Range'**
+  String get balanceTrendChangeRange;
+
+  /// No description provided for @balanceTrendCustomStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date'**
+  String get balanceTrendCustomStart;
+
+  /// No description provided for @balanceTrendCustomEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End date'**
+  String get balanceTrendCustomEnd;
+
+  /// No description provided for @balanceTrendRawRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw Records'**
+  String get balanceTrendRawRecords;
+
+  /// No description provided for @balanceTrendYAxisBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance (kWh)'**
+  String get balanceTrendYAxisBalance;
+
+  /// No description provided for @balanceTrendTooltipPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Price'**
+  String get balanceTrendTooltipPrice;
+
+  /// No description provided for @balanceTrendUnitPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'CNY/day'**
+  String get balanceTrendUnitPerDay;
+
+  /// No description provided for @balanceTrendUnitYuanPerKwh.
+  ///
+  /// In en, this message translates to:
+  /// **'CNY/kWh'**
+  String get balanceTrendUnitYuanPerKwh;
+
+  /// No description provided for @balanceQuerySettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance Query Settings'**
+  String get balanceQuerySettings;
+
+  /// No description provided for @autoSampleBalanceOnLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-collect balance details on login'**
+  String get autoSampleBalanceOnLogin;
+
+  /// No description provided for @autoSampleBalanceOnLoginDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'After login, if no record exists for today, automatically query the current room\'s electricity and AC balance once to improve the statistics'**
+  String get autoSampleBalanceOnLoginDesc;
 
   /// No description provided for @scuLoginDisclaimerPwd.
   ///
@@ -2938,8 +3388,14 @@ abstract class AppLocalizations {
   /// No description provided for @dockLabelBalanceQuery.
   ///
   /// In en, this message translates to:
-  /// **'Balance'**
+  /// **'Electricity'**
   String get dockLabelBalanceQuery;
+
+  /// No description provided for @dockLabelClassScheduleInquiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Class Schedule'**
+  String get dockLabelClassScheduleInquiry;
 
   /// No description provided for @dockLabelAcademicCalendar.
   ///
@@ -3097,12 +3553,6 @@ abstract class AppLocalizations {
   /// **'Notice Detail'**
   String get fitnessTestNoticeDetail;
 
-  /// No description provided for @fitnessTestCampusNetworkRequiredAtNight.
-  ///
-  /// In en, this message translates to:
-  /// **'Access is restricted to campus network during 23:00-6:00. Please connect to campus Wi-Fi or use the school VPN.'**
-  String get fitnessTestCampusNetworkRequiredAtNight;
-
   /// No description provided for @dockLabelFitnessTest.
   ///
   /// In en, this message translates to:
@@ -3196,7 +3646,7 @@ abstract class AppLocalizations {
   /// No description provided for @addWidgetPageTitle.
   ///
   /// In en, this message translates to:
-  /// **'Add Widget'**
+  /// **'Widget'**
   String get addWidgetPageTitle;
 
   /// No description provided for @addWidgetDesc.
@@ -3510,6 +3960,390 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Youth SCU'**
   String get tuanweiTabLabel;
+
+  /// No description provided for @dateMonthDay.
+  ///
+  /// In en, this message translates to:
+  /// **'{month}/{day}'**
+  String dateMonthDay(int month, int day);
+
+  /// Short label for statutory holiday displayed in course grid date header
+  ///
+  /// In en, this message translates to:
+  /// **'Hol'**
+  String get holidayLabel;
+
+  /// Short label for festival displayed in course grid date header
+  ///
+  /// In en, this message translates to:
+  /// **'Fes'**
+  String get festivalLabel;
+
+  /// Short label for solar term displayed in course grid date header
+  ///
+  /// In en, this message translates to:
+  /// **'Term'**
+  String get solarTermLabel;
+
+  /// Label for statutory holiday type shown in special day detail sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Holiday'**
+  String get holidayTypeLabel;
+
+  /// Label for festival type shown in special day detail sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Festival'**
+  String get festivalTypeLabel;
+
+  /// Label for solar term type shown in special day detail sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Solar Term'**
+  String get solarTermTypeLabel;
+
+  /// No description provided for @classScheduleInquiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Class Schedule Inquiry'**
+  String get classScheduleInquiry;
+
+  /// No description provided for @classScheduleInquiryDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'View course schedules for each class'**
+  String get classScheduleInquiryDesc;
+
+  /// No description provided for @classScheduleInquiryNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No class data'**
+  String get classScheduleInquiryNoData;
+
+  /// No description provided for @classScheduleInquiryNoSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'No schedule data'**
+  String get classScheduleInquiryNoSchedule;
+
+  /// No description provided for @classScheduleInquiryDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Details'**
+  String get classScheduleInquiryDetail;
+
+  /// No description provided for @classScheduleInquiryFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get classScheduleInquiryFilter;
+
+  /// No description provided for @classScheduleInquirySemester.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester'**
+  String get classScheduleInquirySemester;
+
+  /// No description provided for @classScheduleInquiryGrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Grade'**
+  String get classScheduleInquiryGrade;
+
+  /// No description provided for @classScheduleInquiryDepartment.
+  ///
+  /// In en, this message translates to:
+  /// **'Department'**
+  String get classScheduleInquiryDepartment;
+
+  /// No description provided for @classScheduleInquirySubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Major'**
+  String get classScheduleInquirySubject;
+
+  /// No description provided for @classScheduleInquiryClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Class'**
+  String get classScheduleInquiryClass;
+
+  /// No description provided for @classScheduleInquirySearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get classScheduleInquirySearch;
+
+  /// No description provided for @classScheduleInquiryLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load More'**
+  String get classScheduleInquiryLoadMore;
+
+  /// Shows total holiday days, e.g. '3-day holiday'
+  ///
+  /// In en, this message translates to:
+  /// **'{days}-day holiday'**
+  String holidayTotalDays(int days);
+
+  /// No description provided for @dockLabelExamPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Exams'**
+  String get dockLabelExamPlan;
+
+  /// No description provided for @examPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam Schedule'**
+  String get examPlan;
+
+  /// No description provided for @examPlanDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'View exam times, locations and seat numbers'**
+  String get examPlanDesc;
+
+  /// No description provided for @examPlanNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No exam schedule available'**
+  String get examPlanNoData;
+
+  /// No description provided for @campusGridView.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid View'**
+  String get campusGridView;
+
+  /// No description provided for @campusGridViewDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Use grid layout for campus page'**
+  String get campusGridViewDesc;
+
+  /// No description provided for @viewChangelog.
+  ///
+  /// In en, this message translates to:
+  /// **'Version Changelog'**
+  String get viewChangelog;
+
+  /// No description provided for @viewChangelogSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View historical version update logs'**
+  String get viewChangelogSubtitle;
+
+  /// No description provided for @changelog.
+  ///
+  /// In en, this message translates to:
+  /// **'Changelog'**
+  String get changelog;
+
+  /// No description provided for @unreleased.
+  ///
+  /// In en, this message translates to:
+  /// **'Unreleased'**
+  String get unreleased;
+
+  /// No description provided for @dockLabelZysc.
+  ///
+  /// In en, this message translates to:
+  /// **'Volunteer'**
+  String get dockLabelZysc;
+
+  /// No description provided for @zyscTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Volunteer Sichuan'**
+  String get zyscTitle;
+
+  /// No description provided for @zyscDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse and sign up for volunteer activities'**
+  String get zyscDesc;
+
+  /// No description provided for @interactiveCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Interactive Calendar'**
+  String get interactiveCalendar;
+
+  /// No description provided for @originalCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Official Charts'**
+  String get originalCalendar;
+
+  /// No description provided for @calendarLoadingData.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading calendar data...'**
+  String get calendarLoadingData;
+
+  /// No description provided for @calendarImportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Successfully imported {count} events to system calendar'**
+  String calendarImportSuccess(int count);
+
+  /// No description provided for @calendarImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to import to system calendar'**
+  String get calendarImportFailed;
+
+  /// No description provided for @calendarImportCalendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SCU Academic Calendar'**
+  String get calendarImportCalendarTitle;
+
+  /// No description provided for @calendarDaysRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days left'**
+  String calendarDaysRemaining(int days);
+
+  /// No description provided for @calendarStartedNDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days ago'**
+  String calendarStartedNDaysAgo(int days);
+
+  /// No description provided for @calendarToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get calendarToday;
+
+  /// No description provided for @calendarCurrentWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week}'**
+  String calendarCurrentWeek(int week);
+
+  /// No description provided for @calendarSemesterStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester Starts: {date}'**
+  String calendarSemesterStart(String date);
+
+  /// No description provided for @calendarWeeksTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks} weeks total'**
+  String calendarWeeksTotal(int weeks);
+
+  /// No description provided for @calendarImportButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Import to Calendar'**
+  String get calendarImportButton;
+
+  /// No description provided for @calendarHolidayTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Holiday'**
+  String get calendarHolidayTag;
+
+  /// No description provided for @calendarExamTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam'**
+  String get calendarExamTag;
+
+  /// No description provided for @calendarStartTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get calendarStartTag;
+
+  /// No description provided for @calendarEventTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get calendarEventTag;
+
+  /// No description provided for @calendarNoEventData.
+  ///
+  /// In en, this message translates to:
+  /// **'No interactive calendar data'**
+  String get calendarNoEventData;
+
+  /// No description provided for @calendarNextEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Event'**
+  String get calendarNextEvent;
+
+  /// No description provided for @appIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'App Icon'**
+  String get appIcon;
+
+  /// No description provided for @defaultIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get defaultIcon;
+
+  /// No description provided for @oldIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Old Icon'**
+  String get oldIcon;
+
+  /// No description provided for @switchAppIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch App Icon'**
+  String get switchAppIcon;
+
+  /// No description provided for @switchAppIconConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to \"{label}\"? The app will restart. Continue?'**
+  String switchAppIconConfirm(String label);
+
+  /// No description provided for @defaultIconRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'Restored default icon'**
+  String get defaultIconRestored;
+
+  /// No description provided for @iconSwitched.
+  ///
+  /// In en, this message translates to:
+  /// **'Switched to icon: {name}'**
+  String iconSwitched(String name);
+
+  /// No description provided for @iconSwitchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch failed: {error}'**
+  String iconSwitchFailed(String error);
+
+  /// No description provided for @iconSwitchNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Dynamic icon switching is not supported on this platform'**
+  String get iconSwitchNotSupported;
+
+  /// No description provided for @newIconSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bugaoshan New Icon'**
+  String get newIconSubtitle;
+
+  /// No description provided for @oldIconSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bugaoshan Classic Icon'**
+  String get oldIconSubtitle;
 }
 
 class _AppLocalizationsDelegate

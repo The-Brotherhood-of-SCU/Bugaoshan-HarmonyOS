@@ -1,68 +1,71 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:bugaoshan/services/scu_auth_service.dart';
 import 'package:bugaoshan/injection/injector.dart';
-import 'package:bugaoshan/providers/plan_completion_provider.dart';
-import 'package:bugaoshan/providers/profile_labels_provider.dart';
-import 'package:bugaoshan/providers/ccyl_provider.dart';
-import 'package:bugaoshan/providers/secure_storage_provider.dart';
+import 'package:bugaoshan/utils/auth_logger.dart';
+import 'package:bugaoshan/utils/secure_storage.dart';
+import 'package:bugaoshan/services/auth/auth_coordinator.dart';
+import 'package:bugaoshan/services/auth/scu_auth.dart';
+import 'package:bugaoshan/services/auth/ccyl_auth.dart';
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
+import 'package:bugaoshan/services/ocr_service.dart';
 
-const _keyAccessToken = 'scu_access_token';
-const _keyLoginTimestamp = 'scu_login_timestamp';
-const _keyLastAppOpenTimestamp = 'scu_last_app_open_timestamp';
-const _sessionDurationSeconds = 3600;
-
-const _keySavedUsername = 'scu_saved_username';
-const _keySavedPassword = 'scu_saved_password';
-const _keyRemember = 'scu_remember_password';
 const _keyAutoLogin = 'scu_auto_login';
-
 const _keyUserRealname = 'scu_user_realname';
 const _keyUserNumber = 'scu_user_number';
 
-/// 持久化 SCU 登录状态的 Provider，注册为 singleton
+/// 持久化 SCU 登录状态的 Provider，注册为 singleton。
+///
+/// 认证控制器：管理登录/登出/自动登录/凭据。
+/// 子系统登录由 [AuthCoordinator] 按依赖后台预热。
 class ScuAuthProvider extends ChangeNotifier {
-  final SharedPreferences _prefs;
-  final ScuAuthService _service = ScuAuthService();
+  static const String _tag = 'ScuAuthProvider';
 
-  ScuAuthProvider(this._prefs) {
-    _loginTimestamp = _prefs.getInt(_keyLoginTimestamp);
-    _updateLastAppOpenTimestamp();
+  final ScuAuth _scuAuth;
+  final CcylAuth _ccylAuth;
+  final AuthCoordinator _authCoordinator;
+  final AuthLogger _log;
+
+  ScuAuthProvider(
+    this._scuAuth,
+    this._ccylAuth,
+    this._authCoordinator, {
+    AuthLogger? logger,
+  }) : _log = logger ?? getIt<AuthLogger>() {
+    _scuAuth.addListener(_onAuthChanged);
   }
+
+  void _onAuthChanged() => notifyListeners();
 
   Future<void> init() async {
-    _accessToken = await SecureStorageProvider.instance.read(
-      key: _keyAccessToken,
-    );
-    _userRealname = _prefs.getString(_keyUserRealname);
-    _userNumber = _prefs.getString(_keyUserNumber);
+    final prefs = getIt<SharedPreferences>();
+    _userRealname = prefs.getString(_keyUserRealname);
+    _userNumber = prefs.getString(_keyUserNumber);
   }
 
-  String? _accessToken;
-  int? _loginTimestamp;
   String? _userRealname;
   String? _userNumber;
-  final bool _isAutoLoggingIn = false;
-  String? get accessToken => _accessToken;
+  bool _isAutoLoggingIn = false;
+
+  @override
+  void dispose() {
+    _scuAuth.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  String? get accessToken => _scuAuth.accessToken;
   String? get userRealname => _userRealname;
   String? get userNumber => _userNumber;
   bool get isAutoLoggingIn => _isAutoLoggingIn;
-  bool get isLoggedIn => _accessToken != null && !isExpired;
-  bool get isExpired {
-    if (_loginTimestamp == null) return true;
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    if (now - _loginTimestamp! > _sessionDurationSeconds) return true;
-    final lastAppOpen = _prefs.getInt(_keyLastAppOpenTimestamp);
-    if (lastAppOpen != null && _loginTimestamp! < lastAppOpen) return true;
-    return false;
-  }
+  bool get isLoggedIn => _scuAuth.isReady;
+  bool get isExpired => _scuAuth.isExpired;
 
-  ScuAuthService get service => _service;
-
-  Future<void> _updateLastAppOpenTimestamp() async {
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    await _prefs.setInt(_keyLastAppOpenTimestamp, now);
+  /// 更新用户信息（由 UserInfoProvider 获取后调用）
+  void setUserInfo(String? realname, String? number) {
+    _userRealname = realname;
+    _userNumber = number;
+    notifyListeners();
   }
 
   Future<void> login({
@@ -71,89 +74,44 @@ class ScuAuthProvider extends ChangeNotifier {
     required String captchaCode,
     required String captchaText,
   }) async {
-    await _service.login(
+    _log.i(_tag, 'login: start');
+    await _scuAuth.login(
       username: username,
       password: password,
       captchaCode: captchaCode,
       captchaText: captchaText,
     );
-    _accessToken = _service.accessToken;
-    _loginTimestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    await SecureStorageProvider.instance.write(
-      key: _keyAccessToken,
-      value: _accessToken!,
-    );
-    await _prefs.setInt(_keyLoginTimestamp, _loginTimestamp!);
-    await fetchUserInfo();
+    _log.i(_tag, 'login: ok, warming up subsystems');
+    // 登录成功后后台预热子模块；页面不等待慢模块。
+    unawaited(_authCoordinator.warmUpAll());
     notifyListeners();
   }
 
   Future<void> logout() async {
-    _service.logout();
-    _accessToken = null;
-    _loginTimestamp = null;
+    _log.i(_tag, 'logout');
+    await _scuAuth.logout();
+    await _ccylAuth.logout();
+    _authCoordinator.invalidateAll();
     _userRealname = null;
     _userNumber = null;
-    await SecureStorageProvider.instance.delete(key: _keyAccessToken);
-    await _prefs.remove(_keyLoginTimestamp);
-    await _prefs.remove(_keyUserRealname);
-    await _prefs.remove(_keyUserNumber);
-    getIt<CcylProvider>().logout();
-    getIt<PlanCompletionProvider>().clearCache();
-    getIt<ProfileLabelsProvider>().clear();
+    final prefs = getIt<SharedPreferences>();
+    await prefs.remove(_keyUserRealname);
+    await prefs.remove(_keyUserNumber);
     notifyListeners();
   }
 
-  Future<void> fetchUserInfo() async {
-    try {
-      final client = await _service.bindSession();
-      try {
-        final resp = await client.get(
-          Uri.parse('https://wfw.scu.edu.cn/uc/wap/user/get-info'),
-        );
-        final json = jsonDecode(resp.body) as Map<String, dynamic>;
-        if (json['e'] == 0 && json['d'] != null) {
-          final base = json['d']['base'] as Map<String, dynamic>?;
-          if (base != null) {
-            _userRealname = base['realname']?.toString();
-            final role = base['role'] as Map<String, dynamic>?;
-            _userNumber = role?['number']?.toString();
-            await _prefs.setString(_keyUserRealname, _userRealname ?? '');
-            await _prefs.setString(_keyUserNumber, _userNumber ?? '');
-          }
-        }
-      } finally {
-        client.close();
-      }
-    } catch (e) {
-      debugPrint('fetchUserInfo error: $e');
-    }
-  }
+  Future<CaptchaResult> fetchCaptcha() => _scuAuth.fetchCaptcha();
 
   Future<Map<String, String>?> getSavedCredentials() async {
-    final storage = SecureStorageProvider.instance;
-    final remember = await storage.read(key: _keyRemember);
-    if (remember != 'true') return null;
-    final username = await storage.read(key: _keySavedUsername);
-    final password = await storage.read(key: _keySavedPassword);
-    if (username != null && password != null) {
-      return {'username': username, 'password': password};
-    }
-    return null;
+    return await _scuAuth.getSavedCredentials();
   }
 
   Future<void> saveCredentials(String username, String password) async {
-    final storage = SecureStorageProvider.instance;
-    await storage.write(key: _keyRemember, value: 'true');
-    await storage.write(key: _keySavedUsername, value: username);
-    await storage.write(key: _keySavedPassword, value: password);
+    await _scuAuth.saveCredentials(username, password);
   }
 
   Future<void> clearCredentials() async {
-    final storage = SecureStorageProvider.instance;
-    await storage.delete(key: _keyRemember);
-    await storage.delete(key: _keySavedUsername);
-    await storage.delete(key: _keySavedPassword);
+    await _scuAuth.clearCredentials();
   }
 
   Future<bool> isAutoLoginEnabled() async {
@@ -164,12 +122,77 @@ class ScuAuthProvider extends ChangeNotifier {
 
   Future<void> setAutoLogin(bool enabled) async {
     final storage = SecureStorageProvider.instance;
+    _log.i(_tag, 'setAutoLogin: $enabled');
     await storage.write(key: _keyAutoLogin, value: enabled ? 'true' : 'false');
   }
 
   Future<bool> autoLogin() async {
-    // Auto-login requires OCR for captcha recognition, which is not available
-    // on HarmonyOS. Return false to fall back to manual login.
-    return false;
+    if (!await isAutoLoginEnabled()) {
+      _log.d(_tag, 'autoLogin: disabled');
+      return false;
+    }
+    if (isLoggedIn) return true;
+
+    final credentials = await getSavedCredentials();
+    if (credentials == null) {
+      _log.d(_tag, 'autoLogin: no saved credentials');
+      return false;
+    }
+    final username = credentials['username']!;
+    final password = credentials['password']!;
+
+    _log.i(_tag, 'autoLogin: starting');
+    _isAutoLoggingIn = true;
+    notifyListeners();
+
+    try {
+      const maxRetries = 5;
+      for (int attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          final captcha = await _scuAuth.fetchCaptcha();
+
+          String captchaText;
+          try {
+            final comma = captcha.captchaBase64.indexOf(',');
+            final raw = comma >= 0
+                ? captcha.captchaBase64.substring(comma + 1)
+                : captcha.captchaBase64;
+            final imageBytes = base64.decode(raw);
+            captchaText = await OcrService.performOcr(imageBytes);
+          } catch (e) {
+            _log.e(_tag, 'autoLogin: OCR error $e');
+            return false;
+          }
+
+          _isAutoLoggingIn = false;
+          await login(
+            username: username,
+            password: password,
+            captchaCode: captcha.code,
+            captchaText: captchaText,
+          );
+          _log.i(_tag, 'autoLogin: ok');
+          return true;
+        } on ScuLoginException catch (e) {
+          if (e.message == 'invalid_captcha') {
+            _log.w(
+              _tag,
+              'autoLogin: invalid_captcha, retry ${attempt + 1}/$maxRetries',
+            );
+            continue;
+          }
+          _log.w(_tag, 'autoLogin: failed (non-captcha): ${e.message}');
+          return false;
+        } catch (e) {
+          _log.e(_tag, 'autoLogin: network error $e');
+          return false;
+        }
+      }
+      _log.w(_tag, 'autoLogin: captcha retries exhausted');
+      return false;
+    } finally {
+      _isAutoLoggingIn = false;
+      notifyListeners();
+    }
   }
 }

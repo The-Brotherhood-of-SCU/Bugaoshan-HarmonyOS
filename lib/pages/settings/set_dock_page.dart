@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
-import 'package:bugaoshan/models/dock_item_config.dart';
+import 'package:bugaoshan/models/campus_item_config.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
 
 class SetDockPage extends StatefulWidget {
   const SetDockPage({super.key});
@@ -16,14 +17,12 @@ class SetDockPage extends StatefulWidget {
 class _SetDockPageState extends State<SetDockPage> {
   late final AppConfigProvider _appConfig;
   late List<String> _visibleIds;
-  late final List<DockItemConfig> _allItems;
 
   @override
   void initState() {
     super.initState();
     _appConfig = getIt<AppConfigProvider>();
     _visibleIds = List<String>.from(_appConfig.visibleDockIds.value);
-    _allItems = List<DockItemConfig>.from(allDockItems);
   }
 
   bool _isVisible(String id) => _visibleIds.contains(id);
@@ -40,8 +39,7 @@ class _SetDockPageState extends State<SetDockPage> {
     _appConfig.visibleDockIds.value = updated;
   }
 
-  void _onReorder(int oldIndex, int newIndex) {
-    if (oldIndex < newIndex) newIndex -= 1;
+  void _onReorderItem(int oldIndex, int newIndex) {
     final updated = List<String>.from(_visibleIds);
     final item = updated.removeAt(oldIndex);
     updated.insert(newIndex, item);
@@ -69,8 +67,8 @@ class _SetDockPageState extends State<SetDockPage> {
 
     // Items shown in the preview bar (in order)
     final previewItems = _visibleIds
-        .where((id) => _allItems.any((item) => item.id == id))
-        .map((id) => dockConfigById(id))
+        .where((id) => allCampusItems.any((item) => item.id == id))
+        .map((id) => campusItemConfigById(id))
         .toList();
     final dockerPreview = Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -89,7 +87,7 @@ class _SetDockPageState extends State<SetDockPage> {
             height: 64,
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -101,7 +99,7 @@ class _SetDockPageState extends State<SetDockPage> {
                         Icon(item.icon, size: 24),
                         const SizedBox(height: 4),
                         Text(
-                          dockLabel(item.id, l10n),
+                          item.dockLabel(l10n),
                           style: theme.textTheme.labelSmall,
                         ),
                       ],
@@ -118,7 +116,7 @@ class _SetDockPageState extends State<SetDockPage> {
       physics: const NeverScrollableScrollPhysics(),
       buildDefaultDragHandles: false,
       itemCount: _visibleIds.length,
-      onReorder: _onReorder,
+      onReorder: _onReorderItem,
       proxyDecorator: (child, index, animation) {
         return AnimatedBuilder(
           animation: animation,
@@ -126,7 +124,7 @@ class _SetDockPageState extends State<SetDockPage> {
             final t = Curves.easeInOut.transform(animation.value);
             return Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppShapes.medium),
                 color: theme.colorScheme.surface,
                 boxShadow: t > 0
                     ? [
@@ -157,7 +155,7 @@ class _SetDockPageState extends State<SetDockPage> {
       },
       itemBuilder: (context, index) {
         final id = _visibleIds[index];
-        final item = dockConfigById(id);
+        final item = campusItemConfigById(id);
         final isProfile = item.id == dockIdProfile;
 
         return Card(
@@ -165,15 +163,8 @@ class _SetDockPageState extends State<SetDockPage> {
           margin: const EdgeInsets.symmetric(vertical: 4),
           child: ListTile(
             leading: Icon(item.icon, color: theme.colorScheme.primary),
-            title: Text(dockFullLabel(item.id, l10n)),
-            subtitle: isProfile
-                ? Text(
-                    l10n.cannotDeleteProfile,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  )
-                : null,
+            title: Text(item.dockFullLabel(l10n)),
+            subtitle: null,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -187,6 +178,7 @@ class _SetDockPageState extends State<SetDockPage> {
                 ReorderableDragStartListener(
                   index: index,
                   child: Icon(
+                    size: 40,
                     Icons.drag_handle,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -198,7 +190,7 @@ class _SetDockPageState extends State<SetDockPage> {
       },
     );
     final hiddenItems = [
-      ..._allItems
+      ...allCampusItems
           .where((item) => !_isVisible(item.id))
           .map(
             (item) => Card(
@@ -209,7 +201,7 @@ class _SetDockPageState extends State<SetDockPage> {
                   item.icon,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
-                title: Text(dockFullLabel(item.id, l10n)),
+                title: Text(item.dockFullLabel(l10n)),
                 trailing: Switch(
                   value: false,
                   onChanged: (_) => _toggleVisibility(item.id),

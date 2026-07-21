@@ -1,3 +1,4 @@
+import 'package:bugaoshan/widgets/common/third_center.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
@@ -7,6 +8,59 @@ import 'package:bugaoshan/providers/course_provider.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 import 'package:bugaoshan/utils/export_schedule_utils.dart';
+import 'package:bugaoshan/utils/app_shapes.dart';
+
+/// 弹窗让用户输入新课表名称，校验重名后通过 [courseProvider.addSchedule] 添加。
+/// 复用当前选中的课表配置（timeSlots 等）作为模板。
+/// 供 [ScheduleManagementPage] 的 AppBar `+` 按钮和 [CoursePage] 空状态视图调用。
+Future<void> promptForNewScheduleConfig(
+  BuildContext context,
+  CourseProvider courseProvider,
+) async {
+  final l10n = AppLocalizations.of(context)!;
+  final controller = TextEditingController();
+  final newName = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l10n.semesterName),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: InputDecoration(hintText: l10n.semesterName),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text(l10n.cancel),
+        ),
+        TextButton(
+          onPressed: () {
+            final t = controller.text.trim();
+            if (t.isNotEmpty) Navigator.pop(ctx, t);
+          },
+          child: Text(l10n.save),
+        ),
+      ],
+    ),
+  );
+
+  if (newName == null || newName.isEmpty) return;
+  if (!context.mounted) return;
+
+  if (courseProvider.isScheduleNameTaken(newName)) {
+    showInfoDialog(title: l10n.duplicateScheduleName, content: '');
+    return;
+  }
+
+  // 复用当前选中的课表配置（timeSlots 等）作为模板
+  final currentConfig = courseProvider.scheduleConfig.value;
+  final newConfig = currentConfig.copyWith(
+    id: DateTime.now().millisecondsSinceEpoch.toString(),
+    semesterName: newName,
+    semesterStartDate: DateTime.now().toMonday(),
+  );
+  await courseProvider.addSchedule(newConfig);
+}
 
 class ScheduleManagementPage extends StatelessWidget {
   const ScheduleManagementPage({super.key});
@@ -17,7 +71,9 @@ class ScheduleManagementPage extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppShapes.extraLarge),
+        ),
       ),
       builder: (context) => SafeArea(
         child: Padding(
@@ -108,59 +164,8 @@ class ScheduleManagementPage extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.add),
-              onPressed: () async {
-                final controller = TextEditingController();
-                final newName = await showDialog<String>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text(l10n.semesterName),
-                    content: TextField(
-                      controller: controller,
-                      autofocus: true,
-                      decoration: InputDecoration(hintText: l10n.semesterName),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(l10n.cancel),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          final text = controller.text.trim();
-                          if (text.isNotEmpty) {
-                            Navigator.pop(context, text);
-                          } else {
-                            // Could optionally show a small snackbar/hint here
-                            Navigator.pop(context);
-                          }
-                        },
-                        child: Text(l10n.save),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (newName != null && newName.isNotEmpty) {
-                  if (courseProvider.isScheduleNameTaken(newName)) {
-                    if (context.mounted) {
-                      showInfoDialog(
-                        title: l10n.duplicateScheduleName,
-                        content: '',
-                      );
-                    }
-                    return;
-                  }
-
-                  // 复用当前选中的课表配置（TimeSlot 等）
-                  final currentConfig = courseProvider.scheduleConfig.value;
-                  final newConfig = currentConfig.copyWith(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    semesterName: newName,
-                    semesterStartDate: DateTime.now().toMonday(),
-                  );
-                  await courseProvider.addSchedule(newConfig);
-                }
-              },
+              onPressed: () =>
+                  promptForNewScheduleConfig(context, courseProvider),
             ),
           ],
         ),
@@ -172,6 +177,28 @@ class ScheduleManagementPage extends StatelessWidget {
           builder: (context, _) {
             final allSchedules = courseProvider.allSchedules.value;
             final currentId = courseProvider.scheduleConfig.value.id;
+
+            if (allSchedules.isEmpty) {
+              return ThirdCenter(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_month_outlined,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.noSchedule,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
 
             return ListView.builder(
               itemCount: allSchedules.length,
@@ -193,13 +220,13 @@ class ScheduleManagementPage extends StatelessWidget {
                   subtitle: Text(l10n.totalWeeksSubtitle(schedule.totalWeeks)),
                   onTap: () {
                     courseProvider.switchSchedule(schedule.id);
-                    Navigator.pop(logicRootContext);
+                    Navigator.pop(context);
                   },
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.send_outlined),
+                        icon: const Icon(Icons.share),
                         onPressed: () => showExportScheduleSheet(
                           context,
                           schedule: schedule,
@@ -260,24 +287,20 @@ class ScheduleManagementPage extends StatelessWidget {
                           }
                         },
                       ),
-                      if (allSchedules.length > 1)
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.red,
-                          ),
-                          onPressed: () async {
-                            final confirm = await showYesNoDialog(
-                              title: l10n.delete,
-                              content: l10n.deleteScheduleConfirm(
-                                schedule.semesterName,
-                              ),
-                            );
-                            if (confirm == true) {
-                              await courseProvider.deleteSchedule(schedule.id);
-                            }
-                          },
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () async {
+                          final confirm = await showYesNoDialog(
+                            title: l10n.delete,
+                            content: l10n.deleteScheduleConfirm(
+                              schedule.semesterName,
+                            ),
+                          );
+                          if (confirm == true) {
+                            await courseProvider.deleteSchedule(schedule.id);
+                          }
+                        },
+                      ),
                     ],
                   ),
                 );
