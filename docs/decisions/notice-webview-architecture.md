@@ -2,15 +2,17 @@
 
 日期: 2026-05-17
 
+状态: 已接受并实施
+
 ## 背景
 
-校园模块需要展示多个来源的通知公告，包括教务处（jwc.scu.edu.cn）和学工部（xgb.scu.edu.cn）。两套页面风格不同，且均为服务端渲染的 HTML 页面。
+作出本决策时，校园模块需要展示教务处（jwc.scu.edu.cn）和学工部（xgb.scu.edu.cn）两个来源的通知公告。两套页面风格不同，且均为服务端渲染的 HTML 页面；团委（tuanwei.scu.edu.cn）来源在后续按同一决策接入。
 
 ## 方案对比
 
-### 方案 A：HTML 解析渲染（JWC 当前方案）
+### 方案 A：HTML 解析渲染（决策前 JWC 方案）
 
-教务处通知采用此方案：
+教务处通知在决策前采用此方案：
 
 - 使用 HTTP 客户端请求 HTML，解析 DOM 提取标题、发布时间、正文等内容
 - 将 HTML 正文转换为 Flutter widget 树进行渲染
@@ -21,9 +23,9 @@
 - **渲染不一致**：HTML → Flutter widget 的转换难以完美覆盖所有样式，表格、图片、特殊排版经常出现偏差
 - **脆弱**：官网 HTML 结构调整会导致解析代码失效，需反复适配
 
-### 方案 B：WebView + JS 注入（学工部当前方案）
+### 方案 B：WebView + JS 注入（决策前 XGB 方案，最终采用）
 
-学工部通知采用此方案：
+学工部通知在决策前采用此方案：
 
 - 直接通过 WebView 加载官网页面
 - 注入 JavaScript 脚本适配深色模式、移动端布局
@@ -89,7 +91,7 @@ requestAnimationFrame(() => {
 
 ## 结论
 
-| 维度 | HTML 解析（JWC） | WebView（学工部） |
+| 维度 | HTML 解析 | WebView + JS 注入 |
 |------|-----------------|-------------------|
 | 开发成本 | 高 | 低 |
 | 维护成本 | 高（结构脆弱） | 低（只需维护 JS 脚本） |
@@ -98,4 +100,11 @@ requestAnimationFrame(() => {
 | 性能 | 好（原生组件） | 中等（WebView 开销） |
 
 
-后续新增通知来源统一采用 **WebView + JS 注入** 方案。
+通知来源统一采用 **WebView + JS 注入** 方案。
+
+## 当前实现
+
+- 教务处（JWC）、党委学工部（XGB）和团委（Tuanwei）均通过共享的 `WebViewNoticePage` 加载官网页面，不再保留 JWC 的原生 HTML 解析渲染路径。
+- 三个来源分别注入 `jwc_notice_beautify.js`、`party_notice_beautify.js` 和 `tuanwei_notice_beautify.js`；页面加载后再执行 `dom_ready.js`，通过双重 `requestAnimationFrame` 等待布局稳定。
+- 共享页面通过 `AttachmentsChannel` 接收附件列表，并使用统一的悬浮入口和下载管理界面。团委下载额外启用 WebView 下载并携带来源站点所需的 Referer。
+- HarmonyOS 当前隐藏整个校园通知分区；本 ADR 描述的是启用通知功能的平台上的统一实现。

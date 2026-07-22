@@ -25,7 +25,7 @@
 
 ## ✨ 主要功能
 
-- **课表管理** — 导入并查看个人课程表，清晰掌握每日课程安排，还有课表小组件方便查看
+- **课表管理** — 导入并查看个人课程表，清晰掌握每日课程安排，Android 端还有课表小组件方便查看
 - **成绩统计** — 查看个人成绩，直观了解学业情况
 - **方案修读情况查询** — 查询个人修读的方案，了解学习进度
 - **培养方案** — 查询各年级学院的培养方案详情
@@ -38,7 +38,7 @@
 - **寝室电费&空调余额查询** — 查询寝室的电费和空调余额
 - **校历查询** — 查询校园的校历，了解放假安排
 - **班级课表查询** — 查询各个年级和班级的课表，方便查看班级课程安排
-- **通知公告、附件下载** — 查看教务处、党委学工部、青春川大通知公告以及下载附件
+- **通知公告、附件下载** — 查看教务处、党委学工部、青春川大通知公告以及下载附件（HarmonyOS 暂不提供）
 - **志愿四川** — 志愿四川查询和报名
 - **更多便捷功能** — 持续迭代中，更多校园实用工具即将上线
 
@@ -53,7 +53,9 @@
 
 ## 📥 下载
 
-**前往 [Release 页面](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/latest) 下载最新版本**
+上游 [Release 页面](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/latest) 提供 Android APK、Windows 压缩包和 Linux 压缩包。
+
+HarmonyOS HAP 不进入上游通用 Release，需要单独构建、签名和分发。请勿在 HarmonyOS 设备上安装 Release 中的 Android APK；HarmonyOS 的构建与签名方式见 [HarmonyOS 开发指南](docs/HARMONYOS.md)。
 
 ---
 
@@ -61,7 +63,7 @@
 
 如需参与开发或自行编译，请参阅 [CONTRIBUTING.md](CONTRIBUTING.md) 了解环境配置、构建命令等详细指引。
 
-HarmonyOS 使用 API 24 Release SDK，环境、构建、签名与平台能力边界见 [HarmonyOS 开发指南](docs/HARMONYOS.md)。通知公告、Android 桌面小组件、相册直存、系统主题色、文件选择/打开和应用内更新入口不会在 HarmonyOS 上显示。
+HarmonyOS 使用 API 24 Release SDK，环境、构建、签名与平台能力边界见 [HarmonyOS 开发指南](docs/HARMONYOS.md)。当前 HarmonyOS 暂不提供校园通知公告、Android 桌面小组件、图片查看器中的保存与分享、系统强调色、部分文件选择/打开操作和应用内更新。课表背景图仍可正常从系统图库选择。
 
 ---
 

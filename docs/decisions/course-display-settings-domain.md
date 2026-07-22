@@ -1,13 +1,14 @@
 # 课表显示设置域归属设计决策
 
+状态：已接受并实施
+
 ## 概述
 
-统一「课程表样式」（全局）与「课表设置」（课表域）中四个显示开关的归属，
-消除域混淆与设置项冗余。
+本文记录将「课程表样式」（全局）与「课表设置」（课表域）中的四个显示开关统一迁移到全局设置的决策，以及实施后的实际结构。
 
 ## 背景
 
-### 当前架构
+### 决策前架构
 
 ```
 软件设置 (AppConfigProvider / SharedPreferences)
@@ -36,7 +37,7 @@
 
 将 `showTeacherName` / `showLocation` / `showWeekend` / `showNonCurrentWeekCourses` 从 `ScheduleConfig` 迁移到 `AppConfigProvider`，使其成为全局设置。
 
-**改动范围：**
+**计划改动范围：**
 
 | 文件                                            | 改动                                                                   |
 | ----------------------------------------------- | ---------------------------------------------------------------------- |
@@ -100,9 +101,9 @@
 - ❌ 冗余永久化，维护负担
 - ❌ 用户困惑无法根本解决
 
-## 推荐方案
+## 决策
 
-**方案 A** — 将四个显示设置提升为全局设置。
+采用 **方案 A**：将四个显示设置提升为全局设置。
 
 ### 理由
 
@@ -112,7 +113,7 @@
 
 3. 唯一合理的「按课表隐藏周末」场景，可以通过课表名称或备注来识别，不需要将设置绑定到 `ScheduleConfig`。
 
-### 迁移计划
+### 实施计划（历史）
 
 #### Step 1：AppConfigProvider 新增字段
 
@@ -151,15 +152,24 @@ final ValueNotifier<bool> showNonCurrentWeekCourses = ValueNotifier<bool>(true);
 ### 向后兼容
 
 - SharedPreferences 无默认值问题：`_loadPreferences` 使用了 `??` 兜底
-- ScheduleConfig 存量数据库 JSON 仍保留旧字段，`fromJson` 忽略多余字段即可——`json['showTeacherName']` 虽然会读到但不再使用，无影响
+- ScheduleConfig 存量数据库 JSON 可能仍保留旧字段；当前 `fromJson` 只读取已知字段并忽略这些多余键，无需重写存量数据
 - 建议在迁移后运行一次 `dart run build_runner build` 确保无编译错误
+
+## 实施结果
+
+- `showTeacherName`、`showLocation`、`showWeekend`、`showNonCurrentWeekCourses` 已由 `AppConfigProvider` 以四个 `ValueNotifier<bool>` 持有，并写入 SharedPreferences；它们不再随课表切换。
+- `ScheduleConfig` 已移除上述四个字段。旧数据库 JSON 中的多余字段会被当前 `fromJson` 忽略，因此无需迁移或重写存量课表数据。
+- `SetCourseStylePage` 直接读写全局设置并在“恢复默认”时一并复位；`CourseScheduleSetting` 不再重复展示这些开关。
+- `CourseGrid` 监听全局设置，并将 `showNonCurrentWeekCourses` 显式传给纯函数 `selectVisibleCoursesForDay()`。实现没有按原计划让 `grid_logic.dart` 直接读取 GetIt，从而保留了纯逻辑测试能力。
+- 班级课表查询可通过 `showWeekendOverride` 按查询结果临时覆盖周末列；该覆盖不改变用户的全局偏好。
 
 ## 状态
 
-提议中 — 待实施。
+已接受并实施。当前实现以 `AppConfigProvider` 为四个显示偏好的唯一持久化来源。
 
 ## 决策时间线
 
 | 日期       | 决策                              |
 | ---------- | --------------------------------- |
 | 2026-07-05 | 方案 A 选定为推荐方案，本文档创建 |
+| 2026-07-05 | 完成迁移并采用显式参数传递的纯筛选逻辑 |

@@ -18,6 +18,12 @@
 
 Flutter SDK 和 OHOS 插件都固定到了不可变 Git 提交。升级时应同时验证 SDK、插件和真机，不要只移动其中一个版本。
 
+## 安装与分发
+
+上游 [GitHub Release](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/latest) 提供 Android APK、Windows 压缩包和 Linux 压缩包，不包含 HarmonyOS HAP。HarmonyOS HAP 不参与通用 Release 流程，需要使用本指南中的环境单独构建，并通过匹配 `com.scubrotherhood.bugaoshan` 的证书和 Profile 签名后分发。
+
+Release 中的 Android APK 不能代替 HAP 安装到 HarmonyOS。CI 生成的 unsigned HAP 仅用于构建验证，也不是面向用户的安装包。
+
 ## macOS 环境
 
 安装 DevEco Studio 6.1.1 Release 后，克隆 CPF Flutter。不要使用 Beta SDK
@@ -116,12 +122,23 @@ Connect 使用云管理证书重新签名。
 
 ## 当前平台行为
 
+以下能力已适配 HarmonyOS：
+
 - 课表使用 CPF `sqflite`，与其他平台共用 SQLite 数据模型。
 - 登录令牌和记住的凭据使用 `flutter_secure_storage_ohos` 加密存储。
 - 外部链接、分享、应用信息和 SharedPreferences 已接入 OHOS 插件。
 - ICS 导入通过 `bugaoshan/update` MethodChannel 调用系统日历处理应用。
-- 通知公告、桌面小组件、相册/图库、系统主题色、文件选择与打开等文件操作，以及应用内更新入口在 HarmonyOS 上隐藏。
+- 课表背景图可正常从系统图库选择，也可从背景图提取主题色。
 - OCR 自动登录使用纯 Dart `scu_ocr_lite`，在 HarmonyOS 上保留并纳入真机验证。
+
+以下能力当前暂不提供：
+
+- 校园模块中的教务处、党委学工部和青春川大通知公告，以及通知附件下载管理入口。
+- Android 桌面课表小组件及其设置、首次启动引导中的小组件页面。
+- 全屏图片查看器中的“保存到相册”和“分享”操作；图片本身仍可在查看器中浏览。这不影响从系统图库选择课表背景图，也不代表 HarmonyOS 上所有分享能力都不可用。
+- 跟随系统强调色；仍可使用自定义主题色或从课表背景图提取主题色。
+- 部分依赖通用文件选择器或文件打开器的操作，例如将日历导出为指定位置的 `.ics` 文件、保存认证日志。通过系统日历处理应用导入课程和校历仍然可用。
+- 应用内检查、下载和安装更新。HarmonyOS HAP 采用独立的构建与分发流程，不从上游通用 Release 选择安装包。
 
 ## CI 验证
 

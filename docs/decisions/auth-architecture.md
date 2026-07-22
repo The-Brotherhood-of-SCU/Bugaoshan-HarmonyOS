@@ -10,7 +10,7 @@
 3. **子模块认证契约**：每个子系统通过 `SubsystemAuth` 声明自己的鉴权方式和依赖关系
 4. **显式依赖 & 并行预热**：`AuthCoordinator` 按依赖分层，无依赖模块并行，有依赖串行
 5. **L2 自管就绪**：`WfwAuth` 等模块持有自己的 `_ready`，仅 session 绑定后才通知 Provider 发起请求
-6. **异常冒泡 + 自动重试**：`UnauthException` 穿透 → `invalidate()` → 重新鉴权 → 重试一次
+6. **异常冒泡 + 自动重试**：`UnauthenticatedException` 穿透 → `invalidate()` → 重新鉴权 → 重试一次
 7. **并发安全**：`_synchronizedRefresh` 确保 N 并发 = 1 次刷新
 
 ## 三层架构 + 响应式链
@@ -113,7 +113,7 @@ payapp  → 依赖 wfw
 - 第二层：`payapp` 只等 `wfw` 完成，不等 `zhjw`/`fitness`/`ccyl`
 - 依赖失败只跳过下游，其他模块不受影响
 
-预热也由 [home_page.dart](E:/repo/Bugaoshan/lib/pages/home_page.dart:55) 在 app 启动、token 有效时直接触发，确保子系统 session 在 Provider 首次请求前已就绪。
+预热也由 [home_page.dart](../../lib/pages/home_page.dart) 在 app 启动、token 有效时直接触发，确保子系统 session 在 Provider 首次请求前已就绪。
 
 ## WfwAuth 自管就绪
 
@@ -282,11 +282,13 @@ ZHJW / WFW / PAYAPP 的 `_request()` 都传入对应 Auth 的 `invalidate`，确
 
 ### CCYL token 过期重试
 
-CCYL token 过期时服务端返回业务错误码（`CcylException`），而非 `UnauthenticatedException`。`CcylApiService._retryOnCcylAuthError()` 捕获 `CcylException` 后：
+CCYL token 过期时服务端返回认证过期业务码，并被解析为 `CcylAuthExpiredException`，而非 `UnauthenticatedException`。`CcylApiService._retryOnCcylAuthError()` 只捕获这个明确的认证过期子类型，然后：
 
 1. `CcylAuth.invalidate()` 清除旧 token 和 reLogin future
 2. `CcylAuth.reLogin()` 通过 SCU OAuth 换新 token
 3. 重试原请求
+
+其他 `CcylException` 直接向上抛出，不会重放可能具有副作用的业务请求。
 
 ### HTTP 层 ClientException 重试
 

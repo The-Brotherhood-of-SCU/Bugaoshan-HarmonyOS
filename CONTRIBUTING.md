@@ -4,7 +4,7 @@
 
 ## 📥 下载体验
 
-**前往 [Release 页面](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/latest) 下载最新版本**
+**前往上游 [Release 页面](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/latest) 下载 Android、Windows 或 Linux 最新版本。HarmonyOS HAP 不在通用 Release 中发布。**
 
 ---
 
@@ -12,19 +12,22 @@
 
 ### 环境要求
 
-- [Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.44（Dart SDK 3.10+）
-- [Dart SDK](https://dart.dev/get-dart) >= 3.10.4
-- [Nuget CLI](https://learn.microsoft.com/en-us/nuget/install-nuget-client-tools?tabs=windows#nugetexe-cli)  required by `flutter_inappwebview` (windows target)
+- 标准平台：[Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.44、Dart SDK >= 3.11.0；GitHub Actions 使用 Flutter 3.44.6
+- Flatpak：打包清单固定 Flutter 3.44.4
+- HarmonyOS：固定 CPF Flutter 3.41.9 / Dart 3.11.5，并需要 DevEco Studio 6.1.1 Release、Java 17；完整配置见 [HarmonyOS 开发指南](docs/HARMONYOS.md)
+- Windows：[NuGet CLI](https://learn.microsoft.com/en-us/nuget/install-nuget-client-tools?tabs=windows#nugetexe-cli)，供 `flutter_inappwebview` Windows target 构建使用
+
+标准 Flutter SDK 不能用于构建 HarmonyOS HAP；HarmonyOS 开发必须使用指南中固定到具体提交的 CPF Flutter。
 
 ### 安装运行
 
 ```bash
 # 克隆仓库
-git clone git@github.com:The-Brotherhood-of-SCU/Bugaoshan.git
+git clone git@github.com:The-Brotherhood-of-SCU/Bugaoshan-HarmonyOS.git
 # 或
-git clone https://github.com/The-Brotherhood-of-SCU/Bugaoshan.git
+git clone https://github.com/The-Brotherhood-of-SCU/Bugaoshan-HarmonyOS.git
 
-cd Bugaoshan
+cd Bugaoshan-HarmonyOS
 ```
 
 > #### Pre-commit Hook
@@ -61,8 +64,11 @@ cd Bugaoshan
 # 安装依赖（已设镜像则直接执行）
 flutter pub get
 
-# 运行代码生成（DI & 国际化）
-flutter pub run build_runner build --delete-conflicting-outputs
+# 运行代码生成（DI / JSON 序列化）
+dart run build_runner build --delete-conflicting-outputs
+
+# build_runner 完成后生成国际化代码
+flutter gen-l10n
 
 # 运行 App
 flutter run
@@ -93,9 +99,9 @@ lib/
 | 类别     | 技术                                                                                                         |
 | -------- | ------------------------------------------------------------------------------------------------------------ |
 | 框架     | [Flutter](https://flutter.dev)                                                                               |
-| 状态管理 | Provider / ChangeNotifier                                                                                    |
+| 状态管理 | Flutter 内置 `ValueNotifier` / `ChangeNotifier`、`ValueListenableBuilder` / `ListenableBuilder`             |
 | 依赖注入 | [GetIt](https://pub.dev/packages/get_it) + [Injectable](https://pub.dev/packages/injectable)                 |
-| 网络请求 | [Dio](https://pub.dev/packages/dio) + Cookie Manager                                                         |
+| 网络请求 | [`package:http`](https://pub.dev/packages/http) + 自定义 `CookieClient`                                      |
 | 本地存储 | [SQLite](https://pub.dev/packages/sqflite)、[SharedPreferences](https://pub.dev/packages/shared_preferences) |
 | 国际化   | Flutter `flutter_localizations`                                                                              |
 | 国密算法 | [dart_sm](https://pub.dev/packages/dart_sm)（SM2/SM3/SM4）                                                   |

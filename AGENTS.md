@@ -8,11 +8,13 @@ This file provides guidance to AI coding agents (e.g. Claude Code, Kimi Code) wh
 
 The name comes from a landmark on SCU's Jiang'an campus — "Bugaoshan" is a play on words meaning "not a tall mountain" and "The Brotherhood of SCU" sounds similar.
 
-> **⚠️ Flutter 版本要求**: 本项目需要 **Flutter >= 3.44**（Dart SDK >= 3.10.4）才能正常编译。CI uses Flutter **3.44.2** stable. 详情见 `CONTRIBUTING.md` 与 `.github/actions/setup/action.yml`.
+> **Flutter 工具链**：标准平台需要 **Flutter >= 3.44**、**Dart SDK >= 3.11.0**，GitHub Actions 使用 Flutter **3.44.6**；Flatpak 清单固定 Flutter **3.44.4**。HarmonyOS 必须使用固定的 **CPF Flutter 3.41.9 / Dart 3.11.5**，不要用标准 Flutter SDK 构建 HAP。详情见 `CONTRIBUTING.md`、`docs/HARMONYOS.md` 与对应工作流配置。
 
 ## Build & Run
 
 > **IMPORTANT**: 所有 `flutter` / `dart` 命令必须能访问公网（Pub 镜像、Flutter 资源）。在受限沙箱里会无限挂起，常见做法是 `sandbox_permissions: require_escalated`。
+>
+> 本节命令适用于标准 Flutter 平台；HarmonyOS 的 SDK 配置、构建和签名流程见 `docs/HARMONYOS.md`。
 
 ```bash
 # Install dependencies
@@ -89,7 +91,8 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `f
 │   │   └── update.sh           # Linux updater
 │   ├── scu.webp                # SCU background image asset
 │   └── webview_error.html      # fallback page for failed WebView loads
-├── android/  ios/  macos/  windows/  linux/  web/   # per-platform projects
+├── android/  ios/  macos/  windows/  linux/  web/   # standard Flutter platform projects
+├── ohos/                       # HarmonyOS platform project (CPF Flutter)
 ├── local/                      # local-only helper assets (e.g. zikzak_inappwebview_windows)
 ├── doc/                        # API documentation
 │   └── api/
@@ -125,13 +128,14 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `f
 ├── test/                       # Unit + widget tests
 ├── test_driver/                # integration driver
 ├── docs/
-│   └── decisions/              # Architecture Decision Records (ADRs)
+│   ├── HARMONYOS.md             # pinned CPF SDK, build, signing, platform limits
+│   └── decisions/               # Architecture Decision Records (ADRs)
 │       ├── auth-architecture.md
 │       ├── auth-module-refactor.md
 │       ├── course-display-settings-domain.md
 │       └── notice-webview-architecture.md
 └── .github/
-    ├── actions/setup/          # composite action: install Flutter 3.44.2, gen-l10n, git metadata
+    ├── actions/setup/          # composite action: install Flutter 3.44.6, gen-l10n, git metadata
     ├── scripts/                # Python release automation
     │   ├── git_meta.py             # export GIT_TAG / GIT_COMMIT / GIT_COMMIT_DATE / BUILD_TIME
     │   ├── release_tags.py         # resolve version + prev tag
@@ -142,7 +146,8 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `f
     │   ├── release.yml         # triggered by tags v*.*.* or manual dispatch
     │   ├── build-android.yml   # workflow_call → APK (split per ABI, obfuscated)
     │   ├── build-windows.yml   # workflow_call → Windows zip
-    │   └── build-linux.yml     # workflow_call → Linux tar.gz
+    │   ├── build-linux.yml     # workflow_call → Linux tar.gz
+    │   └── build-ohos.yml      # CPF verification + optional unsigned HAP
     └── ISSUE_TEMPLATE/feature_request.yml
 ```
 
@@ -308,10 +313,11 @@ Always run `dart format` (the repo's pre-commit hook enforces this on staged `.d
 
 GitHub Actions:
 
-- **`release.yml`** — triggered by tags `v*.*.*` (or `workflow_dispatch`). Calls `build-android` and `build-windows` (currently **does not** invoke `build-linux`), then runs the Python release scripts and publishes to GitHub Releases via `softprops/action-gh-release@v2`. Prerelease tags (containing `-`) are flagged as pre-releases.
+- **`release.yml`** — triggered by tags `v*.*.*` (or `workflow_dispatch`). Calls `build-android`, `build-windows`, and `build-linux`, then publishes their APK/zip/tar.gz artifacts to GitHub Releases via `softprops/action-gh-release@v2`. Prerelease tags (containing `-`) are flagged as pre-releases.
 - **`build-android.yml`** — Ubuntu, JDK 21, decodes keystore from `secrets.KEYSTORE_BASE64`, writes `android/key.properties`, builds **split-per-ABI** release APK with `--obfuscate --split-debug-info=build/app/outputs/symbols`.
 - **`build-windows.yml`** — Windows runner, archives `build\windows\x64\runner\Release\*` into `windows-release.zip` via `Compress-Archive`.
-- **`build-linux.yml`** — Ubuntu + `debian:trixie` container, builds `libwpewebkit` deps, `tar -czvf` of the bundle.
+- **`build-linux.yml`** — Ubuntu + `debian:sid` container, builds `libwpewebkit` deps, `tar -czvf` of the bundle.
+- **`build-ohos.yml`** — pull requests use pinned CPF Flutter to run dependency resolution, code generation, analysis, and tests; an explicitly enabled self-hosted macOS job can build a short-lived unsigned HAP. HarmonyOS artifacts are not consumed by `release.yml`.
 
 ### Release helpers (`.claude/commands/`)
 
@@ -361,4 +367,4 @@ The auto-changelog flow:
 
 ## Platform Support
 
-`flutter_launcher_icons` 为所有 6 个平台生成图标;`flutter_secure_storage` 在所有平台都可用;`sqflite_common_ffi` 处理桌面端 SQLite. UI 通过 `LayoutBuilder`/`MediaQuery` 适配手机/平板/桌面. 主 release pipeline(参见 `release.yml`)目前只打包 **Android (split-per-ABI APK)** 和 **Windows (zip)**;Linux 也有专门的 `build-linux.yml` 但未被 release.yml 调用 —— 新增发布平台时务必同时更新 `release.yml` 与 `release_prepare.py`.
+`flutter_launcher_icons` 为 6 个标准 Flutter 平台生成图标，HarmonyOS 图标资源由 `ohos/` 工程维护；`flutter_secure_storage` 在 HarmonyOS 上通过固定的 OHOS 适配包提供同一接口；`sqflite_common_ffi` 处理桌面端 SQLite。UI 通过 `LayoutBuilder`/`MediaQuery` 适配手机、平板和桌面。主 release pipeline（参见 `release.yml`）打包 **Android（split-per-ABI APK）**、**Windows（zip）** 和 **Linux（tar.gz）**；HarmonyOS 只由独立工作流验证，不进入通用 Release。新增发布平台时务必同时更新 `release.yml` 与 `release_prepare.py`。
