@@ -9,13 +9,13 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get bugaoshan => 'Bugaoshan';
+  String get bugaoshan => '不高山上';
 
   @override
   String get selfLanguage => 'English';
 
   @override
-  String get wizardWelcomeTitle => 'Welcome to Bugaoshan';
+  String get wizardWelcomeTitle => 'Welcome to 不高山上';
 
   @override
   String get wizardWelcomeDesc =>
@@ -299,6 +299,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get developmentTeam => 'Dev Team';
 
   @override
+  String get developerAndOperator => 'Developer and Operator';
+
+  @override
+  String get openSourceMaintenanceTeam => 'Open-source Maintenance Team';
+
+  @override
+  String get openSourceProjectCopyright =>
+      'Open-source project © 2026 The-Brotherhood-of-SCU';
+
+  @override
   String get projectInfo => 'Project Info';
 
   @override
@@ -311,7 +321,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitTag => 'Git Tag';
 
   @override
-  String get appDescription => 'Explore everything, all on the Bugaoshan';
+  String get appDescription => 'Explore everything with 不高山上';
 
   @override
   String get contactUs => 'Contact Us';
@@ -2280,8 +2290,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Dynamic icon switching is not supported on this platform';
 
   @override
-  String get newIconSubtitle => 'Bugaoshan New Icon';
+  String get newIconSubtitle => '不高山上 New Icon';
 
   @override
-  String get oldIconSubtitle => 'Bugaoshan Classic Icon';
+  String get oldIconSubtitle => '不高山上 Classic Icon';
 }

@@ -288,6 +288,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get developmentTeam => '开发团队';
 
   @override
+  String get developerAndOperator => '开发者及运营者';
+
+  @override
+  String get openSourceMaintenanceTeam => '开源维护团队';
+
+  @override
+  String get openSourceProjectCopyright => '开源项目 © 2026 The-Brotherhood-of-SCU';
+
+  @override
   String get projectInfo => '项目信息';
 
   @override

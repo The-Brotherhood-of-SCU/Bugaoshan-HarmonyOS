@@ -211,9 +211,14 @@ class _AboutPageState extends State<AboutPage> {
                 value: "Github",
                 onTap: () => openProjectRepository(),
               ),
+              IconTile(
+                icon: Icons.person_outline_rounded,
+                label: localizations.developerAndOperator,
+                value: '许盛凯',
+              ),
               LinkTile(
                 icon: Icons.group_outlined,
-                label: localizations.developmentTeam,
+                label: localizations.openSourceMaintenanceTeam,
                 value: "Brotherhood of SCU",
                 onTap: () => openDeveloperTeam(),
               ),
@@ -299,7 +304,7 @@ class _AboutPageState extends State<AboutPage> {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'Copyright © 2026 The-Brotherhood-of-SCU',
+              localizations.openSourceProjectCopyright,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: onSurfaceVariant.withValues(alpha: 0.6),
               ),

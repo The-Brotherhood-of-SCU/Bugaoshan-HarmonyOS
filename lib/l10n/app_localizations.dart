@@ -106,7 +106,7 @@ abstract class AppLocalizations {
   /// No description provided for @bugaoshan.
   ///
   /// In en, this message translates to:
-  /// **'Bugaoshan'**
+  /// **'不高山上'**
   String get bugaoshan;
 
   /// No description provided for @selfLanguage.
@@ -118,7 +118,7 @@ abstract class AppLocalizations {
   /// No description provided for @wizardWelcomeTitle.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to Bugaoshan'**
+  /// **'Welcome to 不高山上'**
   String get wizardWelcomeTitle;
 
   /// No description provided for @wizardWelcomeDesc.
@@ -637,6 +637,24 @@ abstract class AppLocalizations {
   /// **'Dev Team'**
   String get developmentTeam;
 
+  /// No description provided for @developerAndOperator.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer and Operator'**
+  String get developerAndOperator;
+
+  /// No description provided for @openSourceMaintenanceTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source Maintenance Team'**
+  String get openSourceMaintenanceTeam;
+
+  /// No description provided for @openSourceProjectCopyright.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source project © 2026 The-Brotherhood-of-SCU'**
+  String get openSourceProjectCopyright;
+
   /// No description provided for @projectInfo.
   ///
   /// In en, this message translates to:
@@ -664,7 +682,7 @@ abstract class AppLocalizations {
   /// No description provided for @appDescription.
   ///
   /// In en, this message translates to:
-  /// **'Explore everything, all on the Bugaoshan'**
+  /// **'Explore everything with 不高山上'**
   String get appDescription;
 
   /// No description provided for @contactUs.
@@ -4336,13 +4354,13 @@ abstract class AppLocalizations {
   /// No description provided for @newIconSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Bugaoshan New Icon'**
+  /// **'不高山上 New Icon'**
   String get newIconSubtitle;
 
   /// No description provided for @oldIconSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Bugaoshan Classic Icon'**
+  /// **'不高山上 Classic Icon'**
   String get oldIconSubtitle;
 }
 

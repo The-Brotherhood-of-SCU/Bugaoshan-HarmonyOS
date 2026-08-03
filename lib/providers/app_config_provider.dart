@@ -135,9 +135,13 @@ class AppConfigProvider {
         sanitizedDockIds,
       );
     }
-    acceptedEulaVersion.value =
-        _sharedPreferences.getInt(_keyAcceptedEulaVersion) ??
-        (kDebugMode ? 114514 : 0); //debug mode default 114514, skip eula check
+    final storedEulaVersion = _sharedPreferences.getInt(
+      _keyAcceptedEulaVersion,
+    );
+    acceptedEulaVersion.value = !kDebugMode && storedEulaVersion == 114514
+        ? 0
+        : storedEulaVersion ??
+              (kDebugMode ? 114514 : 0); // Debug builds skip the EULA gate.
     final themeColorIndex = _sharedPreferences.getInt(_keyThemeColorMode) ?? 0;
     final savedThemeColorMode = themeColorIndex < ThemeColorMode.values.length
         ? ThemeColorMode.values[themeColorIndex]

@@ -1,7 +1,7 @@
 {
-    "bugaoshan": "Bugaoshan",
+    "bugaoshan": "不高山上",
     "selfLanguage": "English",
-    "wizardWelcomeTitle": "Welcome to Bugaoshan",
+    "wizardWelcomeTitle": "Welcome to 不高山上",
     "wizardWelcomeDesc": "Your campus assistant: schedules, grades and campus services in one place",
     "wizard": "Wizard",
     "@wizard": {
@@ -115,11 +115,14 @@
     "advancedPicker": "Advanced",
     "about": "About",
     "developmentTeam": "Dev Team",
+    "developerAndOperator": "Developer and Operator",
+    "openSourceMaintenanceTeam": "Open-source Maintenance Team",
+    "openSourceProjectCopyright": "Open-source project © 2026 The-Brotherhood-of-SCU",
     "projectInfo": "Project Info",
     "appName": "App Name",
     "version": "Version",
     "gitTag": "Git Tag",
-    "appDescription": "Explore everything, all on the Bugaoshan",
+    "appDescription": "Explore everything with 不高山上",
     "contactUs": "Contact Us",
     "developedBy":"Developed by {team}",
     "externalResources": "External Resources",
@@ -900,6 +903,6 @@
         }
     },
     "iconSwitchNotSupported": "Dynamic icon switching is not supported on this platform",
-    "newIconSubtitle": "Bugaoshan New Icon",
-    "oldIconSubtitle": "Bugaoshan Classic Icon"
+    "newIconSubtitle": "不高山上 New Icon",
+    "oldIconSubtitle": "不高山上 Classic Icon"
 }

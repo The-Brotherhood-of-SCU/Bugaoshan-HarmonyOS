@@ -62,7 +62,7 @@ class _StartupErrorApp extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  'Bugaoshan 启动失败',
+                  '不高山上启动失败',
                   textAlign: TextAlign.center,
                   textScaler: TextScaler.linear(1.5),
                 ),
