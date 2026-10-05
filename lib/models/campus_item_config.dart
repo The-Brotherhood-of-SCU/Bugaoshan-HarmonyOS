@@ -1,3 +1,4 @@
+import 'package:bugaoshan/pages/campus/service_hall/service_hall_page.dart';
 import 'package:bugaoshan/pages/campus/zysc/zysc_page.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
@@ -7,18 +8,20 @@ import 'package:bugaoshan/pages/campus/balance_query/balance_query_page.dart';
 import 'package:bugaoshan/pages/campus/ccyl/ccyl_page.dart';
 import 'package:bugaoshan/pages/campus/class_schedule_inquiry/class_schedule_inquiry_page.dart';
 import 'package:bugaoshan/pages/campus/classroom/classroom_page.dart';
+import 'package:bugaoshan/pages/campus/course_curriculum/course_curriculum_page.dart';
 import 'package:bugaoshan/pages/campus/downloads/notice_downloaded_page.dart';
 import 'package:bugaoshan/pages/campus/exam_plan/exam_plan_page.dart';
 import 'package:bugaoshan/pages/campus/fitness_test/fitness_test_page.dart';
 import 'package:bugaoshan/pages/campus/grades/grades_page.dart';
 import 'package:bugaoshan/pages/campus/network_device/network_device_page.dart';
+import 'package:bugaoshan/pages/campus/passpoint/passpoint_page.dart';
 import 'package:bugaoshan/pages/campus/notice/notice_page.dart';
 import 'package:bugaoshan/pages/campus/plan_completion/plan_completion_page.dart';
+import 'package:bugaoshan/pages/campus/repair/repair_page.dart';
 import 'package:bugaoshan/pages/campus/train_program/train_program_page.dart';
 import 'package:bugaoshan/pages/campus_page/campus_page.dart';
-import 'package:bugaoshan/pages/course/course_page.dart';
+import 'package:bugaoshan/pages/course/main/course_page.dart';
 import 'package:bugaoshan/pages/profile/profile_page.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 
 class CampusItemConfig {
   final String id;
@@ -147,6 +150,16 @@ final campusItemClassScheduleInquiry = CampusItemConfig(
   page: () => const ClassScheduleInquiryPage(),
 );
 
+final campusItemCourseCurriculum = CampusItemConfig(
+  id: dockIdCourseCurriculum,
+  icon: Icons.calendar_view_month_outlined,
+  selectedIcon: Icons.calendar_view_month,
+  dockLabel: (l10n) => l10n.dockLabelCourseCurriculum,
+  dockFullLabel: (l10n) => l10n.courseCurriculum,
+  desc: (l10n) => l10n.courseCurriculumDesc,
+  page: () => const CourseCurriculumPage(),
+);
+
 final campusItemNetworkDevice = CampusItemConfig(
   id: dockIdNetworkDevice,
   icon: Icons.router_outlined,
@@ -155,6 +168,16 @@ final campusItemNetworkDevice = CampusItemConfig(
   dockFullLabel: (l10n) => l10n.networkDeviceQuery,
   desc: (l10n) => l10n.networkDeviceQueryDesc,
   page: () => const NetworkDevicePage(),
+);
+
+final campusItemPasspoint = CampusItemConfig(
+  id: dockIdPasspoint,
+  icon: Icons.wifi_password_outlined,
+  selectedIcon: Icons.wifi_password,
+  dockLabel: (l10n) => l10n.dockLabelPasspoint,
+  dockFullLabel: (l10n) => l10n.passpointTitle,
+  desc: (l10n) => l10n.passpointDesc,
+  page: () => const PasspointPage(),
 );
 
 final campusItemBalanceQuery = CampusItemConfig(
@@ -217,6 +240,26 @@ final campusItemZysc = CampusItemConfig(
   page: () => const ZyscPage(),
 );
 
+final campusItemLeave = CampusItemConfig(
+  id: dockIdLeave,
+  icon: Icons.fact_check_outlined,
+  selectedIcon: Icons.fact_check,
+  dockLabel: (l10n) => l10n.dockLabelLeave,
+  dockFullLabel: (l10n) => l10n.serviceHallTitle,
+  desc: (l10n) => l10n.leaveDesc,
+  page: () => const ServiceHallPage(),
+);
+
+final campusItemRepair = CampusItemConfig(
+  id: dockIdRepair,
+  icon: Icons.build_outlined,
+  selectedIcon: Icons.build,
+  dockLabel: (l10n) => l10n.dockLabelRepair,
+  dockFullLabel: (l10n) => l10n.repairTitle,
+  desc: (l10n) => l10n.repairDesc,
+  page: () => const RepairPage(),
+);
+
 final campusSections = [
   CampusSection(
     title: (l10n) => l10n.academicSection,
@@ -233,18 +276,21 @@ final campusSections = [
     items: [
       campusItemTrainProgram,
       campusItemClassScheduleInquiry,
+      campusItemCourseCurriculum,
       campusItemClassroom,
       campusItemNetworkDevice,
+      campusItemPasspoint,
       campusItemBalanceQuery,
+      campusItemRepair,
       campusItemAcademicCalendar,
       campusItemZysc,
+      campusItemLeave,
     ],
   ),
-  if (!AppPlatform.isHarmony)
-    CampusSection(
-      title: (l10n) => l10n.noticeSection,
-      items: [campusItemNotice, campusItemDownloads],
-    ),
+  CampusSection(
+    title: (l10n) => l10n.noticeSection,
+    items: [campusItemNotice, campusItemDownloads],
+  ),
 ];
 
 final allCampusItems = [

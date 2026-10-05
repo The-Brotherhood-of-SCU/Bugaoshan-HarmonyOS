@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/campus/class_schedule_inquiry/class_schedule_inquiry_detail_page.dart';
+import 'package:bugaoshan/pages/campus/filter_input_decoration.dart';
 import 'package:bugaoshan/pages/campus/models/class_schedule_inquiry_model.dart';
+import 'package:bugaoshan/providers/class_schedule_inquiry_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/api/zhjw_api_service.dart';
-import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 
 class ClassScheduleInquiryPage extends StatefulWidget {
   const ClassScheduleInquiryPage({super.key});
@@ -19,40 +20,16 @@ class ClassScheduleInquiryPage extends StatefulWidget {
 }
 
 class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
-  late final ZhjwApiService _zhjwApi;
-
-  // 班级数据
-  List<ClassInfo> _classes = [];
-  bool _isLoading = false;
-  bool _isLoadingMore = false;
-  bool _hasMore = true;
-  int _pageNum = 1;
-  static const int _pageSize = 30;
-  int _subjectReqSeq = 0;
-  int _classOptionReqSeq = 0;
-  LoadErrorType? _error;
-
-  // 筛选选项
-  List<SemesterOption> _semesters = [];
-  List<String> _grades = [];
-  List<DepartmentOption> _departments = [];
-  List<SubjectOption> _subjects = [];
-  List<ClassOption> _classOptions = [];
-
-  // 筛选状态
-  bool _isLoadingIndex = true;
-  String _selectedSemester = '';
-  String _selectedGrade = '';
-  String _selectedDepartment = '';
-  String _selectedSubject = '';
-  String _selectedClass = '';
+  late final ClassScheduleInquiryProvider _provider;
 
   @override
   void initState() {
     super.initState();
-    _zhjwApi = getIt<ZhjwApiService>();
+    _provider = getIt<ClassScheduleInquiryProvider>();
     getIt<ScuAuthProvider>().addListener(_onAuthChanged);
-    _loadIndex();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _onAuthChanged();
+    });
   }
 
   @override
@@ -63,149 +40,7 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
 
   void _onAuthChanged() {
     final auth = getIt<ScuAuthProvider>();
-    if (auth.isLoggedIn && mounted) {
-      _loadIndex();
-    } else if (mounted) {
-      setState(() {});
-    }
-  }
-
-  Future<void> _loadIndex() async {
-    final auth = getIt<ScuAuthProvider>();
-    if (!auth.isLoggedIn) return;
-    setState(() => _isLoadingIndex = true);
-    try {
-      final result = await _zhjwApi.fetchClassScheduleInquiryIndex();
-      if (!mounted) return;
-      setState(() {
-        _semesters = result.semesters;
-        _grades = result.grades;
-        _departments = result.departments;
-        _isLoadingIndex = false;
-      });
-      await _search();
-    } catch (e) {
-      debugPrint('ClassScheduleInquiry index load error: $e');
-      if (!mounted) return;
-      setState(() {
-        _error = campusNetworkErrorType(LoadErrorType.loadFailed);
-        _isLoadingIndex = false;
-      });
-    }
-  }
-
-  Future<void> _loadSubjects(String departmentNum) async {
-    final seq = ++_subjectReqSeq;
-    if (departmentNum.isEmpty) {
-      setState(() {
-        _subjects = [];
-        _selectedSubject = '';
-      });
-      return;
-    }
-    try {
-      final subjects = await _zhjwApi.fetchSubjectsByDepartment(departmentNum);
-      if (!mounted || seq != _subjectReqSeq) return;
-      setState(() {
-        _subjects = subjects;
-        _selectedSubject = '';
-      });
-    } catch (e) {
-      debugPrint('Load subjects error: $e');
-    }
-  }
-
-  Future<void> _loadClassOptions() async {
-    final seq = ++_classOptionReqSeq;
-    if (_selectedGrade.isEmpty || _selectedDepartment.isEmpty) {
-      setState(() {
-        _classOptions = [];
-        _selectedClass = '';
-      });
-      return;
-    }
-    try {
-      final options = await _zhjwApi.fetchClassOptions(
-        yearNum: _selectedGrade,
-        departmentNum: _selectedDepartment,
-        subjectNum: _selectedSubject,
-      );
-      if (!mounted || seq != _classOptionReqSeq) return;
-      setState(() {
-        _classOptions = options;
-        _selectedClass = '';
-      });
-    } catch (e) {
-      debugPrint('Load class options error: $e');
-    }
-  }
-
-  Future<void> _search() async {
-    setState(() {
-      _pageNum = 1;
-      _classes = [];
-      _hasMore = true;
-      _error = null;
-    });
-    await _loadClasses();
-  }
-
-  Future<void> _refresh() async {
-    await _search();
-  }
-
-  Future<void> _loadClasses() async {
-    final auth = getIt<ScuAuthProvider>();
-    if (!auth.isLoggedIn) return;
-
-    if (_pageNum == 1) {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-    } else {
-      setState(() => _isLoadingMore = true);
-    }
-
-    try {
-      final result = await _zhjwApi.fetchClassList(
-        pageNum: _pageNum,
-        pageSize: _pageSize,
-        executiveEducationPlanNum: _selectedSemester,
-        yearNum: _selectedGrade,
-        departmentNum: _selectedDepartment,
-        subjectNum: _selectedSubject,
-        classNum: _selectedClass,
-      );
-      if (!mounted) return;
-      setState(() {
-        _classes.addAll(result.classes);
-        _hasMore = _classes.length < result.totalCount;
-        _isLoading = false;
-        _isLoadingMore = false;
-      });
-    } on UnauthenticatedException catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _error = LoadErrorType.sessionExpired;
-        _isLoading = false;
-        _isLoadingMore = false;
-      });
-    } catch (e) {
-      debugPrint('ClassScheduleInquiry load error: $e');
-      if (!mounted) return;
-      setState(() {
-        _error = campusNetworkErrorType(LoadErrorType.loadFailed);
-        _isLoading = false;
-        _isLoadingMore = false;
-      });
-    }
-  }
-
-  void _loadMore() {
-    if (_isLoadingMore || !_hasMore) return;
-    _pageNum++;
-    _loadClasses();
+    if (auth.isLoggedIn) _provider.ensureIndex();
   }
 
   @override
@@ -214,7 +49,7 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.classScheduleInquiry)),
       body: ListenableBuilder(
-        listenable: getIt<ScuAuthProvider>(),
+        listenable: Listenable.merge([_provider, getIt<ScuAuthProvider>()]),
         builder: (context, _) {
           final auth = getIt<ScuAuthProvider>();
           if (!auth.isLoggedIn) {
@@ -228,12 +63,15 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
   }
 
   Widget _buildContent(BuildContext context) {
-    if (_isLoadingIndex) {
+    if (_provider.indexState == ClassScheduleInquiryLoadState.loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null && _classes.isEmpty) {
-      return RetryableErrorWidget(errorType: _error!, onRetry: _loadIndex);
+    if (_provider.indexError != null && _provider.classes.isEmpty) {
+      return RetryableErrorWidget(
+        errorType: _provider.indexError!,
+        onRetry: () => _provider.loadIndex(forceRefresh: true),
+      );
     }
 
     return Column(
@@ -246,28 +84,22 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
 
   Widget _buildFilterBar(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
 
-    return Card(
+    return CardWithTitle(
+      title: l10n.classScheduleInquiryFilter,
+      icon: const Icon(Icons.tune),
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.classScheduleInquiryFilter,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: _buildDropdown(
-                    value: _selectedSemester,
-                    items: _semesters
+                    value: _provider.selectedSemester,
+                    items: _provider.semesters
                         .map(
                           (s) => DropdownMenuItem(
                             value: s.value,
@@ -278,26 +110,26 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
                           ),
                         )
                         .toList(),
-                    onChanged: (v) => setState(() => _selectedSemester = v),
+                    onChanged: _provider.setSelectedSemester,
                     hint: l10n.classScheduleInquirySemester,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildDropdown(
-                    value: _selectedGrade,
-                    items: _grades
+                    value: _provider.selectedGrade,
+                    items: _provider.grades
                         .map(
                           (g) => DropdownMenuItem(
                             value: g,
-                            child: Text('$g级', overflow: TextOverflow.ellipsis),
+                            child: Text(
+                              l10n.gradeSuffix(g.toString()),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         )
                         .toList(),
-                    onChanged: (v) {
-                      setState(() => _selectedGrade = v);
-                      if (_selectedDepartment.isNotEmpty) _loadClassOptions();
-                    },
+                    onChanged: _provider.setSelectedGrade,
                     hint: l10n.classScheduleInquiryGrade,
                   ),
                 ),
@@ -308,8 +140,8 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
               children: [
                 Expanded(
                   child: _buildDropdown(
-                    value: _selectedDepartment,
-                    items: _departments
+                    value: _provider.selectedDepartment,
+                    items: _provider.departments
                         .map(
                           (d) => DropdownMenuItem(
                             value: d.value,
@@ -320,15 +152,7 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
                           ),
                         )
                         .toList(),
-                    onChanged: (v) {
-                      setState(() {
-                        _selectedDepartment = v;
-                        _selectedSubject = '';
-                        _subjects = [];
-                      });
-                      _loadSubjects(v);
-                      _loadClassOptions();
-                    },
+                    onChanged: _provider.setSelectedDepartment,
                     hint: l10n.classScheduleInquiryDepartment,
                   ),
                 ),
@@ -339,37 +163,34 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
               children: [
                 Expanded(
                   child: _buildDropdown(
-                    value: _selectedSubject,
+                    value: _provider.selectedSubject,
                     items: [
-                      const DropdownMenuItem(value: '', child: Text('全部')),
-                      ..._subjects.map(
+                      DropdownMenuItem(value: '', child: Text(l10n.all)),
+                      ..._provider.subjects.map(
                         (s) => DropdownMenuItem(
                           value: s.code,
                           child: Text(s.name, overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ],
-                    onChanged: (v) {
-                      setState(() => _selectedSubject = v);
-                      _loadClassOptions();
-                    },
+                    onChanged: _provider.setSelectedSubject,
                     hint: l10n.classScheduleInquirySubject,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildDropdown(
-                    value: _selectedClass,
+                    value: _provider.selectedClass,
                     items: [
-                      const DropdownMenuItem(value: '', child: Text('全部')),
-                      ..._classOptions.map(
+                      DropdownMenuItem(value: '', child: Text(l10n.all)),
+                      ..._provider.classOptions.map(
                         (c) => DropdownMenuItem(
                           value: c.code,
                           child: Text(c.name, overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ],
-                    onChanged: (v) => setState(() => _selectedClass = v),
+                    onChanged: _provider.setSelectedClass,
                     hint: l10n.classScheduleInquiryClass,
                   ),
                 ),
@@ -379,7 +200,7 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: _search,
+                onPressed: _provider.search,
                 icon: const Icon(Icons.search),
                 label: Text(l10n.classScheduleInquirySearch),
               ),
@@ -402,11 +223,7 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
       key: ValueKey('dropdown_$value'),
       initialValue: initialValue,
       style: Theme.of(context).textTheme.bodyMedium,
-      decoration: const InputDecoration(
-        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        border: OutlineInputBorder(),
-        isDense: false,
-      ),
+      decoration: kFilterInputDecoration,
       isExpanded: true,
       hint: Text(hint, style: Theme.of(context).textTheme.bodyMedium),
       items: items,
@@ -419,9 +236,19 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
   Widget _buildClassList(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_provider.classesState == ClassScheduleInquiryLoadState.loading &&
+        _provider.classes.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    if (_classes.isEmpty) {
+    if (_provider.classesError != null && _provider.classes.isEmpty) {
+      return RetryableErrorWidget(
+        errorType: _provider.classesError!,
+        onRetry: _provider.search,
+      );
+    }
+
+    if (_provider.classes.isEmpty) {
       return Center(
         child: Text(
           l10n.classScheduleInquiryNoData,
@@ -433,25 +260,31 @@ class _ClassScheduleInquiryPageState extends State<ClassScheduleInquiryPage> {
     }
 
     return RefreshIndicator(
-      onRefresh: _refresh,
+      onRefresh: _provider.refresh,
       child: ListView.builder(
         padding: const EdgeInsets.all(12),
-        itemCount: _classes.length + (_hasMore ? 1 : 0),
+        itemCount: _provider.classes.length + (_provider.hasMore ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index == _classes.length) {
+          if (index == _provider.classes.length) {
             return Padding(
               padding: const EdgeInsets.all(16),
               child: Center(
-                child: _isLoadingMore
+                child: _provider.isLoadingMore
                     ? const CircularProgressIndicator()
                     : FilledButton.tonal(
-                        onPressed: _loadMore,
-                        child: Text(l10n.classScheduleInquiryLoadMore),
+                        // 列表非空时的 classesError 只可能来自
+                        // 加载更多失败，此时按钮即重试入口。
+                        onPressed: _provider.loadMore,
+                        child: Text(
+                          _provider.classesError != null
+                              ? l10n.retry
+                              : l10n.classScheduleInquiryLoadMore,
+                        ),
                       ),
               ),
             );
           }
-          final classInfo = _classes[index];
+          final classInfo = _provider.classes[index];
           return _ClassCard(
             classInfo: classInfo,
             onTap: () => Navigator.of(context).push(
@@ -475,7 +308,7 @@ class _ClassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return StyledCard(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         onTap: onTap,

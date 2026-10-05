@@ -9,7 +9,6 @@ import 'package:bugaoshan/pages/campus/downloads/file_utils.dart';
 import 'package:bugaoshan/pages/dev/auth_log/auth_log_entry_tile.dart';
 import 'package:bugaoshan/pages/dev/auth_log/auth_log_filter_bar.dart';
 import 'package:bugaoshan/utils/auth_logger.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/utils/share_utils.dart';
 
 /// 全屏日志查看器（开发者调试用，文案不做 i18n）。
@@ -57,18 +56,16 @@ class _AuthLogViewerPageState extends State<AuthLogViewerPage> {
             icon: const Icon(Icons.copy_all),
             onPressed: _copyAll,
           ),
-          if (!AppPlatform.isHarmony) ...[
-            IconButton(
-              tooltip: 'Save',
-              icon: const Icon(Icons.save_alt),
-              onPressed: _save,
-            ),
-            IconButton(
-              tooltip: 'Open folder',
-              icon: const Icon(Icons.folder_open),
-              onPressed: _openFolder,
-            ),
-          ],
+          IconButton(
+            tooltip: 'Save',
+            icon: const Icon(Icons.save_alt),
+            onPressed: _save,
+          ),
+          IconButton(
+            tooltip: 'Open folder',
+            icon: const Icon(Icons.folder_open),
+            onPressed: _openFolder,
+          ),
           IconButton(
             tooltip: 'Clear log',
             icon: const Icon(Icons.delete_sweep),
@@ -188,7 +185,7 @@ class _AuthLogViewerPageState extends State<AuthLogViewerPage> {
     final messenger = ScaffoldMessenger.of(context);
     final dir = await _authLogDir();
     try {
-      if (AppPlatform.isAndroid) {
+      if (Platform.isAndroid) {
         final encoded = 'Bugaoshan/$kAuthLogDir'.replaceAll('/', '%2F');
         final uri = Uri.parse(
           'content://com.android.externalstorage.documents/document/'

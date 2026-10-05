@@ -1,4 +1,5 @@
 import 'package:tyme/tyme.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 
 /// 特殊日类型
 enum SpecialDayType { ordinary, festival, holiday, solarTerm }
@@ -51,7 +52,9 @@ class HolidayUtils {
       if (legalHoliday != null) {
         return legalHoliday.isWork() ? null : legalHoliday.getName();
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLog.w('HolidayUtils', 'getHolidayName error: $e');
+    }
     // tyme 无此日数据 → 固定日期放假兜底
     return _getFixedHolidayFallback(date);
   }
@@ -138,7 +141,9 @@ class HolidayUtils {
                 legalHoliday.getName() == holidayName) {
               count++;
             }
-          } catch (_) {}
+          } catch (e) {
+            AppLog.w('HolidayUtils', '_computeHolidayTotalDays error: $e');
+          }
         }
       }
     }
@@ -159,7 +164,9 @@ class HolidayUtils {
         final name = lf.getName();
         if (name != '春节' && name != '清明节') return name;
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLog.w('HolidayUtils', 'getFestivalName error: $e');
+    }
     return null;
   }
 
@@ -174,7 +181,9 @@ class HolidayUtils {
       if (termDay.dayIndex == 0) {
         return termDay.getSolarTerm().getName();
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLog.w('HolidayUtils', 'getSolarTermName error: $e');
+    }
     return null;
   }
 
@@ -246,7 +255,9 @@ class HolidayUtils {
           name: termDay.getSolarTerm().getName(),
         );
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLog.w('HolidayUtils', 'getSpecialDay error: $e');
+    }
 
     return SpecialDayInfo(type: SpecialDayType.ordinary);
   }

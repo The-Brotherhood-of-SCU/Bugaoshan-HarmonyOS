@@ -6,7 +6,8 @@
     "description": "$string:module_desc",
     "mainElement": "EntryAbility",
     "deviceTypes": [
-      "phone"
+      "phone",
+      "tablet"
     ],
     "deliveryWithInstall": true,
     "installationFree": false,
@@ -30,6 +31,19 @@
               "action.system.home"
             ]
           }
+        ]
+      }
+    ],
+    "extensionAbilities": [
+      {
+        "name": "CourseFormAbility",
+        "srcEntry": "./ets/cards/CourseFormAbility.ets",
+        "label": "$string:card_name",
+        "description": "$string:card_description",
+        "type": "form",
+        "exported": true,
+        "metadata": [
+          { "name": "ohos.extension.form", "resource": "$profile:course_card" }
         ]
       }
     ],

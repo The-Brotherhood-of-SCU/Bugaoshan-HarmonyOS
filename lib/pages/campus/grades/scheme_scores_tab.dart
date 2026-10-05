@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/scheme_score.dart';
 import 'package:bugaoshan/providers/grades_provider.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/stat_item.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 
 class SchemeScoresTab extends StatefulWidget {
   const SchemeScoresTab({super.key, this.searchQuery = ''});
@@ -88,6 +89,7 @@ class _SchemeScoresTabState extends State<SchemeScoresTab> {
   }
 
   Widget _buildContent(BuildContext context, GradesProvider provider) {
+    final schemes = provider.schemes;
     final summary = provider.schemeScores!;
     final query = widget.searchQuery.trim();
     final allGroups = summary.groupedByTerm;
@@ -114,7 +116,13 @@ class _SchemeScoresTabState extends State<SchemeScoresTab> {
       child: groups.isEmpty && query.isNotEmpty
           ? CustomScrollView(
               slivers: [
-                SliverToBoxAdapter(child: _SummaryCard(summary: summary)),
+                SliverToBoxAdapter(
+                  child: _SummaryCard(
+                    summary: summary,
+                    schemes: schemes,
+                    onSchemeChanged: provider.selectScheme,
+                  ),
+                ),
                 SliverFillRemaining(
                   child: Center(
                     child: Text(
@@ -129,7 +137,13 @@ class _SchemeScoresTabState extends State<SchemeScoresTab> {
             )
           : CustomScrollView(
               slivers: [
-                SliverToBoxAdapter(child: _SummaryCard(summary: summary)),
+                SliverToBoxAdapter(
+                  child: _SummaryCard(
+                    summary: summary,
+                    schemes: schemes,
+                    onSchemeChanged: provider.selectScheme,
+                  ),
+                ),
                 for (final group in groups) ...[
                   SliverToBoxAdapter(
                     child: Padding(
@@ -156,25 +170,38 @@ class _SchemeScoresTabState extends State<SchemeScoresTab> {
 }
 
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.summary});
+  const _SummaryCard({
+    required this.summary,
+    required this.schemes,
+    required this.onSchemeChanged,
+  });
   final SchemeScoreSummary summary;
+  final List<SchemeScoreSummary> schemes;
+  final ValueChanged<SchemeScoreSummary> onSchemeChanged;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Card(
+    return StyledCard(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              summary.cjlx,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+            if (schemes.length > 1)
+              SchemeScoreSelector(
+                schemes: schemes,
+                selectedScheme: summary,
+                onChanged: onSchemeChanged,
+              )
+            else
+              Text(
+                summary.cjlx,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -238,6 +265,44 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
+class SchemeScoreSelector extends StatelessWidget {
+  const SchemeScoreSelector({
+    super.key,
+    required this.schemes,
+    required this.selectedScheme,
+    required this.onChanged,
+  });
+
+  final List<SchemeScoreSummary> schemes;
+  final SchemeScoreSummary selectedScheme;
+  final ValueChanged<SchemeScoreSummary> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<SchemeScoreSummary>(
+      key: ValueKey(selectedScheme.cjlx),
+      initialValue: selectedScheme,
+      decoration: InputDecoration(
+        labelText: AppLocalizations.of(context)!.trainProgram,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      isExpanded: true,
+      items: schemes
+          .map(
+            (scheme) => DropdownMenuItem(
+              value: scheme,
+              child: Text(scheme.cjlx, overflow: TextOverflow.ellipsis),
+            ),
+          )
+          .toList(),
+      onChanged: (scheme) {
+        if (scheme != null) onChanged(scheme);
+      },
+    );
+  }
+}
+
 class ScoreCardWidget extends StatelessWidget {
   const ScoreCardWidget({
     super.key,
@@ -269,7 +334,7 @@ class ScoreCardWidget extends StatelessWidget {
       _ => Theme.of(context).colorScheme.onTertiaryContainer,
     };
 
-    Widget card = Card(
+    Widget card = StyledCard(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

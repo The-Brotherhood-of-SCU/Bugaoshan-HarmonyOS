@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 
 /// Base tile with padding and optional InkWell tap.
 class BaseTile extends StatelessWidget {
@@ -99,10 +99,17 @@ class IconTile extends StatelessWidget {
             ),
           ),
           if (value != null)
-            Text(
-              value!,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            Flexible(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  value!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
             ),
           if (trailing != null) ...[
@@ -224,32 +231,62 @@ class LinkTile extends StatelessWidget {
   }
 }
 
-/// [IconTile] with a loading indicator as trailing.
-class LoadingTile extends StatelessWidget {
+/// [IconTile] variant with label and value stacked vertically.
+class StackedTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
   final Color? iconColor;
+  final String? value;
+  final IconData? trailing;
 
-  const LoadingTile({
+  const StackedTile({
     super.key,
     required this.icon,
     required this.label,
     this.onTap,
     this.iconColor,
+    this.value,
+    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
-    return IconTile._internal(
-      icon: icon,
-      label: label,
+    final theme = Theme.of(context);
+    return BaseTile(
       onTap: onTap,
-      iconColor: iconColor,
-      trailing: const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2),
+      child: Row(
+        children: [
+          TileIcon(icon: icon, color: iconColor),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label, style: theme.textTheme.bodyLarge),
+                if (value != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    value!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Icon(
+            trailing ?? Icons.chevron_right_rounded,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+            size: 20,
+          ),
+        ],
       ),
     );
   }

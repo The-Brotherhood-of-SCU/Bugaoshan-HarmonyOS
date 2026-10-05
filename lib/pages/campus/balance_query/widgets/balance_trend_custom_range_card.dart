@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/utils/beijing_time.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 
 /// 第二层:自定义日期范围卡片。
 ///
@@ -69,7 +71,7 @@ class BalanceTrendCustomRangeCard extends StatelessWidget {
 
     // 起始按钮可选范围:[first, end]
     // 结束按钮可选范围:[start, last]
-    return Card(
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
@@ -126,7 +128,7 @@ class BalanceTrendCustomRangeCard extends StatelessWidget {
     final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppShapes.small),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         child: Column(

@@ -1,6 +1,9 @@
-﻿import 'package:async/async.dart';
+﻿import 'dart:async';
+
+import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
+import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 
@@ -10,8 +13,9 @@ Future showInfoDialog({
   BuildContext? context, //this is no need anymore
   String title = "",
   String content = "",
-  String button = "OK",
+  String? button,
 }) {
+  final l10n = AppLocalizations.of(logicRootContext)!;
   return showDialog(
     context: logicRootContext,
     useRootNavigator: false,
@@ -24,7 +28,7 @@ Future showInfoDialog({
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: Text(button),
+            child: Text(button ?? l10n.confirm),
           ),
         ],
       );
@@ -37,6 +41,7 @@ Future<bool?> showYesNoDialog({
   String title = "",
   String content = "",
 }) {
+  final l10n = AppLocalizations.of(logicRootContext)!;
   return showDialog(
     context: logicRootContext,
     useRootNavigator: false,
@@ -49,13 +54,13 @@ Future<bool?> showYesNoDialog({
             onPressed: () {
               Navigator.of(context).pop(true);
             },
-            child: const Text("Yes"),
+            child: Text(l10n.confirm),
           ),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop(false);
             },
-            child: const Text("No"),
+            child: Text(l10n.cancel),
           ),
         ],
       );
@@ -69,11 +74,12 @@ class ContextWrapper {
 
 Future showLoadingDialog({
   BuildContext? context, //no need
-  String title = "Loading",
+  String? title,
   required Future Function() func,
-  String button = "Cancel",
+  String? button,
   void Function()? onError,
 }) {
+  final l10n = AppLocalizations.of(logicRootContext)!;
   ContextWrapper contextWrapper = ContextWrapper();
   var future =
       Future.wait([func(), Future.delayed(const Duration(milliseconds: 100))])
@@ -100,7 +106,7 @@ Future showLoadingDialog({
     builder: (context) {
       contextWrapper.context = context;
       return AlertDialog(
-        title: Text(title),
+        title: Text(title ?? l10n.loading),
         content: const Padding(
           padding: EdgeInsets.fromLTRB(0, 10, 0, 0),
           child: Row(
@@ -114,7 +120,7 @@ Future showLoadingDialog({
               myCancelableFuture.cancel();
               Navigator.of(context).pop();
             },
-            child: Text(button),
+            child: Text(button ?? l10n.cancel),
           ),
         ],
       );
@@ -124,16 +130,17 @@ Future showLoadingDialog({
 
 Future showLoadingDialogWithErrorString({
   BuildContext? context, //no need
-  String title = "Loading",
+  String? title,
   required Future Function() func,
-  String button = "Cancel",
-  String onErrorTitle = "Error",
-  String onErrorButton = "OK",
-  String onErrorMessage = "error",
+  String? button,
+  String? onErrorTitle,
+  String? onErrorButton,
+  String? onErrorMessage,
 }) {
+  final l10n = AppLocalizations.of(logicRootContext)!;
   bool isError = false;
   ContextWrapper contextWrapper = ContextWrapper();
-  rebuildDialog() {
+  void rebuildDialog() {
     if (contextWrapper.context.mounted) {
       (contextWrapper.context as Element).markNeedsBuild();
     }
@@ -159,7 +166,9 @@ Future showLoadingDialogWithErrorString({
     builder: (context) {
       contextWrapper.context = context;
       return AlertDialog(
-        title: Text(isError ? onErrorTitle : title),
+        title: Text(
+          isError ? (onErrorTitle ?? l10n.error) : (title ?? l10n.loading),
+        ),
         content: AnimatedSize(
           duration: appConfigService.cardSizeAnimationDuration.value,
           curve: Curves.easeOutQuart,
@@ -169,7 +178,12 @@ Future showLoadingDialogWithErrorString({
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 isError
-                    ? Text(onErrorMessage)
+                    ? Flexible(
+                        child: Text(
+                          onErrorMessage ?? l10n.error,
+                          textAlign: TextAlign.center,
+                        ),
+                      )
                     : const CircularProgressIndicator(),
               ],
             ),
@@ -183,7 +197,11 @@ Future showLoadingDialogWithErrorString({
               }
               Navigator.of(context).pop();
             },
-            child: Text(isError ? onErrorButton : button),
+            child: Text(
+              isError
+                  ? (onErrorButton ?? l10n.confirm)
+                  : (button ?? l10n.cancel),
+            ),
           ),
         ],
       );

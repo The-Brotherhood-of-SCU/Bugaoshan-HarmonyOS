@@ -1,14 +1,24 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:bugaoshan/widgets/route/router_utils.dart';
-import 'package:flutter/material.dart';
-import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/injection/injector.dart';
+import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/pages/auth/scu_login_button.dart';
+import 'package:bugaoshan/pages/auth/scu_login_captcha_row.dart';
+import 'package:bugaoshan/pages/auth/scu_login_checkbox.dart';
+import 'package:bugaoshan/pages/auth/scu_login_disclaimer.dart';
+import 'package:bugaoshan/pages/auth/scu_login_header_image.dart';
+import 'package:bugaoshan/pages/auth/scu_login_input_field.dart';
+import 'package:bugaoshan/pages/auth/scu_reset_password_page.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/services/auth/scu_auth.dart' show CaptchaResult;
+import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/services/ocr_service.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
+import 'package:bugaoshan/widgets/common/third_center.dart';
+import 'package:bugaoshan/widgets/route/router_utils.dart';
+import 'package:flutter/material.dart';
 
 class ScuLoginPage extends StatefulWidget {
   const ScuLoginPage({super.key});
@@ -24,6 +34,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
   final _captchaCtrl = TextEditingController();
 
   CaptchaResult? _captcha;
+  Uint8List? _captchaImageBytes;
   bool _loading = false;
   bool _captchaLoading = false;
   String? _errorMsg;
@@ -35,7 +46,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
   void initState() {
     super.initState();
     OcrService.init().catchError((e) {
-      debugPrint('OCR Init error: $e');
+      AppLog.e('ScuLoginPage', 'OCR Init error: $e');
     });
     _loadSaved();
     _loadCaptcha();
@@ -46,7 +57,6 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     _captchaCtrl.dispose();
-    OcrService.dispose();
     super.dispose();
   }
 
@@ -71,22 +81,32 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
     setState(() => _captchaLoading = true);
     try {
       final captcha = await getIt<ScuAuthProvider>().fetchCaptcha();
-      String? recognizedText;
+
+      // 提前解码，避免在 build 中解码失败导致整页崩溃
+      Uint8List? imageBytes;
       try {
-        final comma = captcha.captchaBase64.indexOf(',');
-        final raw = comma >= 0
-            ? captcha.captchaBase64.substring(comma + 1)
-            : captcha.captchaBase64;
-        final imageBytes = base64.decode(raw);
-        recognizedText = await OcrService.performOcr(imageBytes);
+        imageBytes = _decodeBase64Image(captcha.captchaBase64);
       } catch (e) {
-        debugPrint('OCR error: $e');
+        AppLog.e('ScuLoginPage', 'Captcha decode error: $e');
+      }
+
+      String? recognizedText;
+      if (imageBytes != null) {
+        try {
+          recognizedText = await OcrService.performOcr(imageBytes);
+        } catch (e) {
+          AppLog.e('ScuLoginPage', 'OCR error: $e');
+        }
       }
 
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
 
       setState(() {
         _captcha = captcha;
+        _captchaImageBytes = imageBytes;
+        // 重载成功后清除上一次「验证码加载失败」的提示
+        if (_errorMsg == l10n.captchaLoadFailed) _errorMsg = null;
         if (recognizedText != null && recognizedText.isNotEmpty) {
           _captchaCtrl.text = recognizedText;
         } else {
@@ -94,7 +114,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
         }
       });
     } catch (e) {
-      debugPrint('Captcha load error: $e');
+      AppLog.e('ScuLoginPage', 'Captcha load error: $e');
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() => _errorMsg = l10n.captchaLoadFailed);
@@ -141,17 +161,17 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
       if (!logicRootContext.mounted) return;
       Navigator.of(logicRootContext).pop(true);
     } on ScuLoginException catch (e) {
-      debugPrint('Login failed: ${e.message}');
+      AppLog.w('ScuLoginPage', 'Login failed: ${e.message}');
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() => _errorMsg = _localizeLoginError(e, l10n));
-      _loadCaptcha();
+      unawaited(_loadCaptcha());
     } catch (e) {
-      debugPrint('Login network error: $e');
+      AppLog.e('ScuLoginPage', 'Login network error: $e');
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() => _errorMsg = l10n.networkError);
-      _loadCaptcha();
+      unawaited(_loadCaptcha());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -162,248 +182,206 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
       case 'invalid_captcha':
         return l10n.invalidCaptcha;
       case String msg when msg.startsWith('login_failed_will_lock'):
+        // 预期格式: login_failed_will_lock_<已尝试>_<上限>，格式不符时回退通用文案
         final parts = msg.split('_');
-        final attempted = int.tryParse(parts[4]);
-        final total = int.tryParse(parts[5]);
+        final attempted = parts.length > 5 ? int.tryParse(parts[4]) : null;
+        final total = parts.length > 5 ? int.tryParse(parts[5]) : null;
         if (attempted != null && total != null && total > attempted) {
           return l10n.loginFailedWillLock(total - attempted);
         }
-        return l10n.loginFailed;
+        // 格式不符：不吞掉原因，直接显示原始错误消息
+        return e.message;
       default:
         debugPrint('Unlocalized login error message: ${e.message}');
-        return l10n.loginFailed;
+        // 未识别的错误不套用国际化，直接透传后端返回的具体原因（如「密码错误」）
+        return e.message;
     }
   }
+
+  Color get _brandColor => Theme.of(context).brightness == Brightness.light
+      ? const Color(0xFFE65646)
+      : const Color(0xFF8965BD);
+
+  Color get _cardBgColor => Theme.of(context).brightness == Brightness.light
+      ? const Color.fromARGB(255, 255, 245, 239)
+      : const Color(0xFF24272C);
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final formContent = [
-      const SizedBox(height: 8),
-      Container(
-        width: 88,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppShapes.medium),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    final body = SafeArea(
+      minimum: const EdgeInsets.symmetric(horizontal: 16),
+      child: ThirdCenter(
+        child: SingleChildScrollView(
+          child: Container(
+            constraints: BoxConstraints(maxWidth: 440),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 16),
+                ScuLoginHeaderImage(isDark: isDark),
+                _buildForm(l10n, isDark),
+                const SizedBox(height: 40),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppShapes.medium),
-          child: Image.asset('assets/scu.webp', fit: BoxFit.cover),
-        ),
-      ),
-      const SizedBox(height: 2),
-      Text(
-        l10n.scuUnifiedAuth,
-        style: Theme.of(context).textTheme.titleMedium
-            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)
-            .copyWith(fontSize: 24),
-        textAlign: TextAlign.center,
-      ),
-      const SizedBox(height: 2),
-      TextFormField(
-        controller: _usernameCtrl,
-        decoration: InputDecoration(
-          labelText: l10n.studentId,
-          prefixIcon: const Icon(Icons.person_outline),
-          border: const OutlineInputBorder(),
-        ),
-        keyboardType: TextInputType.number,
-        validator: (v) =>
-            (v == null || v.trim().isEmpty) ? l10n.studentIdRequired : null,
-      ),
-      TextFormField(
-        controller: _passwordCtrl,
-        decoration: InputDecoration(
-          labelText: l10n.password,
-          prefixIcon: const Icon(Icons.lock_outline),
-          border: const OutlineInputBorder(),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscurePassword ? Icons.visibility_off : Icons.visibility,
-            ),
-            onPressed: () =>
-                setState(() => _obscurePassword = !_obscurePassword),
           ),
         ),
-        obscureText: _obscurePassword,
-        validator: (v) =>
-            (v == null || v.isEmpty) ? l10n.passwordRequired : null,
       ),
-      _CaptchaRow(
-        captcha: _captcha,
-        loading: _captchaLoading,
-        controller: _captchaCtrl,
-        onRefresh: _loadCaptcha,
-      ),
-      Row(
-        children: [
-          Checkbox(
-            value: _rememberPassword,
-            onChanged: (v) => setState(() {
-              _rememberPassword = v ?? false;
-              if (!_rememberPassword) _autoLogin = false;
-            }),
-          ),
-          Text(l10n.rememberPassword),
-        ],
-      ),
-      if (_rememberPassword)
-        Row(
-          children: [
-            Checkbox(
-              value: _autoLogin,
-              onChanged: (v) => setState(() => _autoLogin = v ?? false),
-            ),
-            Text(l10n.autoLogin),
-          ],
-        ),
-      if (_errorMsg != null)
-        Text(
-          _errorMsg!,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.error,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      FilledButton(
-        onPressed: _loading ? null : _submit,
-        child: _loading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Text(l10n.loginButton),
-      ),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _DisclaimerRow('· ${l10n.scuLoginDisclaimerPwd}'),
-          _DisclaimerRow('· ${l10n.scuLoginDisclaimerOcr}'),
-          _DisclaimerRow('· ${l10n.scuLoginDisclaimerPrivacy}'),
-        ],
-      ),
-    ];
-
+    );
     return Scaffold(
       appBar: AppBar(title: Text(l10n.scuUnifiedAuth)),
-      body: CustomScrollView(
-        slivers: [
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
-                children: [
-                  const Spacer(flex: 1),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        spacing: 16,
-                        children: formContent,
-                      ),
-                    ),
-                  ),
-                  const Spacer(flex: 2),
-                ],
+      body: body,
+    );
+  }
+
+  Widget _buildForm(AppLocalizations l10n, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      decoration: BoxDecoration(
+        // 顶部直边与头部图片衔接，仅保留底部圆角
+        color: _cardBgColor,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ScuLoginInputField(
+              controller: _usernameCtrl,
+              label: l10n.studentId,
+              hint: l10n.studentIdHint,
+              prefixIcon: Icons.person_outline,
+              keyboardType: TextInputType.number,
+              isDark: isDark,
+              brandColor: _brandColor,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? l10n.studentIdRequired
+                  : null,
+            ),
+            const SizedBox(height: 16),
+            ScuLoginInputField(
+              controller: _passwordCtrl,
+              label: l10n.password,
+              hint: l10n.passwordHint,
+              prefixIcon: Icons.lock_outline,
+              obscureText: _obscurePassword,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: isDark ? Colors.white54 : Colors.grey.shade600,
+                  size: 20,
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+              isDark: isDark,
+              brandColor: _brandColor,
+              validator: (v) =>
+                  (v == null || v.isEmpty) ? l10n.passwordRequired : null,
+            ),
+            const SizedBox(height: 16),
+            ScuLoginCaptchaRow(
+              controller: _captchaCtrl,
+              l10n: l10n,
+              isDark: isDark,
+              brandColor: _brandColor,
+              captchaImageBytes: _captchaImageBytes,
+              captchaLoading: _captchaLoading,
+              onRefresh: _loadCaptcha,
+              labelTrailing: _buildResetPasswordEntry(l10n),
+            ),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 24,
+              runSpacing: 8,
+              children: [
+                ScuLoginCheckbox(
+                  value: _rememberPassword,
+                  label: l10n.rememberPassword,
+                  isDark: isDark,
+                  brandColor: _brandColor,
+                  onChanged: (v) => setState(() {
+                    _rememberPassword = v ?? false;
+                    if (!_rememberPassword) _autoLogin = false;
+                  }),
+                ),
+                ScuLoginCheckbox(
+                  value: _autoLogin,
+                  label: l10n.autoLogin,
+                  isDark: isDark,
+                  brandColor: _brandColor,
+                  onChanged: (v) => setState(() => _autoLogin = v ?? false),
+                ),
+              ],
+            ),
+            if (_errorMsg != null) ...[
+              const SizedBox(height: 16),
+              _buildErrorMessage(_errorMsg!, isDark),
+            ],
+            const SizedBox(height: 20),
+            ScuLoginButton(
+              loading: _loading,
+              onPressed: _submit,
+              brandColor: _brandColor,
+              label: l10n.loginButton,
+            ),
+            const SizedBox(height: 16),
+            ScuLoginDisclaimer(l10n: l10n, isDark: isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 与「验证码」标签同行、右对齐的「重置密码」入口，避免单独占一行
+  /// 拉开表单纵向间距；点击跳转应用内三步重置流程。
+  Widget _buildResetPasswordEntry(AppLocalizations l10n) {
+    return TextButton.icon(
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScuResetPasswordPage()),
+      ),
+      icon: const Icon(Icons.lock_reset, size: 16),
+      label: Text(l10n.resetPassword),
+      style: TextButton.styleFrom(
+        foregroundColor: _brandColor,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+
+  Widget _buildErrorMessage(String message, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _brandColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppShapes.medium),
+        border: Border.all(color: _brandColor.withValues(alpha: 0.2), width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 18, color: _brandColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 13,
+                color: _brandColor,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _DisclaimerRow extends StatelessWidget {
-  final String text;
-  const _DisclaimerRow(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-}
-
-class _CaptchaRow extends StatelessWidget {
-  final CaptchaResult? captcha;
-  final bool loading;
-  final TextEditingController controller;
-  final VoidCallback onRefresh;
-
-  const _CaptchaRow({
-    required this.captcha,
-    required this.loading,
-    required this.controller,
-    required this.onRefresh,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 12,
-      children: [
-        Expanded(
-          child: TextFormField(
-            controller: controller,
-            decoration: InputDecoration(
-              labelText: l10n.captcha,
-              prefixIcon: const Icon(Icons.security),
-              border: const OutlineInputBorder(),
-            ),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? l10n.captchaRequired : null,
-          ),
-        ),
-        GestureDetector(
-          onTap: onRefresh,
-          child: Container(
-            width: 110,
-            height: 56,
-            decoration: BoxDecoration(
-              border: Border.all(color: Theme.of(context).dividerColor),
-              borderRadius: BorderRadius.circular(AppShapes.xs),
-            ),
-            child: loading
-                ? const Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : captcha != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(AppShapes.small),
-                    child: Image.memory(
-                      _decodeBase64Image(captcha!.captchaBase64),
-                      fit: BoxFit.contain,
-                    ),
-                  )
-                : const Icon(Icons.refresh),
-          ),
-        ),
-      ],
     );
   }
 

@@ -4,11 +4,14 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/campus/downloads/shared_notice_downloads.dart';
 import 'package:bugaoshan/services/download_manager.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/widgets/common/image_viewer.dart';
+import 'package:bugaoshan/widgets/dialog/dialog.dart'; // for appConfigService
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'captcha_webview_dialog.dart';
 import 'download_options.dart';
 
 /// JavaScript handlers and download logic for WebViewNoticePage.
@@ -33,12 +36,25 @@ mixin WebViewNoticeHandlers<T extends StatefulWidget> on State<T> {
           .toList();
       if (mounted) setState(() => pageAttachments = attachments);
     } catch (e) {
-      debugPrint('$debugLabel parse attachments error: $e');
+      AppLog.e(
+        'WebViewNoticeHandlers',
+        '$debugLabel parse attachments error: $e',
+      );
     }
   }
 
-  void onWebViewDownload(String url) {
-    controller?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+  /// Downloads a file through the WebView session with CAPTCHA handling.
+  /// Called from the attachment sheet when [DownloadOptions.useWebViewDownload] is true.
+  /// The task must already be enqueued in [DownloadManager].
+  Future<void> onWebViewDownload(String url) async {
+    final options = downloadOptions;
+    if (options == null) return;
+
+    final manager = getIt<DownloadManager>();
+    final task = manager.taskFor(url, options.attachmentDir);
+    if (task == null) return;
+
+    await _downloadWithCaptchaHandling(url, task.fileName, options, task);
   }
 
   void onOpenImage(List<dynamic> args) {
@@ -78,6 +94,101 @@ mixin WebViewNoticeHandlers<T extends StatefulWidget> on State<T> {
     });
   }
 
+  // ── CAPTCHA-aware download ────────────────────────────────────────────────────
+
+  /// Downloads [url] and updates [task] in DownloadManager.
+  /// On CAPTCHA, opens a WebView dialog so the user can complete verification
+  /// directly on the server page.
+  Future<void> _downloadWithCaptchaHandling(
+    String url,
+    String fileName,
+    DownloadOptions options,
+    DownloadTask task,
+  ) async {
+    final manager = getIt<DownloadManager>();
+    manager.updateTask(task, status: DownloadStatus.downloading);
+
+    try {
+      final path = await _doDownload(url, fileName, options);
+      manager.updateTask(
+        task,
+        status: DownloadStatus.done,
+        downloadedPath: path,
+      );
+    } on CaptchaRequiredException catch (_) {
+      if (!mounted) return;
+      // Let the user complete the CAPTCHA in a WebView — it handles the rest.
+      final ok = await _showCaptchaWebViewDialog(url, options, task);
+      if (!ok && mounted) {
+        manager.updateTask(
+          task,
+          status: DownloadStatus.error,
+          errorMessage: AppLocalizations.of(context)!.captchaCancelled,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        manager.updateTask(
+          task,
+          status: DownloadStatus.error,
+          errorMessage: e.toString(),
+        );
+      }
+    }
+  }
+
+  /// Downloads a file via HTTP with WebView session cookies.
+  Future<String> _doDownload(
+    String url,
+    String fileName,
+    DownloadOptions options,
+  ) async {
+    if (appConfigService.forceCaptchaForDownload.value) {
+      throw const CaptchaRequiredException();
+    }
+    final cookieHeader = await getDownloadCookieHeader(url);
+    final headers = mergeDownloadHeaders(
+      options.downloadHeaders,
+      cookieHeader: cookieHeader,
+    );
+    return downloadFile(url, options.attachmentDir, fileName, headers: headers);
+  }
+
+  /// Opens a dialog with a WebView that loads the CAPTCHA page.
+  /// Returns true if the user completed the CAPTCHA and the file was downloaded.
+  Future<bool> _showCaptchaWebViewDialog(
+    String url,
+    DownloadOptions options,
+    DownloadTask task,
+  ) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => CaptchaWebViewDialog(
+        url: url,
+        onDownloadComplete: (String filePath) {
+          // 只更新任务状态与提示；弹窗的 pop 由 CaptchaWebViewDialog 内部
+          // 控制（仅在弹窗仍打开时触发），避免弹窗已关闭时误关底层页面。
+          getIt<DownloadManager>().updateTask(
+            task,
+            status: DownloadStatus.done,
+            downloadedPath: filePath,
+          );
+          if (mounted) {
+            final l10n = AppLocalizations.of(context)!;
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(l10n.downloadComplete)));
+          }
+        },
+        getCookies: () => getDownloadCookieHeader(url),
+        downloadHeaders: options.downloadHeaders,
+        attachmentDir: options.attachmentDir,
+      ),
+    );
+    return result ?? false;
+  }
+
   Future<String?> getDownloadCookieHeader(String url) async {
     final cookies = await CookieManager.instance().getCookies(url: WebUri(url));
     if (cookies.isEmpty) return null;
@@ -104,30 +215,37 @@ mixin WebViewNoticeHandlers<T extends StatefulWidget> on State<T> {
     final url = args[0] as String;
     final name = args[1] as String;
     final options = downloadOptions!;
-    try {
-      final headers = mergeDownloadHeaders(
+
+    // Enqueue a task so the sheet (if opened) shows progress.
+    final manager = getIt<DownloadManager>();
+    final task = manager.enqueue(
+      url,
+      options.attachmentDir,
+      name,
+      headers: mergeDownloadHeaders(
         options.downloadHeaders,
-        cookieHeader: await getDownloadCookieHeader(url),
-      );
-      await downloadNoticeFile(
-        url,
-        options.attachmentDir,
-        name,
-        headers: headers,
-      );
+        cookieHeader: null,
+      ),
+    );
+
+    try {
+      await _downloadWithCaptchaHandling(url, name, options, task);
       if (mounted) {
         showAttachmentsSheet(
           context,
           items: pageAttachments,
           dirName: options.attachmentDir,
-          downloadHeaders: headers,
+          downloadHeaders: null, // headers already embedded in task
           onWebViewDownload: options.useWebViewDownload
               ? onWebViewDownload
               : null,
         );
       }
     } catch (e) {
-      debugPrint('$debugLabel download attachment error: $e');
+      AppLog.e(
+        'WebViewNoticeHandlers',
+        '$debugLabel download attachment error: $e',
+      );
     }
   }
 
@@ -147,13 +265,14 @@ mixin WebViewNoticeHandlers<T extends StatefulWidget> on State<T> {
         headers: headers,
       );
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('下载完成')));
+        ).showSnackBar(SnackBar(content: Text(l10n.downloadComplete)));
       }
       return true;
     } catch (e) {
-      debugPrint('$debugLabel download error: $e');
+      AppLog.e('WebViewNoticeHandlers', '$debugLabel download error: $e');
       return false;
     }
   }

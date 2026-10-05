@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:bugaoshan/injection/injector.dart';
@@ -5,12 +6,13 @@ import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/services/download_manager.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:open_filex/open_filex.dart';
+import 'package:bugaoshan/utils/open_file.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/utils/share_utils.dart';
+import 'package:bugaoshan/widgets/common/swipe_page_view.dart';
 import 'file_utils.dart';
 
 class _DirConfig {
@@ -298,8 +300,39 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
       ),
     );
     if (confirmed != true) return;
+    await _deletePaths(_selected.toList());
+  }
+
+  /// Prompts the user and deletes a single downloaded file.
+  Future<void> _deleteFile(_FileInfo info) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.confirmDelete),
+        content: Text(l10n.confirmDeleteFile),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _deletePaths([info.file.path]);
+  }
+
+  /// Shared deletion routine: removes files, cleans up stale [DownloadManager]
+  /// tasks and empty subdirectories, then refreshes the list.
+  Future<void> _deletePaths(List<String> paths) async {
+    final l10n = AppLocalizations.of(context)!;
     final manager = getIt<DownloadManager>();
-    for (final path in _selected) {
+    for (final path in paths) {
       final file = File(path);
       if (await file.exists()) await file.delete();
       // Remove stale task from DownloadManager so the attachment sheet
@@ -332,7 +365,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
       ),
     );
     _exitSelection();
-    _loadFiles();
+    unawaited(_loadFiles());
   }
 
   // ── UI helpers ────────────────────────────────────────────────────────────────────
@@ -365,7 +398,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  void _openFile(File file) => OpenFilex.open(file.path);
+  void _openFile(File file) => openFile(file.path);
 
   void _shareFile(File file) => shareSingleFile(file.path, context: context);
 
@@ -386,7 +419,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
               Row(
                 children: [
                   Text(
-                    '排序方式',
+                    l10n.sortBy,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w600,
@@ -401,7 +434,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
                       });
                       Navigator.pop(context);
                     },
-                    child: const Text('重置'),
+                    child: Text(l10n.reset),
                   ),
                 ],
               ),
@@ -422,7 +455,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
               ),
               const SizedBox(height: 16),
               Text(
-                '文件类型',
+                l10n.fileType,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.w600,
@@ -433,7 +466,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
                 spacing: 8,
                 children: [
                   ChoiceChip(
-                    label: const Text('全部'),
+                    label: Text(l10n.all),
                     selected: _filterExt.isEmpty,
                     onSelected: (_) {
                       setState(() => _filterExt = '');
@@ -483,7 +516,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
         ),
         IconButton(
           icon: const Icon(Icons.checklist),
-          tooltip: '管理',
+          tooltip: l10n.manage,
           onPressed: () {
             setState(() {
               if (_selecting) {
@@ -498,7 +531,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
         ),
         IconButton(
           icon: const Icon(Icons.filter_list),
-          tooltip: '筛选',
+          tooltip: l10n.filter,
           onPressed: _showFilterMenu,
         ),
       ],
@@ -539,6 +572,8 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
                   _openFile(file);
                 } else if (value == 'share') {
                   _shareFile(file);
+                } else if (value == 'delete') {
+                  _deleteFile(info);
                 }
               },
               itemBuilder: (ctx) => [
@@ -555,6 +590,14 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
                   child: ListTile(
                     leading: const Icon(Icons.share),
                     title: Text(l10n.share),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: ListTile(
+                    leading: const Icon(Icons.delete_outline),
+                    title: Text(l10n.delete),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
@@ -587,7 +630,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
               child: Row(
                 children: [
                   Text(
-                    '已选择 ${_selected.length} 个文件',
+                    l10n.selectedCount(_selected.length),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -684,8 +727,9 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
           ],
         ),
         Expanded(
-          child: TabBarView(
-            controller: _tabController,
+          child: SwipePageView(
+            tabController: _tabController,
+            keepPagesAlive: true,
             children: [
               for (final cfg in _dirConfigs)
                 _buildFileList(filtered[cfg.dirName] ?? [], l10n),

@@ -4,6 +4,7 @@ import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/ccyl_provider.dart';
 import 'package:bugaoshan/services/auth/ccyl_oauth_service.dart';
 import 'package:bugaoshan/services/auth/scu_auth.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 class CcylBindPage extends StatefulWidget {
@@ -27,12 +28,13 @@ class _CcylBindPageState extends State<CcylBindPage> {
       _error = null;
     });
 
+    final l10n = AppLocalizations.of(context)!;
     try {
       final code = await _oauthService.getOAuthCode();
       if (code == null) {
         if (mounted) {
           setState(() {
-            _error = '获取授权码失败';
+            _error = l10n.getAuthCodeFailed;
           });
         }
         return;
@@ -44,7 +46,7 @@ class _CcylBindPageState extends State<CcylBindPage> {
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      debugPrint('CCYL bind error: $e');
+      AppLog.e('CcylBindPage', 'Bind error: $e');
       if (mounted) {
         setState(() {
           _error = LoadErrorType.ccylBindFailed;

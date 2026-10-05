@@ -9,13 +9,13 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get bugaoshan => '不高山上';
+  String get bugaoshan => 'Bugaoshan';
 
   @override
   String get selfLanguage => 'English';
 
   @override
-  String get wizardWelcomeTitle => 'Welcome to 不高山上';
+  String get wizardWelcomeTitle => 'Welcome to Bugaoshan';
 
   @override
   String get wizardWelcomeDesc =>
@@ -89,6 +89,35 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get widgetShowTomorrowAfterEnd =>
       'Show next day\'s courses after today\'s classes finish';
+
+  @override
+  String get widgetAppearanceTitle => 'Widget Appearance';
+
+  @override
+  String get widgetAppearanceDescription =>
+      'Customize every Bugaoshan course widget on this device.';
+
+  @override
+  String get widgetColorStyle => 'Color';
+
+  @override
+  String get widgetColorful => 'Course colors';
+
+  @override
+  String get widgetMonochrome => 'Monochrome';
+
+  @override
+  String get widgetDensity => 'Information density';
+
+  @override
+  String get widgetDensityStandard => 'Standard';
+
+  @override
+  String get widgetDensityCompact => 'Compact';
+
+  @override
+  String get widgetSystemAppearanceHint =>
+      'On iOS 26 and later, Clear and Tinted Home Screen appearances automatically use the system glass or tint treatment.';
 
   @override
   String get onboardingSkip => 'Skip';
@@ -252,6 +281,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Hint: Adjust the slider to preview the animation, click Confirm to save the settings';
 
   @override
+  String get enablePageTransitionAnimation => 'Dock Page Transition Animation';
+
+  @override
+  String get enablePageTransitionAnimationHint =>
+      'Enable slide and fade animation when switching Dock pages';
+
+  @override
   String get themeColor => 'Theme Color';
 
   @override
@@ -296,17 +332,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get about => 'About';
 
   @override
+  String get userManual => 'User Manual';
+
+  @override
   String get developmentTeam => 'Dev Team';
-
-  @override
-  String get developerAndOperator => 'Developer and Operator';
-
-  @override
-  String get openSourceMaintenanceTeam => 'Open-source Maintenance Team';
-
-  @override
-  String get openSourceProjectCopyright =>
-      'Open-source project © 2026 The-Brotherhood-of-SCU';
 
   @override
   String get projectInfo => 'Project Info';
@@ -321,7 +350,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitTag => 'Git Tag';
 
   @override
-  String get appDescription => 'Explore everything with 不高山上';
+  String get appDescription => 'Explore everything, all on the Bugaoshan';
 
   @override
   String get contactUs => 'Contact Us';
@@ -336,6 +365,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectRepository => 'Repository';
+
+  @override
+  String get officialWebsite => 'Website';
 
   @override
   String get checkForUpdates => 'Check Updates';
@@ -370,6 +402,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get usePreviewUpdateSourceHint =>
       'Affects only the automatic checks on the home and about pages. The test page always checks both channels.';
+
+  @override
+  String get forceCaptchaForDownload => 'Force CAPTCHA for Download';
+
+  @override
+  String get forceCaptchaForDownloadHint =>
+      'When enabled, tapping an attachment download will show the CAPTCHA dialog for testing.';
+
+  @override
+  String get captchaDialogTitle => 'Enter CAPTCHA';
+
+  @override
+  String get captchaCancelled => 'CAPTCHA cancelled';
 
   @override
   String get downloading => 'Downloading';
@@ -517,6 +562,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get notStarted => 'Not Started';
+
+  @override
   String get thisWeek => 'This week';
 
   @override
@@ -578,6 +626,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get autoFetchCurrentWeekHint =>
       'Fetch current teaching week from academic system';
+
+  @override
+  String get autoFetchCurrentWeekOnVacation =>
+      'No teaching week is available during vacation. Schedule unchanged.';
 
   @override
   String get fetchingCurrentWeek => 'Fetching...';
@@ -658,6 +710,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removeBackgroundImage => 'Remove Background Image';
 
   @override
+  String get editBackgroundArea => 'Adjust Visible Area';
+
+  @override
+  String get cropEditorHint => 'Drag to reposition, pinch or scroll to zoom.';
+
+  @override
   String get backgroundImageOpacity => 'Background Image Opacity';
 
   @override
@@ -669,6 +727,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get showLocation => 'Show Location';
+
+  @override
+  String get showCourseWeeks => 'Show Course Weeks';
 
   @override
   String get showWeekend => 'Show Weekend';
@@ -690,9 +751,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get next => 'Next';
-
-  @override
-  String get delete => 'Delete';
 
   @override
   String get customColor => 'Custom Color';
@@ -754,7 +812,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importSuccess => 'Schedule imported successfully';
 
   @override
-  String get importFailed => 'Import failed';
+  String get importFailedTip =>
+      'Import failed, please check data format or log back in.';
 
   @override
   String get importedScheduleDefaultName => 'Imported Schedule';
@@ -823,6 +882,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportScheduleAddToCalendarFailed => 'Import failed';
 
   @override
+  String get exportScheduleAddToCalendarEmpty => 'No courses to import';
+
+  @override
   String get exportScheduleSelectCalendar => 'Choose Calendar';
 
   @override
@@ -830,6 +892,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get copySuffix => ' (Copy)';
+
+  @override
+  String get copyCourseTitle => 'New Copy';
+
+  @override
+  String get copyCourseSave => 'Save Copy';
 
   @override
   String get notThisWeek => '[Not]';
@@ -925,16 +993,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studentId => 'Student ID';
 
   @override
+  String get studentIdHint => 'Please enter your student ID';
+
+  @override
   String get studentIdRequired => 'Please enter your student ID';
 
   @override
   String get password => 'Password';
 
   @override
+  String get passwordHint => 'Please enter your password';
+
+  @override
   String get passwordRequired => 'Please enter your password';
 
   @override
   String get captcha => 'Captcha';
+
+  @override
+  String get captchaHint => 'Captcha';
 
   @override
   String get captchaRequired => 'Please enter the captcha';
@@ -952,13 +1029,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginButton => 'Login';
 
   @override
-  String get captchaLoadFailed => 'Failed to load captcha';
-
-  @override
   String get captchaNotLoaded => 'Please load the captcha first';
 
   @override
-  String get networkError => 'Network error';
+  String get resetPassword => 'Reset Password';
+
+  @override
+  String get resetPasswordStepAccount => 'Account';
+
+  @override
+  String get resetPasswordStepVerify => 'Verification';
+
+  @override
+  String get resetPasswordStepReset => 'New Password';
+
+  @override
+  String get resetPasswordNext => 'Next';
+
+  @override
+  String get resetPasswordChooseMethod =>
+      'You are resetting your login password. Choose a verification method:';
+
+  @override
+  String get resetPasswordViaSms => 'Via SMS';
+
+  @override
+  String resetPasswordSmsTip(String phone) {
+    return 'A verification code will be sent via SMS to your phone $phone';
+  }
+
+  @override
+  String get resetPasswordViaEmail => 'Via Email';
+
+  @override
+  String resetPasswordEmailTip(String email) {
+    return 'A verification code will be sent via email to $email';
+  }
+
+  @override
+  String get resetPasswordSendCode => 'Send Code';
+
+  @override
+  String resetPasswordResendAfter(int seconds) {
+    return 'Resend in ${seconds}s';
+  }
+
+  @override
+  String get resetPasswordCodeRequired =>
+      'Please enter the 6-digit verification code';
+
+  @override
+  String get resetPasswordNewPasswordLabel => 'New Password';
+
+  @override
+  String get resetPasswordConfirmPasswordLabel => 'Confirm Password';
+
+  @override
+  String get resetPasswordPasswordMismatch => 'Passwords do not match';
+
+  @override
+  String get resetPasswordPolicyTip =>
+      'Password must be at least 8 characters and contain upper/lower case letters, digits and special characters';
+
+  @override
+  String get resetPasswordPolicyInvalid =>
+      'Password does not meet the requirements';
+
+  @override
+  String get resetPasswordSubmit => 'Confirm';
+
+  @override
+  String get resetPasswordSuccess =>
+      'Password reset successfully. Please log in with your new password.';
+
+  @override
+  String get resetPasswordBackToLogin => 'Back to Login';
 
   @override
   String get gradesStats => 'Grade Statistics';
@@ -1213,6 +1358,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planCompletionCourses => 'Courses';
 
   @override
+  String get planCompletionPlanFallback => 'Training Program';
+
+  @override
   String get planCompletionRateLimited =>
       'Too many requests, please try again later';
 
@@ -1451,7 +1599,85 @@ class AppLocalizationsEn extends AppLocalizations {
   String get networkDeviceOperationSuccess => 'Operation successful';
 
   @override
-  String get loginFailed => 'Login failed';
+  String get passpointTitle => 'Passive Authentication';
+
+  @override
+  String get passpointDesc =>
+      'Bind device MAC to auto authenticate on campus network';
+
+  @override
+  String get passpointAddDevice => 'Add Device';
+
+  @override
+  String get passpointUserInfo => 'User Information';
+
+  @override
+  String get passpointUserGroup => 'User Group';
+
+  @override
+  String get passpointAccountState => 'Account State';
+
+  @override
+  String get passpointOnline => 'Online';
+
+  @override
+  String get passpointOffline => 'Offline';
+
+  @override
+  String get passpointMyDevices => 'My Devices';
+
+  @override
+  String get passpointExpireTime => 'Expire Time';
+
+  @override
+  String get passpointExpireLongest => 'Max 6 years';
+
+  @override
+  String get passpointExit => 'Device Exit';
+
+  @override
+  String get passpointMac => 'MAC Address';
+
+  @override
+  String get passpointCancelAuth => 'Cancel Passive Auth';
+
+  @override
+  String get passpointCancelAuthConfirm =>
+      'Are you sure you want to cancel passive authentication for this device?';
+
+  @override
+  String get passpointOperationSuccess => 'Operation successful';
+
+  @override
+  String get operationFailed => 'Operation failed';
+
+  @override
+  String get passpointMacRequired => 'Please enter MAC';
+
+  @override
+  String get passpointMacInvalid => 'Invalid MAC format, need 12 hex digits';
+
+  @override
+  String get passpointExpireRequired => 'Please enter binding validity';
+
+  @override
+  String get passpointExpireInvalid => 'Validity must be between 0 and 365';
+
+  @override
+  String get passpointExpireHint => '0-365 days, 0 means max 6 years';
+
+  @override
+  String get passpointAddWarning =>
+      'Note: once passive authentication is enabled, the device will auto join the campus network and dormitory traffic will be billed. Please use with caution!';
+
+  @override
+  String get captchaLoadFailed => 'Failed to load captcha';
+
+  @override
+  String get networkError => 'Network error';
+
+  @override
+  String get calendarRefreshSuccess => 'Calendar updated';
 
   @override
   String get invalidCaptcha => 'Invalid captcha, please try again';
@@ -1462,6 +1688,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get loginSuccess => 'Logged in successfully';
+
+  @override
   String get ccylBindFailed => 'Binding failed, please try again later';
 
   @override
@@ -1469,6 +1698,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get networkOfflineFailed => 'Failed to offline device';
+
+  @override
+  String get importFailed => 'Import failed';
 
   @override
   String get balanceQuery => 'Electricity Query';
@@ -1644,6 +1876,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'We do not collect any personal information';
 
   @override
+  String get scuLoginPasswordHint =>
+      'Password is the unified identity authentication password, not the academic affairs password';
+
+  @override
   String get openSourceLicenseDesc => 'This app is open-sourced under AGPL-3.0';
 
   @override
@@ -1773,6 +2009,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockLabelNetworkDevice => 'Network';
+
+  @override
+  String get dockLabelPasspoint => 'Passive';
 
   @override
   String get dockLabelBalanceQuery => 'Electricity';
@@ -1942,6 +2181,23 @@ class AppLocalizationsEn extends AppLocalizations {
       'Widget pinning is not supported on this device';
 
   @override
+  String get pinWidgetRequested =>
+      'Pin request sent — confirm in the system dialog to add the widget';
+
+  @override
+  String get pinWidgetFailedTitle => 'Widget Not Added';
+
+  @override
+  String get pinWidgetFailedDesc =>
+      'No system confirmation dialog appeared. The request may have been blocked by a system permission (some systems require the \"Create desktop shortcuts\" permission). Please grant it in Settings and try again, or long-press an empty area of the home screen to add the widget manually.';
+
+  @override
+  String get pinWidgetOpenSettings => 'Open Settings';
+
+  @override
+  String get pinWidgetDismiss => 'Got It';
+
+  @override
   String get pinWidgetHint =>
       'Tip: Some launchers (ColorOS, MIUI, etc.) may ignore the automatic pin request. If the widget doesn\'t appear, long-press the home screen and select \"Widgets\" to add it manually. Some systems require the \"Create desktop shortcuts\" permission to be granted.';
 
@@ -2005,6 +2261,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get open => 'Open';
+
+  @override
+  String get delete => 'Delete';
 
   @override
   String get noDownloadedAttachments => 'No downloaded attachments';
@@ -2143,6 +2402,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get classScheduleInquiryLoadMore => 'Load More';
 
   @override
+  String get dockLabelCourseCurriculum => 'Course Table';
+
+  @override
+  String get courseCurriculum => 'Course Curriculum';
+
+  @override
+  String get courseCurriculumDesc => 'View schedules for each course section';
+
+  @override
+  String get courseCurriculumNoData => 'No course data';
+
+  @override
+  String get courseCurriculumNoSchedule => 'No schedule data';
+
+  @override
+  String get courseCurriculumFilter => 'Filter';
+
+  @override
+  String get courseCurriculumSemester => 'Semester';
+
+  @override
+  String get courseCurriculumDepartment => 'Department';
+
+  @override
+  String get courseCurriculumCategory => 'Course Category';
+
+  @override
+  String get courseCurriculumCourseName => 'Course Name';
+
+  @override
+  String get courseCurriculumCourseCode => 'Course Code';
+
+  @override
+  String get courseCurriculumCourseSeq => 'Course Seq';
+
+  @override
+  String get courseCurriculumSearch => 'Search';
+
+  @override
+  String get courseCurriculumLoadMore => 'Load More';
+
+  @override
   String holidayTotalDays(int days) {
     return '$days-day holiday';
   }
@@ -2164,6 +2465,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get campusGridViewDesc => 'Use grid layout for campus page';
+
+  @override
+  String get campusSearchHint => 'Search features';
+
+  @override
+  String get campusSearchResults => 'Search Results';
+
+  @override
+  String get campusNoSearchResults => 'No matching features';
 
   @override
   String get viewChangelog => 'Version Changelog';
@@ -2290,8 +2600,553 @@ class AppLocalizationsEn extends AppLocalizations {
       'Dynamic icon switching is not supported on this platform';
 
   @override
-  String get newIconSubtitle => '不高山上 New Icon';
+  String get featureNotSupported =>
+      'This feature is not supported on this platform';
 
   @override
-  String get oldIconSubtitle => '不高山上 Classic Icon';
+  String get newIconSubtitle => 'Bugaoshan New Icon';
+
+  @override
+  String get oldIconSubtitle => 'Bugaoshan Classic Icon';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get onVacation => 'On Vacation';
+
+  @override
+  String get vacationBadge => 'Vacation';
+
+  @override
+  String daysUntilVacation(int days) {
+    return '$days days until vacation';
+  }
+
+  @override
+  String daysUntilNextSemester(int days) {
+    return '$days days until next semester classes';
+  }
+
+  @override
+  String get nextSemester => 'Next Semester';
+
+  @override
+  String registrationDates(String start, String end) {
+    return 'Registration: $start - $end';
+  }
+
+  @override
+  String get enjoyVacation => 'Enjoy your vacation~';
+
+  @override
+  String get viewNextSemesterSchedule => 'View Next Semester Schedule';
+
+  @override
+  String get noNextSemesterSchedule => 'Next semester schedule not imported';
+
+  @override
+  String get promptSwitchSemester =>
+      'The next semester is about to begin. Switch to next semester schedule?';
+
+  @override
+  String get promptSwitchSemesterTitle => 'Switch Schedule';
+
+  @override
+  String get switchSchedule => 'Switch';
+
+  @override
+  String get teamIntroTitle => 'About the Team';
+
+  @override
+  String get teamIntroDesc =>
+      'The-Brotherhood-of-SCU is an unofficial open-source organization of Sichuan University, maintained by a group of SCU students who are passionate about technology and campus life. Our goal is to build practical campus tools for SCU students through open-source collaboration.';
+
+  @override
+  String get teamJoinUsTitle => 'Join Us';
+
+  @override
+  String get teamContributeDesc =>
+      'We welcome all forms of contributions, including submitting Issues, providing feedback, initiating Pull Requests, or improving documentation.';
+
+  @override
+  String get teamContributeClosing =>
+      'The growth of the project depends on every contributor. We look forward to your participation.';
+
+  @override
+  String get quickSetting => 'Quick Setting';
+
+  @override
+  String get presetJiangAn => 'Jiang\'an Campus (SCU)';
+
+  @override
+  String get presetWangJiangHuaXi => 'Wangjiang/Huaxi Campus (SCU)';
+
+  @override
+  String get presetScuHint =>
+      'Auto-set 4-5-3 sections with corresponding times';
+
+  @override
+  String appliedPreset(String campus) {
+    return 'Applied $campus time slot preset';
+  }
+
+  @override
+  String get presetLabel => 'Preset';
+
+  @override
+  String roomCount(int count) {
+    final intl.NumberFormat countNumberFormat = intl.NumberFormat.compact(
+      locale: localeName,
+    );
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString rooms',
+      one: '1 room',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String totalHours(String hours) {
+    return 'Total Hours: $hours';
+  }
+
+  @override
+  String get sortBy => 'Sort by';
+
+  @override
+  String get reset => 'Reset';
+
+  @override
+  String get fileType => 'File type';
+
+  @override
+  String get all => 'All';
+
+  @override
+  String get manage => 'Manage';
+
+  @override
+  String get filter => 'Filter';
+
+  @override
+  String get courseAttrRequired => 'Required';
+
+  @override
+  String get courseAttrElective => 'Elective';
+
+  @override
+  String get courseAttrOptional => 'Optional';
+
+  @override
+  String get nameLabel => 'Name';
+
+  @override
+  String get sexLabel => 'Sex';
+
+  @override
+  String get studentIdLabel => 'Student ID';
+
+  @override
+  String get identityLabel => 'Identity';
+
+  @override
+  String get emailLabel => 'Email';
+
+  @override
+  String get phoneLabel => 'Phone';
+
+  @override
+  String get collegeLabel => 'College';
+
+  @override
+  String get refresh => 'Refresh';
+
+  @override
+  String gradeSuffix(String grade) {
+    return 'Grade $grade';
+  }
+
+  @override
+  String campusSuffix(String campusName) {
+    return '$campusName Campus';
+  }
+
+  @override
+  String get examEnded => 'Ended';
+
+  @override
+  String pricePerUnitValue(String price) {
+    return '$price CNY/kWh';
+  }
+
+  @override
+  String get verifyFailedCheckInfo =>
+      'Verification failed, please check your information';
+
+  @override
+  String get getAuthCodeFailed => 'Failed to get authorization code';
+
+  @override
+  String get addWidgetIosHint =>
+      'Long press on the iOS home screen, select the Bugaoshan course widget to add';
+
+  @override
+  String get addWidgetMacHint =>
+      'Click \'Edit Widgets\' in macOS Notification Center, add the Bugaoshan course widget';
+
+  @override
+  String get autoAdjustedToSunday =>
+      'Automatically adjusted to Sunday of that week';
+
+  @override
+  String get goForward => 'Forward';
+
+  @override
+  String get goBack => 'Back';
+
+  @override
+  String get openInBrowser => 'Open in browser';
+
+  @override
+  String get downloadComplete => 'Download complete';
+
+  @override
+  String importedScheduleName(int month, int day) {
+    final intl.NumberFormat monthNumberFormat = intl.NumberFormat.compact(
+      locale: localeName,
+    );
+    final String monthString = monthNumberFormat.format(month);
+    final intl.NumberFormat dayNumberFormat = intl.NumberFormat.compact(
+      locale: localeName,
+    );
+    final String dayString = dayNumberFormat.format(day);
+
+    return 'JWXT Import $monthString-$dayString';
+  }
+
+  @override
+  String get error => 'Error';
+
+  @override
+  String get dockLabelLeave => 'Service Hall';
+
+  @override
+  String get dockLabelRepair => 'Repair';
+
+  @override
+  String get repairTitle => 'Online Repair';
+
+  @override
+  String get repairDesc =>
+      'Submit dorm/classroom facility repairs and track progress';
+
+  @override
+  String get repairTabSubmit => 'Submit';
+
+  @override
+  String get repairTabMyTickets => 'My Repairs';
+
+  @override
+  String get repairAddress => 'Fault Address';
+
+  @override
+  String get repairSelectAddress => 'Please select a fault address';
+
+  @override
+  String get repairProject => 'Repair Item';
+
+  @override
+  String get repairSelectProject => 'Please select a repair item';
+
+  @override
+  String get repairSelectCategory => 'Please select a category first';
+
+  @override
+  String get repairNoProjectInCategory => 'No repair items in this category';
+
+  @override
+  String get repairSelectProjectHint =>
+      'Select a fault address first to load repair items';
+
+  @override
+  String get repairContent => 'Description';
+
+  @override
+  String get repairContentHint =>
+      'Describe the fault in detail to help the technician bring tools';
+
+  @override
+  String get repairContentRequired => 'Please fill in the description';
+
+  @override
+  String get repairPhotos => 'Photos / Videos';
+
+  @override
+  String get repairImageUploading => 'Uploading image…';
+
+  @override
+  String get repairSchedule => 'Expected Repair Time';
+
+  @override
+  String get repairAllowNoOne => 'Allow repair when no one is home';
+
+  @override
+  String get repairBookDate => 'Select Date';
+
+  @override
+  String get repairBookTime => 'Select Time Slot';
+
+  @override
+  String get repairNotSelected => 'Not selected';
+
+  @override
+  String get repairNoBookDate => 'No available booking dates';
+
+  @override
+  String get repairNoBookTime => 'No available time slots for this date';
+
+  @override
+  String get repairSubmit => 'Submit Repair';
+
+  @override
+  String get repairSubmitSuccess => 'Repair submitted successfully';
+
+  @override
+  String get repairSubmitFailed => 'Failed to submit repair, please try again';
+
+  @override
+  String get repairTicket => 'Repair Ticket';
+
+  @override
+  String get repairArea => 'Fault Location';
+
+  @override
+  String get repairAddAddress => 'Add Address';
+
+  @override
+  String get repairSelectArea => 'Select Area';
+
+  @override
+  String get repairAddressDetail => 'Detailed Address';
+
+  @override
+  String get repairAddressDetailRequired =>
+      'Please fill in the detailed address';
+
+  @override
+  String get repairPhoneRequired => 'Please fill in the phone number';
+
+  @override
+  String get repairPhoneInvalid => 'Invalid phone number format';
+
+  @override
+  String get repairAddressSaved => 'Address saved';
+
+  @override
+  String get repairImageTypeInvalid => 'Only JPG/PNG/HEIC images are supported';
+
+  @override
+  String get repairImageTooLarge => 'Image must be smaller than 10MB';
+
+  @override
+  String get repairDetail => 'Repair Detail';
+
+  @override
+  String get repairServiceUnit => 'Service Unit';
+
+  @override
+  String get repairPayType => 'Charge Type';
+
+  @override
+  String get repairProgress => 'Repair Progress';
+
+  @override
+  String get repairWithdraw => 'Withdraw Repair';
+
+  @override
+  String get repairWithdrawConfirm => 'Withdraw this repair ticket?';
+
+  @override
+  String get repairWithdrawSuccess => 'Repair withdrawn';
+
+  @override
+  String get repairWithdrawFailed => 'Withdraw failed, please try again later';
+
+  @override
+  String get repairEvaluate => 'Evaluate Repair';
+
+  @override
+  String get repairEvaluateHint => 'Write your review (optional)';
+
+  @override
+  String get repairEvaluateSuccess => 'Evaluation submitted';
+
+  @override
+  String get repairEvaluated => 'Evaluated';
+
+  @override
+  String get repairWithdrawn => 'Withdrawn';
+
+  @override
+  String get repairEvaluateFailed =>
+      'Evaluation failed, please try again later';
+
+  @override
+  String get serviceHallTitle => 'Service Hall';
+
+  @override
+  String get serviceHallLeaveTitle => 'Leave Request';
+
+  @override
+  String get serviceHallLeaveDesc => 'Submit a leave request';
+
+  @override
+  String get serviceHallMyAppsTitle => 'My Applications';
+
+  @override
+  String get serviceHallMyAppsDesc => 'View leave and check-in requests';
+
+  @override
+  String get serviceHallReturnTitle => 'Return-to-School Report';
+
+  @override
+  String get serviceHallReturnDesc =>
+      'Report your return-to-school trip in advance';
+
+  @override
+  String get serviceHallSummerLeaveTitle => 'Summer Leave Report';
+
+  @override
+  String get serviceHallSummerLeaveDesc =>
+      'Report leaving school for the summer vacation';
+
+  @override
+  String get serviceHallStayRegisterTitle => 'Stay-on-Campus Registration';
+
+  @override
+  String get serviceHallStayRegisterDesc =>
+      'Register to stay on campus during the vacation';
+
+  @override
+  String serviceFormRequired(String label) {
+    return 'Please fill in $label';
+  }
+
+  @override
+  String get serviceFormSchemaFailed =>
+      'Failed to load the form. Please retry later.';
+
+  @override
+  String get serviceFormSelectHint => 'Please select';
+
+  @override
+  String get serviceFormOptional => 'Optional';
+
+  @override
+  String get leaveTitle => 'Leave Application';
+
+  @override
+  String get leaveDesc =>
+      'Handle leave requests, check-ins and more in the service hall';
+
+  @override
+  String get leaveApply => 'Apply';
+
+  @override
+  String get leaveMyApplications => 'My Requests';
+
+  @override
+  String get leaveSubmit => 'Submit';
+
+  @override
+  String get leaveReasonRequired => 'Please enter the leave reason';
+
+  @override
+  String get leaveEndAfterStart => 'End time must be after start time';
+
+  @override
+  String get leaveSubmitSuccess => 'Leave request submitted';
+
+  @override
+  String get leaveSubmitFailed => 'Failed to submit. Please try again.';
+
+  @override
+  String get leaveInfo => 'Student Info';
+
+  @override
+  String get leaveTutor => 'Tutor';
+
+  @override
+  String get leaveCampusRequired => 'Please select the campus you are leaving';
+
+  @override
+  String get leaveDetail => 'Other Reason';
+
+  @override
+  String get leaveDetailHint => 'Please specify the reason';
+
+  @override
+  String get leaveAttachment => 'Upload Proof';
+
+  @override
+  String get leaveAttachmentHint => 'Optional: upload 1-3 images as proof';
+
+  @override
+  String get leaveAttachmentAdd => 'Add Image';
+
+  @override
+  String get leaveDepartReturn => 'Leave & Return';
+
+  @override
+  String get leaveDepartTime => 'Depart Time';
+
+  @override
+  String get leaveReturnTime => 'Return Time';
+
+  @override
+  String get leaveRegionRequired => 'Please select your destination address';
+
+  @override
+  String get regionProvince => 'Province';
+
+  @override
+  String get regionCity => 'City';
+
+  @override
+  String get regionArea => 'District';
+
+  @override
+  String get regionSelectHint => 'Select';
+
+  @override
+  String get regionDetailHint => 'Detailed address (street, building no.)';
+
+  @override
+  String get regionPickProvince => 'Select Province';
+
+  @override
+  String get regionPickCity => 'Select City';
+
+  @override
+  String get regionPickArea => 'Select District';
+
+  @override
+  String get leaveNoApplications => 'No leave requests yet';
+
+  @override
+  String get leaveSubmitTime => 'Submitted';
+
+  @override
+  String get leaveStatusProcessing => 'Processing';
+
+  @override
+  String get leaveStatusDraft => 'Draft';
+
+  @override
+  String get leaveStatusDone => 'Done';
 }

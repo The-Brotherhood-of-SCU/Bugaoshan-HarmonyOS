@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
@@ -5,9 +7,11 @@ import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/app_info_provider.dart';
 import 'package:bugaoshan/providers/update_provider.dart';
 import 'package:bugaoshan/services/update_service.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/utils/open_link.dart'
-    show openDeveloperTeam, openProjectRepository;
+    show openOfficialWebsite, openProjectRepository;
+import 'package:bugaoshan/pages/about/team_page.dart';
+import 'package:bugaoshan/pages/about/update_tile.dart';
 import 'package:bugaoshan/pages/settings/eula_status_page.dart';
 import 'package:bugaoshan/pages/dev/dev_page.dart';
 import 'package:bugaoshan/widgets/common/info_card.dart';
@@ -81,21 +85,27 @@ class _AboutPageState extends State<AboutPage> {
 
         if (!mounted) return;
       } else if (result.status == UpdateCheckStatus.error) {
-        showInfoDialog(
-          title: localizations.checkForUpdates,
-          content: localizations.loadFailed,
+        unawaited(
+          showInfoDialog(
+            title: localizations.checkForUpdates,
+            content: localizations.loadFailed,
+          ),
         );
       } else {
-        showInfoDialog(
-          title: localizations.checkForUpdates,
-          content: localizations.noUpdateAvailable,
+        unawaited(
+          showInfoDialog(
+            title: localizations.checkForUpdates,
+            content: localizations.noUpdateAvailable,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        showInfoDialog(
-          title: localizations.checkForUpdates,
-          content: localizations.loadFailed,
+        unawaited(
+          showInfoDialog(
+            title: localizations.checkForUpdates,
+            content: localizations.loadFailed,
+          ),
         );
       }
     }
@@ -211,63 +221,20 @@ class _AboutPageState extends State<AboutPage> {
                 value: "Github",
                 onTap: () => openProjectRepository(),
               ),
-              IconTile(
-                icon: Icons.person_outline_rounded,
-                label: localizations.developerAndOperator,
-                value: '许盛凯',
-              ),
               LinkTile(
+                icon: Icons.language_rounded,
+                label: localizations.officialWebsite,
+                value: "bugaoshan.scubro.dev",
+                onTap: () => openOfficialWebsite(),
+              ),
+              StackedTile(
                 icon: Icons.group_outlined,
-                label: localizations.openSourceMaintenanceTeam,
-                value: "Brotherhood of SCU",
-                onTap: () => openDeveloperTeam(),
+                label: localizations.developmentTeam,
+                value: "The Brotherhood of SCU",
+                onTap: () => popupOrNavigate(context, const TeamPage()),
               ),
               if (updateProvider.supportsInAppUpdate)
-                ValueListenableBuilder<bool>(
-                  valueListenable: appConfig.hasUpdateNotification,
-                  builder: (context, hasUpdate, _) {
-                    return ListenableBuilder(
-                      listenable: Listenable.merge([
-                        updateProvider.isChecking,
-                        updateProvider.isDownloading,
-                        updateProvider.progressState,
-                      ]),
-                      builder: (context, _) {
-                        final isDownloading =
-                            updateProvider.isDownloading.value;
-                        final isChecking = updateProvider.isChecking.value;
-                        final percent = updateProvider.progressState.percent;
-                        return BadgedTile(
-                          icon: Icons.update_rounded,
-                          label: localizations.checkForUpdates,
-                          showBadge: hasUpdate,
-                          // 下载中禁用点击,避免重入触发新的检查/下载流程
-                          onTap: isDownloading ? null : _checkForUpdates,
-                          trailing: isDownloading
-                              ? Text(
-                                  '$percent%',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                )
-                              : isChecking
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : null,
-                        );
-                      },
-                    );
-                  },
-                ),
+                UpdateTile(onTap: _checkForUpdates),
               IconTile(
                 icon: Icons.gavel,
                 label: localizations.eulaTitle,
@@ -304,7 +271,7 @@ class _AboutPageState extends State<AboutPage> {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              localizations.openSourceProjectCopyright,
+              'Copyright © 2026 The-Brotherhood-of-SCU',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: onSurfaceVariant.withValues(alpha: 0.6),
               ),

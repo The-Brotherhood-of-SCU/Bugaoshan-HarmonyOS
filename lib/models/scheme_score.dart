@@ -1,3 +1,5 @@
+import 'package:bugaoshan/utils/json_utils.dart';
+
 class SchemeScoreItem {
   final String courseName;
   final String? englishCourseName;
@@ -29,9 +31,12 @@ class SchemeScoreItem {
 
   factory SchemeScoreItem.fromJson(Map<String, dynamic> json) {
     final gradeName = json['gradeName']?.toString() ?? '';
-    final courseScore = (json['courseScore'] as num?)?.toDouble() ?? 0.0;
-    final gradePointScore =
-        (json['gradePointScore'] as num?)?.toDouble() ?? 0.0;
+    // schemeScores 接口（2026-09 起）把百分制成绩挪进了复合主键 id 对象；
+    // allPassingScores 接口仍返回顶层 courseScore，留作回退兼容。
+    final courseScore = safeDouble(
+      (json['id'] as Map?)?['courseScore'] ?? json['courseScore'],
+    );
+    final gradePointScore = safeDouble(json['gradePointScore']);
     return SchemeScoreItem(
       courseName: json['courseName']?.toString() ?? '',
       englishCourseName: json['englishCourseName']?.toString(),
@@ -50,6 +55,8 @@ class SchemeScoreItem {
 }
 
 class SchemeScoreSummary {
+  static const _auxiliaryPlanKeywords = ['微专业', '辅修', '第二专业'];
+
   final double zxf; // 总学分
   final double yxxf; // 已修学分
   final int tgms; // 通过门数
@@ -69,26 +76,52 @@ class SchemeScoreSummary {
   });
 
   factory SchemeScoreSummary.fromJson(Map<String, dynamic> json) {
-    final lnList = json['lnList'] as List?;
-    final first =
-        (lnList?.isNotEmpty == true ? lnList![0] : null)
-            as Map<String, dynamic>?;
+    final schemes = listFromJson(json);
+    return defaultScheme(schemes) ??
+        const SchemeScoreSummary(
+          zxf: 0,
+          yxxf: 0,
+          tgms: 0,
+          wtgms: 0,
+          zms: 0,
+          cjlx: '',
+          items: [],
+        );
+  }
+
+  factory SchemeScoreSummary._fromPlanJson(Map<String, dynamic> json) {
     final cjList =
-        (first?['cjList'] as List?)
+        (json['cjList'] as List?)
             ?.whereType<Map<String, dynamic>>()
             .map(SchemeScoreItem.fromJson)
             .toList() ??
         [];
 
     return SchemeScoreSummary(
-      zxf: (first?['zxf'] as num?)?.toDouble() ?? 0.0,
-      yxxf: (first?['yxxf'] as num?)?.toDouble() ?? 0.0,
-      tgms: (first?['tgms'] as num?)?.toInt() ?? 0,
-      wtgms: (first?['wtgms'] as num?)?.toInt() ?? 0,
-      zms: (first?['zms'] as num?)?.toInt() ?? 0,
-      cjlx: first?['cjlx']?.toString() ?? '',
+      zxf: safeDouble(json['zxf']),
+      yxxf: safeDouble(json['yxxf']),
+      tgms: safeInt(json['tgms']),
+      wtgms: safeInt(json['wtgms']),
+      zms: safeInt(json['zms']),
+      cjlx: json['cjlx']?.toString() ?? '',
       items: cjList,
     );
+  }
+
+  static List<SchemeScoreSummary> listFromJson(Map<String, dynamic> json) =>
+      (json['lnList'] as List?)
+          ?.whereType<Map<String, dynamic>>()
+          .map(SchemeScoreSummary._fromPlanJson)
+          .toList() ??
+      [];
+
+  static SchemeScoreSummary? defaultScheme(List<SchemeScoreSummary> schemes) {
+    if (schemes.isEmpty) return null;
+    for (final scheme in schemes) {
+      final isAuxiliary = _auxiliaryPlanKeywords.any(scheme.cjlx.contains);
+      if (!isAuxiliary) return scheme;
+    }
+    return schemes.first;
   }
 
   // 按学年+学期分组，返回有序列表 [(label, items)]

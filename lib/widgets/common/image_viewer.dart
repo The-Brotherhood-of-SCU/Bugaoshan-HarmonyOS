@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:gal/gal.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
+import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/utils/gallery_save.dart';
 import 'package:bugaoshan/utils/share_utils.dart';
 
 void showFullScreenImageViewer(
@@ -37,9 +37,7 @@ class ImageViewerPage extends StatelessWidget {
         children: [
           Center(
             child: GestureDetector(
-              onLongPress: AppPlatform.isHarmony
-                  ? null
-                  : () => _showActions(context, l10n),
+              onLongPress: () => _showActions(context, l10n),
               child: PhotoView(
                 imageProvider: NetworkImage(imageUrl, headers: headers),
                 minScale: PhotoViewComputedScale.contained,
@@ -65,22 +63,20 @@ class ImageViewerPage extends StatelessWidget {
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
-          if (!AppPlatform.isHarmony)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              right: 8,
-              child: IconButton(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onPressed: () => _showActions(context, l10n),
-              ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 8,
+            child: IconButton(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              onPressed: () => _showActions(context, l10n),
             ),
+          ),
         ],
       ),
     );
   }
 
   void _showActions(BuildContext context, AppLocalizations l10n) {
-    if (AppPlatform.isHarmony) return;
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
@@ -116,14 +112,14 @@ class ImageViewerPage extends StatelessWidget {
     try {
       final response = await http.get(Uri.parse(imageUrl), headers: headers);
       if (response.statusCode != 200) throw Exception('Download failed');
-      await Gal.putImageBytes(response.bodyBytes);
+      if (!await saveImageBytesToGallery(response.bodyBytes)) return;
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(l10n.imageSavedToGallery)));
       }
     } catch (e) {
-      debugPrint('Save image error: $e');
+      AppLog.e('ImageViewer', 'Save image error: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -147,7 +143,7 @@ class ImageViewerPage extends StatelessWidget {
       if (!context.mounted) return;
       await shareSingleFile(file.path, context: context);
     } catch (e) {
-      debugPrint('Share image error: $e');
+      AppLog.e('ImageViewer', 'Share image error: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

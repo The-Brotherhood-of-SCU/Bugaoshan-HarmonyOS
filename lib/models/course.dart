@@ -1,401 +1,20 @@
+/// 课程领域模型与日历扩展的汇总出口。
+///
+/// 为避免破坏既有 import（`import course.dart` 用于访问 [Course] /
+/// [ScheduleConfig] / [TimeSlot]），此文件保留全部公共符号面：
+/// - [Course] / [WeekType] / [DateTimeExtension] 定义在此文件；
+/// - [ScheduleConfig] / [TimeSlot] 定义在 `schedule_config.dart`，
+///   通过本文件 re-export，保持 `import course.dart` 即可使用。
+library;
+
 import 'package:flutter/material.dart';
 
-class TimeSlot {
-  final TimeOfDay startTime;
-  final TimeOfDay endTime;
+export 'schedule_config.dart' show ScheduleConfig, TimeSlot;
 
-  const TimeSlot({required this.startTime, required this.endTime});
+/// 默认学期总周数（教务系统标准 20 周）。
+const int kDefaultTotalWeeks = 20;
 
-  factory TimeSlot.fromJson(Map<String, dynamic> json) {
-    return TimeSlot(
-      startTime: _timeOfDayFromJson(json['startTime'] as Map<String, dynamic>),
-      endTime: _timeOfDayFromJson(json['endTime'] as Map<String, dynamic>),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'startTime': _timeOfDayToJson(startTime),
-    'endTime': _timeOfDayToJson(endTime),
-  };
-
-  static TimeOfDay _timeOfDayFromJson(Map<String, dynamic> json) {
-    return TimeOfDay(hour: json['hour'] as int, minute: json['minute'] as int);
-  }
-
-  static Map<String, dynamic> _timeOfDayToJson(TimeOfDay time) {
-    return {'hour': time.hour, 'minute': time.minute};
-  }
-
-  TimeSlot copyWith({TimeOfDay? startTime, TimeOfDay? endTime}) {
-    return TimeSlot(
-      startTime: startTime ?? this.startTime,
-      endTime: endTime ?? this.endTime,
-    );
-  }
-}
-
-class ScheduleConfig {
-  String id;
-  String semesterName;
-  DateTime semesterStartDate;
-  int totalWeeks;
-  int morningSections;
-  int afternoonSections;
-  int eveningSections;
-  int courseDuration;
-  int breakDuration;
-  bool autoSyncTime;
-  List<TimeSlot> timeSlots;
-
-  int get sectionsPerDay =>
-      morningSections + afternoonSections + eveningSections;
-
-  ScheduleConfig({
-    this.id = 'default',
-    this.semesterName = '',
-    required this.semesterStartDate,
-    this.totalWeeks = 20,
-    this.morningSections = 4,
-    this.afternoonSections = 5,
-    this.eveningSections = 3,
-    this.courseDuration = 45,
-    this.breakDuration = 10,
-    this.autoSyncTime = true,
-    List<TimeSlot>? timeSlots,
-  }) : timeSlots = timeSlots ?? _defaultTimeSlots(4, 5, 3, 45, 10);
-
-  factory ScheduleConfig.fromJson(Map<String, dynamic> json) {
-    int totalWeeks;
-    if (json.containsKey('totalWeeks')) {
-      totalWeeks = json['totalWeeks'] as int;
-    } else if (json.containsKey('semesterEndDate')) {
-      final startDate =
-          DateTime.tryParse(json['semesterStartDate'] as String? ?? '') ??
-          DateTime.now();
-      final endDate =
-          DateTime.tryParse(json['semesterEndDate'] as String? ?? '') ??
-          DateTime.now();
-      totalWeeks = (endDate.difference(startDate).inDays / 7).ceil();
-    } else {
-      totalWeeks = 20;
-    }
-
-    int morning = json['morningSections'] as int? ?? 4;
-    int afternoon = json['afternoonSections'] as int? ?? 5;
-    int evening = json['eveningSections'] as int? ?? 3;
-
-    // Fallback for old configurations using `sectionsPerDay`
-    if (!json.containsKey('morningSections') &&
-        json.containsKey('sectionsPerDay')) {
-      int total = json['sectionsPerDay'] as int;
-      morning = (total >= 4) ? 4 : total;
-      afternoon = (total >= 9) ? 5 : (total > 4 ? total - 4 : 0);
-      evening = (total > 9) ? total - 9 : 0;
-    }
-
-    final courseDuration = json['courseDuration'] as int? ?? 45;
-    final breakDuration = json['breakDuration'] as int? ?? 10;
-
-    return ScheduleConfig(
-      id: json['id'] as String? ?? 'default',
-      semesterName: json['semesterName'] as String? ?? '',
-      semesterStartDate:
-          DateTime.tryParse(json['semesterStartDate'] as String? ?? '') ??
-          DateTime.now(),
-      totalWeeks: totalWeeks,
-      morningSections: morning,
-      afternoonSections: afternoon,
-      eveningSections: evening,
-      courseDuration: courseDuration,
-      breakDuration: breakDuration,
-      autoSyncTime: json['autoSyncTime'] as bool? ?? true,
-      timeSlots:
-          (json['timeSlots'] as List<dynamic>?)
-              ?.map((e) => TimeSlot.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          _defaultTimeSlots(
-            morning,
-            afternoon,
-            evening,
-            courseDuration,
-            breakDuration,
-          ),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'semesterName': semesterName,
-    'semesterStartDate':
-        '${semesterStartDate.year}-${semesterStartDate.month.toString().padLeft(2, '0')}-${semesterStartDate.day.toString().padLeft(2, '0')}',
-    'totalWeeks': totalWeeks,
-    'morningSections': morningSections,
-    'afternoonSections': afternoonSections,
-    'eveningSections': eveningSections,
-    'courseDuration': courseDuration,
-    'breakDuration': breakDuration,
-    'autoSyncTime': autoSyncTime,
-    'timeSlots': timeSlots.map((e) => e.toJson()).toList(),
-  };
-
-  /// 四川大学江安校区时间表预设（4-5-3）
-  static List<TimeSlot> get jiangAnTimeSlots => const [
-    // Morning
-    TimeSlot(
-      startTime: TimeOfDay(hour: 8, minute: 15),
-      endTime: TimeOfDay(hour: 9, minute: 0),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 9, minute: 10),
-      endTime: TimeOfDay(hour: 9, minute: 55),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 10, minute: 15),
-      endTime: TimeOfDay(hour: 11, minute: 0),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 11, minute: 10),
-      endTime: TimeOfDay(hour: 11, minute: 55),
-    ),
-    // Afternoon
-    TimeSlot(
-      startTime: TimeOfDay(hour: 13, minute: 50),
-      endTime: TimeOfDay(hour: 14, minute: 35),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 14, minute: 45),
-      endTime: TimeOfDay(hour: 15, minute: 30),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 15, minute: 40),
-      endTime: TimeOfDay(hour: 16, minute: 25),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 16, minute: 45),
-      endTime: TimeOfDay(hour: 17, minute: 30),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 17, minute: 40),
-      endTime: TimeOfDay(hour: 18, minute: 25),
-    ),
-    // Evening
-    TimeSlot(
-      startTime: TimeOfDay(hour: 19, minute: 20),
-      endTime: TimeOfDay(hour: 20, minute: 5),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 20, minute: 15),
-      endTime: TimeOfDay(hour: 21, minute: 0),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 21, minute: 10),
-      endTime: TimeOfDay(hour: 21, minute: 55),
-    ),
-  ];
-
-  /// 四川大学望江/华西校区时间表预设（4-5-3）
-  static List<TimeSlot> get wangJiangHuaXiTimeSlots => const [
-    TimeSlot(
-      startTime: TimeOfDay(hour: 8, minute: 0),
-      endTime: TimeOfDay(hour: 8, minute: 45),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 8, minute: 55),
-      endTime: TimeOfDay(hour: 9, minute: 40),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 10, minute: 0),
-      endTime: TimeOfDay(hour: 10, minute: 45),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 10, minute: 55),
-      endTime: TimeOfDay(hour: 11, minute: 40),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 14, minute: 0),
-      endTime: TimeOfDay(hour: 14, minute: 45),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 14, minute: 55),
-      endTime: TimeOfDay(hour: 15, minute: 40),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 15, minute: 50),
-      endTime: TimeOfDay(hour: 16, minute: 35),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 16, minute: 55),
-      endTime: TimeOfDay(hour: 17, minute: 40),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 17, minute: 50),
-      endTime: TimeOfDay(hour: 18, minute: 35),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 19, minute: 30),
-      endTime: TimeOfDay(hour: 20, minute: 15),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 20, minute: 25),
-      endTime: TimeOfDay(hour: 21, minute: 10),
-    ),
-    TimeSlot(
-      startTime: TimeOfDay(hour: 21, minute: 20),
-      endTime: TimeOfDay(hour: 22, minute: 5),
-    ),
-  ];
-
-  /// 根据校区名称返回对应的时间表预设。
-  ///
-  /// 匹配逻辑：校区名包含"江安" → 江安时间表；
-  /// 包含"望江"或"华西" → 望江/华西时间表；
-  /// 否则返回 null，调用方应使用全局配置作为兜底。
-  static List<TimeSlot>? timeSlotsForCampusName(String campusName) {
-    if (campusName.contains('江安')) return jiangAnTimeSlots;
-    if (campusName.contains('望江') || campusName.contains('华西')) {
-      return wangJiangHuaXiTimeSlots;
-    }
-    return null;
-  }
-
-  static List<TimeSlot> _defaultTimeSlots(
-    int morning,
-    int afternoon,
-    int evening,
-    int courseDuration,
-    int breakDuration,
-  ) {
-    final slots = <TimeSlot>[];
-
-    // Standard 4-5-3 → use the 江安 preset (most common SCU schedule)
-    if (morning == 4 && afternoon == 5 && evening == 3) {
-      return List.of(jiangAnTimeSlots);
-    }
-
-    // Default generic logic if config is different
-    // Morning (starts at 8:00)
-    int currentHour = 8;
-    int currentMin = 0;
-    for (int i = 0; i < morning; i++) {
-      int endMin = currentMin + courseDuration;
-      int endHour = currentHour + (endMin ~/ 60);
-      endMin = endMin % 60;
-      slots.add(
-        TimeSlot(
-          startTime: TimeOfDay(hour: currentHour, minute: currentMin),
-          endTime: TimeOfDay(hour: endHour, minute: endMin),
-        ),
-      );
-      // Add break
-      currentMin = endMin + breakDuration;
-      currentHour = endHour + (currentMin ~/ 60);
-      currentMin = currentMin % 60;
-    }
-
-    // Afternoon (starts at 14:00)
-    currentHour = 14;
-    currentMin = 0;
-    for (int i = 0; i < afternoon; i++) {
-      int endMin = currentMin + courseDuration;
-      int endHour = currentHour + (endMin ~/ 60);
-      endMin = endMin % 60;
-      slots.add(
-        TimeSlot(
-          startTime: TimeOfDay(hour: currentHour, minute: currentMin),
-          endTime: TimeOfDay(hour: endHour, minute: endMin),
-        ),
-      );
-      // Add break
-      currentMin = endMin + breakDuration;
-      currentHour = endHour + (currentMin ~/ 60);
-      currentMin = currentMin % 60;
-    }
-
-    // Evening (starts at 19:00)
-    currentHour = 19;
-    currentMin = 0;
-    for (int i = 0; i < evening; i++) {
-      int endMin = currentMin + courseDuration;
-      int endHour = currentHour + (endMin ~/ 60);
-      endMin = endMin % 60;
-      slots.add(
-        TimeSlot(
-          startTime: TimeOfDay(hour: currentHour, minute: currentMin),
-          endTime: TimeOfDay(hour: endHour, minute: endMin),
-        ),
-      );
-      // Add break
-      currentMin = endMin + breakDuration;
-      currentHour = endHour + (currentMin ~/ 60);
-      currentMin = currentMin % 60;
-    }
-
-    return slots;
-  }
-
-  int getCurrentWeek() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final start = DateTime(
-      semesterStartDate.year,
-      semesterStartDate.month,
-      semesterStartDate.day,
-    );
-    if (today.isBefore(start)) return 1;
-    final days = today.difference(start).inDays;
-    final week = (days / 7).floor() + 1;
-    return week.clamp(1, totalWeeks);
-  }
-
-  /// 返回指定教学周、星期对应的自然日。
-  ///
-  /// 课表允许将学期起点保存为周日；该周日属于第一教学周，随后一天
-  /// 才是第一周周一。因此不能直接用 [DateTimeExtension.toMonday]，否则
-  /// 周日起点会被归到前一周。
-  DateTime dateForCourseDay(int week, int dayOfWeek) {
-    final start = DateTime(
-      semesterStartDate.year,
-      semesterStartDate.month,
-      semesterStartDate.day,
-    );
-    final mondayOffset = (DateTime.monday - start.weekday) % 7;
-    final daysFromMonday = dayOfWeek == DateTime.sunday
-        ? -1
-        : dayOfWeek - DateTime.monday;
-    return start.add(
-      Duration(days: (week - 1) * 7 + mondayOffset + daysFromMonday),
-    );
-  }
-
-  ScheduleConfig copyWith({
-    String? id,
-    String? semesterName,
-    DateTime? semesterStartDate,
-    int? totalWeeks,
-    int? morningSections,
-    int? afternoonSections,
-    int? eveningSections,
-    int? courseDuration,
-    int? breakDuration,
-    bool? autoSyncTime,
-    List<TimeSlot>? timeSlots,
-  }) {
-    return ScheduleConfig(
-      id: id ?? this.id,
-      semesterName: semesterName ?? this.semesterName,
-      semesterStartDate: semesterStartDate ?? this.semesterStartDate,
-      totalWeeks: totalWeeks ?? this.totalWeeks,
-      morningSections: morningSections ?? this.morningSections,
-      afternoonSections: afternoonSections ?? this.afternoonSections,
-      eveningSections: eveningSections ?? this.eveningSections,
-      courseDuration: courseDuration ?? this.courseDuration,
-      breakDuration: breakDuration ?? this.breakDuration,
-      autoSyncTime: autoSyncTime ?? this.autoSyncTime,
-      timeSlots: timeSlots ?? List.of(this.timeSlots),
-    );
-  }
-}
-
+/// 周类型：每周 / 单周 / 双周。
 enum WeekType { every, odd, even }
 
 class Course {
@@ -403,6 +22,10 @@ class Course {
   String name;
   String teacher;
   String location;
+
+  /// 上课校区（来自教务处 `campusName` 字段，如"江安校区"）。
+  /// 旧数据 / 分享 JSON 无此字段时为空串，此时从 [location] 推断。
+  String campus;
   int startWeek;
   int endWeek;
   int dayOfWeek; // 1=Mon ... 7=Sun
@@ -416,6 +39,7 @@ class Course {
     required this.name,
     required this.teacher,
     required this.location,
+    this.campus = '',
     required this.startWeek,
     required this.endWeek,
     required this.dayOfWeek,
@@ -423,10 +47,12 @@ class Course {
     required this.endSection,
     required this.colorValue,
     this.weekType = WeekType.every,
-  }) : id = id ?? _generateId();
+  }) : id = id ?? generateId();
 
   static int _idCounter = 0;
-  static String _generateId() {
+
+  /// 生成唯一课程 ID（微秒时间戳 + 自增序号）。
+  static String generateId() {
     final now = DateTime.now();
     _idCounter++;
     return '${now.microsecondsSinceEpoch}_$_idCounter';
@@ -439,8 +65,9 @@ class Course {
       name: json['name'] as String? ?? '',
       teacher: json['teacher'] as String? ?? '',
       location: json['location'] as String? ?? '',
+      campus: json['campus'] as String? ?? '',
       startWeek: json['startWeek'] as int? ?? 1,
-      endWeek: json['endWeek'] as int? ?? 20,
+      endWeek: json['endWeek'] as int? ?? kDefaultTotalWeeks,
       dayOfWeek: json['dayOfWeek'] as int? ?? 1,
       startSection: json['startSection'] as int? ?? 1,
       endSection: json['endSection'] as int? ?? 1,
@@ -456,6 +83,7 @@ class Course {
     'name': name,
     'teacher': teacher,
     'location': location,
+    'campus': campus,
     'startWeek': startWeek,
     'endWeek': endWeek,
     'dayOfWeek': dayOfWeek,
@@ -512,10 +140,14 @@ class Course {
     return first <= end;
   }
 
+  /// 复制并可选覆盖字段。[id] 传 `null` 时保留原 ID；需要重新生成 ID 时
+  /// 显式传入 [Course.generateId]()，或直接使用 [duplicate] 复制整门课程。
   Course copyWith({
+    String? id,
     String? name,
     String? teacher,
     String? location,
+    String? campus,
     int? startWeek,
     int? endWeek,
     int? dayOfWeek,
@@ -525,10 +157,11 @@ class Course {
     WeekType? weekType,
   }) {
     return Course(
-      id: id,
+      id: id ?? this.id,
       name: name ?? this.name,
       teacher: teacher ?? this.teacher,
       location: location ?? this.location,
+      campus: campus ?? this.campus,
       startWeek: startWeek ?? this.startWeek,
       endWeek: endWeek ?? this.endWeek,
       dayOfWeek: dayOfWeek ?? this.dayOfWeek,
@@ -538,6 +171,13 @@ class Course {
       weekType: weekType ?? this.weekType,
     );
   }
+
+  /// 复制一门课程：字段与原课程完全一致，但使用全新的 [id]，名称追加 [nameSuffix]。
+  ///
+  /// 复制结果在语义上是「新课程」，必须通过新增落库；若沿用原 id，
+  /// 数据层会按 id 执行 UPDATE，从而覆盖原课程而不是产生副本。
+  Course duplicate({String nameSuffix = ''}) =>
+      copyWith(id: generateId(), name: '$name$nameSuffix');
 }
 
 extension DateTimeExtension on DateTime {

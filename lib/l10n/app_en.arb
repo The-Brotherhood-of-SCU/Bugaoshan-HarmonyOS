@@ -1,7 +1,7 @@
 {
-    "bugaoshan": "不高山上",
+    "bugaoshan": "Bugaoshan",
     "selfLanguage": "English",
-    "wizardWelcomeTitle": "Welcome to 不高山上",
+    "wizardWelcomeTitle": "Welcome to Bugaoshan",
     "wizardWelcomeDesc": "Your campus assistant: schedules, grades and campus services in one place",
     "wizard": "Wizard",
     "@wizard": {
@@ -35,6 +35,15 @@
     "@widgetShowTomorrowAfterEnd": {
         "description": "Toggle to show next day's courses in the home screen widget when today's classes are finished."
     },
+    "widgetAppearanceTitle": "Widget Appearance",
+    "widgetAppearanceDescription": "Customize every Bugaoshan course widget on this device.",
+    "widgetColorStyle": "Color",
+    "widgetColorful": "Course colors",
+    "widgetMonochrome": "Monochrome",
+    "widgetDensity": "Information density",
+    "widgetDensityStandard": "Standard",
+    "widgetDensityCompact": "Compact",
+    "widgetSystemAppearanceHint": "On iOS 26 and later, Clear and Tinted Home Screen appearances automatically use the system glass or tint treatment.",
     "onboardingSkip": "Skip",
     "onboardingNext": "Next",
     "onboardingStart": "Get Started",
@@ -60,13 +69,17 @@
     "classroomTeachingWeek": "Week {week}",
     "@classroomTeachingWeek": {
         "placeholders": {
-            "week": {"type": "int"}
+            "week": {
+                "type": "int"
+            }
         }
     },
     "classroomQueryDate": "Query Date: {date}",
     "@classroomQueryDate": {
         "placeholders": {
-            "date": {"type": "String"}
+            "date": {
+                "type": "String"
+            }
         }
     },
     "classroomCanBorrow": "Borrowable",
@@ -77,7 +90,9 @@
     "@periodN": {
         "description": "Period number format",
         "placeholders": {
-            "n": {"type": "int"}
+            "n": {
+                "type": "int"
+            }
         }
     },
     "periodStart": "Start",
@@ -100,6 +115,8 @@
     "currentAnimationDuration": "Current Animation Duration: {value} ms",
     "animationDurationUpdated": "Animation Duration updated to {value} ms",
     "animationDurationHint": "Hint: Adjust the slider to preview the animation, click Confirm to save the settings",
+    "enablePageTransitionAnimation": "Dock Page Transition Animation",
+    "enablePageTransitionAnimationHint": "Enable slide and fade animation when switching Dock pages",
     "themeColor": "Theme Color",
     "changeThemeColor": "Change Theme Color",
     "confirmButton": "Confirm",
@@ -114,19 +131,18 @@
     "materialPicker": "Material",
     "advancedPicker": "Advanced",
     "about": "About",
+    "userManual": "User Manual",
     "developmentTeam": "Dev Team",
-    "developerAndOperator": "Developer and Operator",
-    "openSourceMaintenanceTeam": "Open-source Maintenance Team",
-    "openSourceProjectCopyright": "Open-source project © 2026 The-Brotherhood-of-SCU",
     "projectInfo": "Project Info",
     "appName": "App Name",
     "version": "Version",
     "gitTag": "Git Tag",
-    "appDescription": "Explore everything with 不高山上",
+    "appDescription": "Explore everything, all on the Bugaoshan",
     "contactUs": "Contact Us",
-    "developedBy":"Developed by {team}",
+    "developedBy": "Developed by {team}",
     "externalResources": "External Resources",
     "projectRepository": "Repository",
+    "officialWebsite": "Website",
     "checkForUpdates": "Check Updates",
     "newVersionAvailable": "New Version Available",
     "noUpdateAvailable": "Already on Latest Version",
@@ -138,9 +154,16 @@
     "updateToPreview": "Update to Latest (Include Preview)",
     "usePreviewUpdateSource": "Use Preview Release Source",
     "@usePreviewUpdateSource": {
-      "description": "Toggle in the test page that makes the home/about update checks target the preview release channel."
+        "description": "Toggle in the test page that makes the home/about update checks target the preview release channel."
     },
     "usePreviewUpdateSourceHint": "Affects only the automatic checks on the home and about pages. The test page always checks both channels.",
+    "forceCaptchaForDownload": "Force CAPTCHA for Download",
+    "@forceCaptchaForDownload": {
+        "description": "Toggle in the developer page to force the CAPTCHA dialog when downloading attachments, for testing the CAPTCHA flow."
+    },
+    "forceCaptchaForDownloadHint": "When enabled, tapping an attachment download will show the CAPTCHA dialog for testing.",
+    "captchaDialogTitle": "Enter CAPTCHA",
+    "captchaCancelled": "CAPTCHA cancelled",
     "downloading": "Downloading",
     "updateFailed": "Update failed",
     "notificationDownloading": "Downloading... {percent}%",
@@ -163,140 +186,156 @@
     "preReleaseWarning": "This is a pre-release version. Use with caution.",
     "releaseNotes": "Release Notes",
     "neverMind": "Never Mind",
-    "neverMind": "Never Mind",
     "clearAllData": "Clear All Data",
-    "confirmMessage":"Are you sure?",
-    "environmentInfo":"Environment Info",
-    "devPage":"Developer Page",
-    "forceUpdate":"Update to Latest (Include Preview)",
-    "authLog":"Auth Log",
-    "viewAuthLog":"View Auth Log",
-    "authLogEmpty":"No auth log yet.",
+    "confirmMessage": "Are you sure?",
+    "environmentInfo": "Environment Info",
+    "devPage": "Developer Page",
+    "forceUpdate": "Update to Latest (Include Preview)",
+    "authLog": "Auth Log",
+    "viewAuthLog": "View Auth Log",
+    "authLogEmpty": "No auth log yet.",
     "@authLogLastEntry": {
         "placeholders": {
-            "time": {"type": "String"},
-            "level": {"type": "String"},
-            "tag": {"type": "String"}
+            "time": {
+                "type": "String"
+            },
+            "level": {
+                "type": "String"
+            },
+            "tag": {
+                "type": "String"
+            }
         }
     },
     "authLogLastEntry": "{level} · {tag} · {time}",
-    "scheduleSetting":"Schedule Setting",
-    "scheduleManagement":"Schedule Management",
-    "globalSetting":"Global Setting",
-    "noSchedule":"No schedule yet",
-    "noScheduleHint":"Import or create a schedule to get started",
-    "addSchedule":"Add Schedule",
-
-    "addCourse":"Add Course",
-    "editCourse":"Edit Course",
-    "deleteCourse":"Delete Course",
-    "deleteCourseConfirm":"Are you sure you want to delete this course?",
-    "courseName":"Course Name",
-    "teacher":"Teacher",
-    "location":"Location",
-    "courseColor":"Course Color",
-    "week":"Week",
-    "startWeek":"Start Week",
-    "endWeek":"End Week",
-    "dayOfWeek":"Day of Week",
-    "startSection":"Start Section",
-    "endSection":"End Section",
-    "monday":"Mon",
-    "tuesday":"Tue",
-    "wednesday":"Wed",
-    "thursday":"Thu",
-    "friday":"Fri",
-    "saturday":"Sat",
-    "sunday":"Sun",
-    "currentWeek":"Week {week}",
-    "thisWeek":"This week",
-    "weekRange":"Week {start}-{end}",
+    "scheduleSetting": "Schedule Setting",
+    "scheduleManagement": "Schedule Management",
+    "globalSetting": "Global Setting",
+    "noSchedule": "No schedule yet",
+    "noScheduleHint": "Import or create a schedule to get started",
+    "addSchedule": "Add Schedule",
+    "addCourse": "Add Course",
+    "editCourse": "Edit Course",
+    "deleteCourse": "Delete Course",
+    "deleteCourseConfirm": "Are you sure you want to delete this course?",
+    "courseName": "Course Name",
+    "teacher": "Teacher",
+    "location": "Location",
+    "courseColor": "Course Color",
+    "week": "Week",
+    "startWeek": "Start Week",
+    "endWeek": "End Week",
+    "dayOfWeek": "Day of Week",
+    "startSection": "Start Section",
+    "endSection": "End Section",
+    "monday": "Mon",
+    "tuesday": "Tue",
+    "wednesday": "Wed",
+    "thursday": "Thu",
+    "friday": "Fri",
+    "saturday": "Sat",
+    "sunday": "Sun",
+    "currentWeek": "Week {week}",
+    "notStarted": "Not Started",
+    "thisWeek": "This week",
+    "weekRange": "Week {start}-{end}",
     "@weekRange": {
         "placeholders": {
-            "start": {"type": "int"},
-            "end": {"type": "int"}
+            "start": {
+                "type": "int"
+            },
+            "end": {
+                "type": "int"
+            }
         }
     },
-    "weekType":"Week Type",
-    "everyWeek":"Every Week",
-    "oddWeek":"Odd Week",
-    "evenWeek":"Even Week",
-    "section":"Sec",
+    "weekType": "Week Type",
+    "everyWeek": "Every Week",
+    "oddWeek": "Odd Week",
+    "evenWeek": "Even Week",
+    "section": "Sec",
     "sectionRange": "Sec {start}-{end}",
     "@sectionRange": {
         "description": "Section range display, e.g. 'Sec 1-2'",
         "placeholders": {
-            "start": {"type": "int"},
-            "end": {"type": "int"}
+            "start": {
+                "type": "int"
+            },
+            "end": {
+                "type": "int"
+            }
         }
     },
-    "sectionCount":"Sections per Day",
-    "timeSlot":"Time Slot",
-    "startTime":"Start Time",
-    "endTime":"End Time",
-    "semesterConfig":"Semester Config",
-    "semesterName":"Semester Name",
-    "semesterStartDate":"Semester Start Date",
-    "setCurrentWeek":"Set Current Week",
-    "setCurrentWeekHint":"Automatically calculates the semester start date based on the current week",
-    "autoFetchCurrentWeek":"Auto Fetch Current Week",
-    "autoFetchCurrentWeekHint":"Fetch current teaching week from academic system",
-    "fetchingCurrentWeek":"Fetching...",
-    "loginRequired":"Please complete SCU Unified Identity login in the Profile page first",
-    "goToLogin":"Go to Login",
-    "semesterEndDate":"Semester End Date",
-    "displaySetting":"Display Setting",
-    "courseCardSection":"Course Card",
-    "courseGridSection":"Course Grid",
-    "courseStyleSetting":"Course Style",
-    "otherSection":"Other",
-    "settingsGeneral":"General",
-    "settingsStyle":"Style",
-    "setFont":"Font",
-    "useGoogleFonts":"Use Google Fonts",
-    "fontHint":"Font size and weight can be adjusted in system settings",
-    "settingsDanger":"Danger Zone",
-    "colorOpacity":"Color Opacity",
-    "fontSize":"Font Size",
-    "showCourseGrid":"Show Course Grid",
-    "courseRowHeight":"Course Row Height",
-    "backgroundImage":"Background Image",
-    "setBackgroundImage":"Set Background Image",
-    "extractColorFromBackgroundImage":"Extract Color from Background",
-    "themeColorAutoExtractedHint":"Theme color extracted from background image. Go to Software Setting -> Theme Color to modify.",
-    "noBackgroundImageSet":"Please set a background image first",
-    "removeBackgroundImage":"Remove Background Image",
-    "backgroundImageOpacity":"Background Image Opacity",
-    "backgroundImageSetHint":"Background image set. You can go to Theme Color to modify the theme color.",
-    "showTeacher":"Show Teacher",
-    "showLocation":"Show Location",
-    "showWeekend":"Show Weekend",
-    "showNonCurrentWeekCourses":"Show Non-Current Week Courses",
-    "save":"Save",
-    "cancel":"Cancel",
+    "sectionCount": "Sections per Day",
+    "timeSlot": "Time Slot",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "semesterConfig": "Semester Config",
+    "semesterName": "Semester Name",
+    "semesterStartDate": "Semester Start Date",
+    "setCurrentWeek": "Set Current Week",
+    "setCurrentWeekHint": "Automatically calculates the semester start date based on the current week",
+    "autoFetchCurrentWeek": "Auto Fetch Current Week",
+    "autoFetchCurrentWeekHint": "Fetch current teaching week from academic system",
+    "autoFetchCurrentWeekOnVacation": "No teaching week is available during vacation. Schedule unchanged.",
+    "fetchingCurrentWeek": "Fetching...",
+    "loginRequired": "Please complete SCU Unified Identity login in the Profile page first",
+    "goToLogin": "Go to Login",
+    "semesterEndDate": "Semester End Date",
+    "displaySetting": "Display Setting",
+    "courseCardSection": "Course Card",
+    "courseGridSection": "Course Grid",
+    "courseStyleSetting": "Course Style",
+    "otherSection": "Other",
+    "settingsGeneral": "General",
+    "settingsStyle": "Style",
+    "setFont": "Font",
+    "useGoogleFonts": "Use Google Fonts",
+    "fontHint": "Font size and weight can be adjusted in system settings",
+    "settingsDanger": "Danger Zone",
+    "colorOpacity": "Color Opacity",
+    "fontSize": "Font Size",
+    "showCourseGrid": "Show Course Grid",
+    "courseRowHeight": "Course Row Height",
+    "backgroundImage": "Background Image",
+    "setBackgroundImage": "Set Background Image",
+    "extractColorFromBackgroundImage": "Extract Color from Background",
+    "themeColorAutoExtractedHint": "Theme color extracted from background image. Go to Software Setting -> Theme Color to modify.",
+    "noBackgroundImageSet": "Please set a background image first",
+    "removeBackgroundImage": "Remove Background Image",
+    "editBackgroundArea": "Adjust Visible Area",
+    "cropEditorHint": "Drag to reposition, pinch or scroll to zoom.",
+    "backgroundImageOpacity": "Background Image Opacity",
+    "backgroundImageSetHint": "Background image set. You can go to Theme Color to modify the theme color.",
+    "showTeacher": "Show Teacher",
+    "showLocation": "Show Location",
+    "showCourseWeeks": "Show Course Weeks",
+    "showWeekend": "Show Weekend",
+    "showNonCurrentWeekCourses": "Show Non-Current Week Courses",
+    "save": "Save",
+    "cancel": "Cancel",
     "downloadInBackground": "Download in Background",
     "back": "Back",
     "next": "Next",
-    "delete":"Delete",
-    "customColor":"Custom Color",
-    "noCourseThisWeek":"No courses this week",
-    "timeConflict":"Time Conflict",
-    "timeConflictMessage":"The selected time slot conflicts with an existing course.",
-    "fieldRequired":"This field is required",
-    "invalidWeekRange":"End week must be greater than or equal to start week",
-    "duplicateScheduleName":"Schedule name already exists",
+    "customColor": "Custom Color",
+    "noCourseThisWeek": "No courses this week",
+    "timeConflict": "Time Conflict",
+    "timeConflictMessage": "The selected time slot conflicts with an existing course.",
+    "fieldRequired": "This field is required",
+    "invalidWeekRange": "End week must be greater than or equal to start week",
+    "duplicateScheduleName": "Schedule name already exists",
     "importNameConflictAction": "Schedule \"{name}\" already exists, please choose:",
     "importNameConflictAddSuffix": "Import with suffix",
     "importNameConflictUpdate": "Update existing schedule",
     "importAllConflictAction": "Some schedule names conflict, please choose how to proceed:",
     "importAllConflictAddSuffix": "Add suffix to all",
     "importAllConflictUpdate": "Update all",
-    "importSchedule":"Import Schedule",
-    "importFromShare":"Import from Share",
-    "importFromJwxt":"Import from Education System",
-    "importDataHint":"Paste JSON data here...",
-    "importSuccess":"Schedule imported successfully",
-    "importFailed": "Import failed, please check data format or log back in.",
+    "importSchedule": "Import Schedule",
+    "importFromShare": "Import from Share",
+    "importFromJwxt": "Import from Education System",
+    "importDataHint": "Paste JSON data here...",
+    "importSuccess": "Schedule imported successfully",
+    "importFailedTip": "Import failed, please check data format or log back in.",
     "importedScheduleDefaultName": "Imported Schedule",
     "importNameConflictHint": "Name \"{name}\" already exists, please rename:",
     "importNameSuffix": "(Import)",
@@ -304,28 +343,31 @@
     "deleteScheduleConfirm": "Are you sure you want to delete schedule \"{name}\"?",
     "exportSchedule": "Export Schedule",
     "exportExamPlan": "Export Exam Schedule",
-    "exportScheduleAsCopy":"Copy to Clipboard",
-    "exportScheduleAsIcs":"Export to Calendar File",
-    "exportScheduleAsCopySuccess":"Schedule data copied to clipboard",
-    "exportExamPlanAsCopySuccess":"Exam schedule data copied to clipboard",
-    "exportScheduleAsCopyFailed":"Copy failed, maybe you can try later",
-    "exportScheduleAsIcsTo":"Save Calendar File to...",
-    "exportScheduleAsIcsSuccess":"File saved successfully",
-    "exportScheduleAsIcsFailed":"File save failed",
-    "exportScheduleAsIcsCanceled":"File save canceled",
-    "icsTeacherLabel":"Teacher(s)",
-    "exportScheduleAddToCalendar":"Import to Calendar",
-    "exportScheduleAddToCalendarSuccess":"Imported to calendar",
-    "exportScheduleAddToCalendarFailed":"Import failed",
-    "exportScheduleSelectCalendar":"Choose Calendar",
-    "exportScheduleCalendarDefault":"Default calendar",
+    "exportScheduleAsCopy": "Copy to Clipboard",
+    "exportScheduleAsIcs": "Export to Calendar File",
+    "exportScheduleAsCopySuccess": "Schedule data copied to clipboard",
+    "exportExamPlanAsCopySuccess": "Exam schedule data copied to clipboard",
+    "exportScheduleAsCopyFailed": "Copy failed, maybe you can try later",
+    "exportScheduleAsIcsTo": "Save Calendar File to...",
+    "exportScheduleAsIcsSuccess": "File saved successfully",
+    "exportScheduleAsIcsFailed": "File save failed",
+    "exportScheduleAsIcsCanceled": "File save canceled",
+    "icsTeacherLabel": "Teacher(s)",
+    "exportScheduleAddToCalendar": "Import to Calendar",
+    "exportScheduleAddToCalendarSuccess": "Imported to calendar",
+    "exportScheduleAddToCalendarFailed": "Import failed",
+    "exportScheduleAddToCalendarEmpty": "No courses to import",
+    "exportScheduleSelectCalendar": "Choose Calendar",
+    "exportScheduleCalendarDefault": "Default calendar",
     "copySuffix": " (Copy)",
+    "copyCourseTitle": "New Copy",
+    "copyCourseSave": "Save Copy",
     "notThisWeek": "[Not]",
     "actualCurrentWeek": "Week {week}",
     "totalWeeksSubtitle": "{count} weeks",
-    "invalidSectionRange":"End section must be greater than start section",
-    "crossPeriodError":"Cross Period Error",
-    "crossPeriodErrorMessage":"A course cannot span across morning, afternoon, or evening periods.",
+    "invalidSectionRange": "End section must be greater than start section",
+    "crossPeriodError": "Cross Period Error",
+    "crossPeriodErrorMessage": "A course cannot span across morning, afternoon, or evening periods.",
     "totalWeeks": "Total Weeks: {value}",
     "morning": "Morning",
     "afternoon": "Afternoon",
@@ -347,25 +389,71 @@
     "importingProgress": "Importing {current}/{total}...",
     "@importingProgress": {
         "placeholders": {
-            "current": {"type": "int"},
-            "total": {"type": "int"}
+            "current": {
+                "type": "int"
+            },
+            "total": {
+                "type": "int"
+            }
         }
     },
-
     "scuUnifiedAuth": "Unified Identity Authentication",
     "studentId": "Student ID",
+    "studentIdHint": "Please enter your student ID",
     "studentIdRequired": "Please enter your student ID",
     "password": "Password",
+    "passwordHint": "Please enter your password",
     "passwordRequired": "Please enter your password",
     "captcha": "Captcha",
+    "captchaHint": "Captcha",
     "captchaRequired": "Please enter the captcha",
     "rememberPassword": "Remember Password",
     "autoLogin": "Auto Login",
     "autoLoggingIn": "Logging in...",
     "loginButton": "Login",
-    "captchaLoadFailed": "Failed to load captcha: {error}",
     "captchaNotLoaded": "Please load the captcha first",
-    "networkError": "Network error: {error}",
+    "resetPassword": "Reset Password",
+    "resetPasswordStepAccount": "Account",
+    "resetPasswordStepVerify": "Verification",
+    "resetPasswordStepReset": "New Password",
+    "resetPasswordNext": "Next",
+    "resetPasswordChooseMethod": "You are resetting your login password. Choose a verification method:",
+    "resetPasswordViaSms": "Via SMS",
+    "resetPasswordSmsTip": "A verification code will be sent via SMS to your phone {phone}",
+    "@resetPasswordSmsTip": {
+        "placeholders": {
+            "phone": {
+                "type": "String"
+            }
+        }
+    },
+    "resetPasswordViaEmail": "Via Email",
+    "resetPasswordEmailTip": "A verification code will be sent via email to {email}",
+    "@resetPasswordEmailTip": {
+        "placeholders": {
+            "email": {
+                "type": "String"
+            }
+        }
+    },
+    "resetPasswordSendCode": "Send Code",
+    "resetPasswordResendAfter": "Resend in {seconds}s",
+    "@resetPasswordResendAfter": {
+        "placeholders": {
+            "seconds": {
+                "type": "int"
+            }
+        }
+    },
+    "resetPasswordCodeRequired": "Please enter the 6-digit verification code",
+    "resetPasswordNewPasswordLabel": "New Password",
+    "resetPasswordConfirmPasswordLabel": "Confirm Password",
+    "resetPasswordPasswordMismatch": "Passwords do not match",
+    "resetPasswordPolicyTip": "Password must be at least 8 characters and contain upper/lower case letters, digits and special characters",
+    "resetPasswordPolicyInvalid": "Password does not meet the requirements",
+    "resetPasswordSubmit": "Confirm",
+    "resetPasswordSuccess": "Password reset successfully. Please log in with your new password.",
+    "resetPasswordBackToLogin": "Back to Login",
     "gradesStats": "Grade Statistics",
     "gradesStatsDesc": "View and analyze your academic performance",
     "gradesStatsComingSoon": "Coming soon",
@@ -446,6 +534,7 @@
     "planCompletionCredits": "Credits",
     "planCompletionCreditsUnit": "cr",
     "planCompletionCourses": "Courses",
+    "planCompletionPlanFallback": "Training Program",
     "planCompletionRateLimited": "Too many requests, please try again later",
     "ccylTitle": "Second Classroom",
     "ccylDesc": "Browse activities, participate, make reservations",
@@ -523,16 +612,42 @@
     "networkDeviceOfflineSuccess": "Operation successful",
     "networkDeviceAuthFailed": "Authentication failed",
     "networkDeviceOperationSuccess": "Operation successful",
+    "passpointTitle": "Passive Authentication",
+    "passpointDesc": "Bind device MAC to auto authenticate on campus network",
+    "passpointAddDevice": "Add Device",
+    "passpointUserInfo": "User Information",
+    "passpointUserGroup": "User Group",
+    "passpointAccountState": "Account State",
+    "passpointOnline": "Online",
+    "passpointOffline": "Offline",
+    "passpointMyDevices": "My Devices",
+    "passpointExpireTime": "Expire Time",
+    "passpointExpireLongest": "Max 6 years",
+    "passpointExit": "Device Exit",
+    "passpointMac": "MAC Address",
+    "passpointCancelAuth": "Cancel Passive Auth",
+    "passpointCancelAuthConfirm": "Are you sure you want to cancel passive authentication for this device?",
+    "passpointOperationSuccess": "Operation successful",
+    "operationFailed": "Operation failed",
+    "passpointMacRequired": "Please enter MAC",
+    "passpointMacInvalid": "Invalid MAC format, need 12 hex digits",
+    "passpointExpireRequired": "Please enter binding validity",
+    "passpointExpireInvalid": "Validity must be between 0 and 365",
+    "passpointExpireHint": "0-365 days, 0 means max 6 years",
+    "passpointAddWarning": "Note: once passive authentication is enabled, the device will auto join the campus network and dormitory traffic will be billed. Please use with caution!",
     "captchaLoadFailed": "Failed to load captcha",
     "networkError": "Network error",
-    "loginFailed": "Login failed",
+    "calendarRefreshSuccess": "Calendar updated",
     "invalidCaptcha": "Invalid captcha, please try again",
     "loginFailedWillLock": "Login failed, {count} more attempt(s) will lock your account",
     "@loginFailedWillLock": {
         "placeholders": {
-            "count": {"type": "int"}
+            "count": {
+                "type": "int"
+            }
         }
     },
+    "loginSuccess": "Logged in successfully",
     "ccylBindFailed": "Binding failed, please try again later",
     "ccylActivityLoadFailed": "Failed to load activity",
     "networkOfflineFailed": "Failed to offline device",
@@ -547,8 +662,6 @@
     "bindNewRoom": "Bind New Room",
     "switchRoom": "Switch Room",
     "deleteRoom": "Delete Room",
-    "selectCampus": "Select Campus",
-    "selectBuilding": "Select Building",
     "selectUnit": "Select Unit",
     "inputInfo": "Input Info",
     "stepCampus": "Cmp",
@@ -594,6 +707,7 @@
     "scuLoginDisclaimerPwd": "When 'Remember Password' is enabled, your password is encrypted and stored locally using system-level encryption",
     "scuLoginDisclaimerOcr": "Captcha is recognized by a local OCR model",
     "scuLoginDisclaimerPrivacy": "We do not collect any personal information",
+    "scuLoginPasswordHint": "Password is the unified identity authentication password, not the academic affairs password",
     "openSourceLicenseDesc": "This app is open-sourced under AGPL-3.0",
     "openSourceLicenses": "Open-Source Licenses",
     "academicCalendar": "Academic Calendar",
@@ -610,20 +724,20 @@
     "campusNoticesSearch": "Search",
     "campusNoticesSearchResults": "{count, plural, =0{No results} other{{count} results}}",
     "@campusNoticesSearchResults": {
-      "placeholders": {
-        "count": {
-          "type": "int",
-          "format": "compact"
+        "placeholders": {
+            "count": {
+                "type": "int",
+                "format": "compact"
+            }
         }
-      }
     },
     "campusNoticesConfirmOpenLink": "This link will open in an external browser. Continue?\n\n{url}",
     "@campusNoticesConfirmOpenLink": {
-      "placeholders": {
-        "url": {
-          "type": "String"
+        "placeholders": {
+            "url": {
+                "type": "String"
+            }
         }
-      }
     },
     "selectAcademicYear": "Select Academic Year",
     "userInfoLoading": "Loading user info...",
@@ -647,6 +761,7 @@
     "dockLabelTrainProgram": "Program",
     "dockLabelClassroom": "Classroom",
     "dockLabelNetworkDevice": "Network",
+    "dockLabelPasspoint": "Passive",
     "dockLabelBalanceQuery": "Electricity",
     "dockLabelClassScheduleInquiry": "Class Schedule",
     "dockLabelAcademicCalendar": "Calendar",
@@ -691,7 +806,9 @@
     "eulaAgreedVersion": "Agreed version v{version}",
     "@eulaAgreedVersion": {
         "placeholders": {
-            "version": {"type": "String"}
+            "version": {
+                "type": "String"
+            }
         }
     },
     "addWidgetSection": "Desktop Widget",
@@ -706,6 +823,11 @@
     "pinWidgetButton": "Add to Home",
     "pinWidgetSuccess": "Widget added to home screen",
     "pinWidgetNotSupported": "Widget pinning is not supported on this device",
+    "pinWidgetRequested": "Pin request sent — confirm in the system dialog to add the widget",
+    "pinWidgetFailedTitle": "Widget Not Added",
+    "pinWidgetFailedDesc": "No system confirmation dialog appeared. The request may have been blocked by a system permission (some systems require the \"Create desktop shortcuts\" permission). Please grant it in Settings and try again, or long-press an empty area of the home screen to add the widget manually.",
+    "pinWidgetOpenSettings": "Open Settings",
+    "pinWidgetDismiss": "Got It",
     "pinWidgetHint": "Tip: Some launchers (ColorOS, MIUI, etc.) may ignore the automatic pin request. If the widget doesn't appear, long-press the home screen and select \"Widgets\" to add it manually. Some systems require the \"Create desktop shortcuts\" permission to be granted.",
     "batteryOptimizationTitle": "Disable Battery Optimization",
     "batteryOptimizationDesc": "To ensure the widget updates reliably, please disable battery optimization for this app. This prevents the system from delaying background tasks.",
@@ -741,14 +863,18 @@
     "deleteSelected": "Delete ({count})",
     "@deleteSelected": {
         "placeholders": {
-            "count": { "type": "int" }
+            "count": {
+                "type": "int"
+            }
         }
     },
     "selectAll": "Select All",
     "confirmDeleteSelected": "Delete {count} selected file(s)?",
     "@confirmDeleteSelected": {
         "placeholders": {
-            "count": { "type": "int" }
+            "count": {
+                "type": "int"
+            }
         }
     },
     "sortByTime": "By Time",
@@ -769,8 +895,12 @@
     "dateMonthDay": "{month}/{day}",
     "@dateMonthDay": {
         "placeholders": {
-            "month": {"type": "int"},
-            "day": {"type": "int"}
+            "month": {
+                "type": "int"
+            },
+            "day": {
+                "type": "int"
+            }
         }
     },
     "holidayLabel": "Hol",
@@ -810,11 +940,27 @@
     "classScheduleInquiryClass": "Class",
     "classScheduleInquirySearch": "Search",
     "classScheduleInquiryLoadMore": "Load More",
+    "dockLabelCourseCurriculum": "Course Table",
+    "courseCurriculum": "Course Curriculum",
+    "courseCurriculumDesc": "View schedules for each course section",
+    "courseCurriculumNoData": "No course data",
+    "courseCurriculumNoSchedule": "No schedule data",
+    "courseCurriculumFilter": "Filter",
+    "courseCurriculumSemester": "Semester",
+    "courseCurriculumDepartment": "Department",
+    "courseCurriculumCategory": "Course Category",
+    "courseCurriculumCourseName": "Course Name",
+    "courseCurriculumCourseCode": "Course Code",
+    "courseCurriculumCourseSeq": "Course Seq",
+    "courseCurriculumSearch": "Search",
+    "courseCurriculumLoadMore": "Load More",
     "holidayTotalDays": "{days}-day holiday",
     "@holidayTotalDays": {
         "description": "Shows total holiday days, e.g. '3-day holiday'",
         "placeholders": {
-            "days": {"type": "int"}
+            "days": {
+                "type": "int"
+            }
         }
     },
     "dockLabelExamPlan": "Exams",
@@ -823,6 +969,9 @@
     "examPlanNoData": "No exam schedule available",
     "campusGridView": "Grid View",
     "campusGridViewDesc": "Use grid layout for campus page",
+    "campusSearchHint": "Search features",
+    "campusSearchResults": "Search Results",
+    "campusNoSearchResults": "No matching features",
     "viewChangelog": "Version Changelog",
     "viewChangelogSubtitle": "View historical version update logs",
     "changelog": "Changelog",
@@ -836,7 +985,9 @@
     "calendarImportSuccess": "Successfully imported {count} events to system calendar",
     "@calendarImportSuccess": {
         "placeholders": {
-            "count": {"type": "int"}
+            "count": {
+                "type": "int"
+            }
         }
     },
     "calendarImportFailed": "Failed to import to system calendar",
@@ -844,32 +995,42 @@
     "calendarDaysRemaining": "{days} days left",
     "@calendarDaysRemaining": {
         "placeholders": {
-            "days": {"type": "int"}
+            "days": {
+                "type": "int"
+            }
         }
     },
     "calendarStartedNDaysAgo": "{days} days ago",
     "@calendarStartedNDaysAgo": {
         "placeholders": {
-            "days": {"type": "int"}
+            "days": {
+                "type": "int"
+            }
         }
     },
     "calendarToday": "Today",
     "calendarCurrentWeek": "Week {week}",
     "@calendarCurrentWeek": {
         "placeholders": {
-            "week": {"type": "int"}
+            "week": {
+                "type": "int"
+            }
         }
     },
     "calendarSemesterStart": "Semester Starts: {date}",
     "@calendarSemesterStart": {
         "placeholders": {
-            "date": {"type": "String"}
+            "date": {
+                "type": "String"
+            }
         }
     },
     "calendarWeeksTotal": "{weeks} weeks total",
     "@calendarWeeksTotal": {
         "placeholders": {
-            "weeks": {"type": "int"}
+            "weeks": {
+                "type": "int"
+            }
         }
     },
     "calendarImportButton": "Import to Calendar",
@@ -886,23 +1047,710 @@
     "switchAppIconConfirm": "Switch to \"{label}\"? The app will restart. Continue?",
     "@switchAppIconConfirm": {
         "placeholders": {
-            "label": {"type": "String"}
+            "label": {
+                "type": "String"
+            }
         }
     },
     "defaultIconRestored": "Restored default icon",
     "iconSwitched": "Switched to icon: {name}",
     "@iconSwitched": {
         "placeholders": {
-            "name": {"type": "String"}
+            "name": {
+                "type": "String"
+            }
         }
     },
     "iconSwitchFailed": "Switch failed: {error}",
     "@iconSwitchFailed": {
         "placeholders": {
-            "error": {"type": "String"}
+            "error": {
+                "type": "String"
+            }
         }
     },
     "iconSwitchNotSupported": "Dynamic icon switching is not supported on this platform",
-    "newIconSubtitle": "不高山上 New Icon",
-    "oldIconSubtitle": "不高山上 Classic Icon"
+    "featureNotSupported": "This feature is not supported on this platform",
+    "newIconSubtitle": "Bugaoshan New Icon",
+    "oldIconSubtitle": "Bugaoshan Classic Icon",
+    "close": "Close",
+    "onVacation": "On Vacation",
+    "vacationBadge": "Vacation",
+    "daysUntilVacation": "{days} days until vacation",
+    "@daysUntilVacation": {
+        "placeholders": {
+            "days": {
+                "type": "int"
+            }
+        }
+    },
+    "daysUntilNextSemester": "{days} days until next semester classes",
+    "@daysUntilNextSemester": {
+        "placeholders": {
+            "days": {
+                "type": "int"
+            }
+        }
+    },
+    "nextSemester": "Next Semester",
+    "registrationDates": "Registration: {start} - {end}",
+    "@registrationDates": {
+        "placeholders": {
+            "start": {
+                "type": "String"
+            },
+            "end": {
+                "type": "String"
+            }
+        }
+    },
+    "enjoyVacation": "Enjoy your vacation~",
+    "viewNextSemesterSchedule": "View Next Semester Schedule",
+    "noNextSemesterSchedule": "Next semester schedule not imported",
+    "promptSwitchSemester": "The next semester is about to begin. Switch to next semester schedule?",
+    "promptSwitchSemesterTitle": "Switch Schedule",
+    "switchSchedule": "Switch",
+    "teamIntroTitle": "About the Team",
+    "teamIntroDesc": "The-Brotherhood-of-SCU is an unofficial open-source organization of Sichuan University, maintained by a group of SCU students who are passionate about technology and campus life. Our goal is to build practical campus tools for SCU students through open-source collaboration.",
+    "teamJoinUsTitle": "Join Us",
+    "teamContributeDesc": "We welcome all forms of contributions, including submitting Issues, providing feedback, initiating Pull Requests, or improving documentation.",
+    "teamContributeClosing": "The growth of the project depends on every contributor. We look forward to your participation.",
+    "quickSetting": "Quick Setting",
+    "@quickSetting": {
+        "description": "Section title for quick preset time slot settings",
+        "type": "text"
+    },
+    "presetJiangAn": "Jiang'an Campus (SCU)",
+    "@presetJiangAn": {
+        "description": "Preset name for SCU Jiang'an campus time slots",
+        "type": "text"
+    },
+    "presetWangJiangHuaXi": "Wangjiang/Huaxi Campus (SCU)",
+    "@presetWangJiangHuaXi": {
+        "description": "Preset name for SCU Wangjiang/Huaxi campus time slots",
+        "type": "text"
+    },
+    "presetScuHint": "Auto-set 4-5-3 sections with corresponding times",
+    "@presetScuHint": {
+        "description": "Hint for SCU preset time slot configuration",
+        "type": "text"
+    },
+    "appliedPreset": "Applied {campus} time slot preset",
+    "@appliedPreset": {
+        "description": "Snackbar message when a time slot preset is applied",
+        "placeholders": {
+            "campus": {
+                "type": "String"
+            }
+        }
+    },
+    "presetLabel": "Preset",
+    "@presetLabel": {
+        "description": "Label for preset time slot configuration",
+        "type": "text"
+    },
+    "roomCount": "{count,plural, =1{1 room} other{{count} rooms}}",
+    "@roomCount": {
+        "description": "Number of classrooms found, e.g. '12 rooms'",
+        "placeholders": {
+            "count": {
+                "type": "int",
+                "format": "compact"
+            }
+        }
+    },
+    "totalHours": "Total Hours: {hours}",
+    "@totalHours": {
+        "description": "Total hours label for CCYL credit list, e.g. 'Total Hours: 120'",
+        "placeholders": {
+            "hours": {
+                "type": "String"
+            }
+        }
+    },
+    "sortBy": "Sort by",
+    "@sortBy": {
+        "description": "Label for sort mode selector",
+        "type": "text"
+    },
+    "reset": "Reset",
+    "@reset": {
+        "description": "Reset button label",
+        "type": "text"
+    },
+    "fileType": "File type",
+    "@fileType": {
+        "description": "Label for file type filter",
+        "type": "text"
+    },
+    "all": "All",
+    "@all": {
+        "description": "Label for 'All' option in filters",
+        "type": "text"
+    },
+    "manage": "Manage",
+    "@manage": {
+        "description": "Tooltip for manage/selection mode toggle",
+        "type": "text"
+    },
+    "filter": "Filter",
+    "@filter": {
+        "description": "Tooltip for filter button",
+        "type": "text"
+    },
+    "courseAttrRequired": "Required",
+    "@courseAttrRequired": {
+        "description": "Course attribute: required course",
+        "type": "text"
+    },
+    "courseAttrElective": "Elective",
+    "@courseAttrElective": {
+        "description": "Course attribute: elective course",
+        "type": "text"
+    },
+    "courseAttrOptional": "Optional",
+    "@courseAttrOptional": {
+        "description": "Course attribute: optional course",
+        "type": "text"
+    },
+    "nameLabel": "Name",
+    "@nameLabel": {
+        "description": "Generic label for person name",
+        "type": "text"
+    },
+    "sexLabel": "Sex",
+    "@sexLabel": {
+        "description": "Generic label for sex/gender",
+        "type": "text"
+    },
+    "studentIdLabel": "Student ID",
+    "@studentIdLabel": {
+        "description": "Generic label for student ID number",
+        "type": "text"
+    },
+    "identityLabel": "Identity",
+    "@identityLabel": {
+        "description": "Generic label for identity/role",
+        "type": "text"
+    },
+    "emailLabel": "Email",
+    "@emailLabel": {
+        "description": "Generic label for email address",
+        "type": "text"
+    },
+    "phoneLabel": "Phone",
+    "@phoneLabel": {
+        "description": "Generic label for phone number",
+        "type": "text"
+    },
+    "collegeLabel": "College",
+    "@collegeLabel": {
+        "description": "Generic label for college/department",
+        "type": "text"
+    },
+    "refresh": "Refresh",
+    "@refresh": {
+        "description": "Refresh button tooltip",
+        "type": "text"
+    },
+    "gradeSuffix": "Grade {grade}",
+    "@gradeSuffix": {
+        "description": "Grade suffix format, e.g. 'Grade 2024'",
+        "placeholders": {
+            "grade": {
+                "type": "String"
+            }
+        }
+    },
+    "campusSuffix": "{campusName} Campus",
+    "@campusSuffix": {
+        "description": "Campus name suffix, e.g. 'Jiang'an Campus'",
+        "placeholders": {
+            "campusName": {
+                "type": "String"
+            }
+        }
+    },
+    "examEnded": "Ended",
+    "@examEnded": {
+        "description": "Label indicating an exam has already ended",
+        "type": "text"
+    },
+    "pricePerUnitValue": "{price} CNY/kWh",
+    "@pricePerUnitValue": {
+        "description": "Price per unit with unit, e.g. '0.50 CNY/kWh'",
+        "placeholders": {
+            "price": {
+                "type": "String"
+            }
+        }
+    },
+    "verifyFailedCheckInfo": "Verification failed, please check your information",
+    "@verifyFailedCheckInfo": {
+        "description": "Error message when room binding verification fails",
+        "type": "text"
+    },
+    "getAuthCodeFailed": "Failed to get authorization code",
+    "@getAuthCodeFailed": {
+        "description": "Error message when CCYL OAuth authorization code retrieval fails",
+        "type": "text"
+    },
+    "addWidgetIosHint": "Long press on the iOS home screen, select the Bugaoshan course widget to add",
+    "@addWidgetIosHint": {
+        "description": "Hint for adding widget on iOS home screen",
+        "type": "text"
+    },
+    "addWidgetMacHint": "Click 'Edit Widgets' in macOS Notification Center, add the Bugaoshan course widget",
+    "@addWidgetMacHint": {
+        "description": "Hint for adding widget on macOS Notification Center",
+        "type": "text"
+    },
+    "autoAdjustedToSunday": "Automatically adjusted to Sunday of that week",
+    "@autoAdjustedToSunday": {
+        "description": "SnackBar message when week start date is auto-adjusted to Sunday",
+        "type": "text"
+    },
+    "goForward": "Forward",
+    "@goForward": {
+        "description": "Tooltip for webview forward navigation button",
+        "type": "text"
+    },
+    "goBack": "Back",
+    "@goBack": {
+        "description": "Tooltip for webview back navigation button",
+        "type": "text"
+    },
+    "openInBrowser": "Open in browser",
+    "@openInBrowser": {
+        "description": "Tooltip to open current page in external browser",
+        "type": "text"
+    },
+    "downloadComplete": "Download complete",
+    "@downloadComplete": {
+        "description": "SnackBar message when a file download is complete",
+        "type": "text"
+    },
+    "importedScheduleName": "JWXT Import {month}-{day}",
+    "@importedScheduleName": {
+        "description": "Default name for imported schedule from JWXT",
+        "placeholders": {
+            "month": {
+                "type": "int",
+                "format": "compact"
+            },
+            "day": {
+                "type": "int",
+                "format": "compact"
+            }
+        }
+    },
+    "error": "Error",
+    "@error": {
+        "description": "Generic error title",
+        "type": "text"
+    },
+    "dockLabelLeave": "Service Hall",
+    "@dockLabelLeave": {
+        "description": "Short dock label for the service hall entry.",
+        "type": "text"
+    },
+    "dockLabelRepair": "Repair",
+    "@dockLabelRepair": {
+        "description": "Short dock label for the online repair entry.",
+        "type": "text"
+    },
+    "repairTitle": "Online Repair",
+    "@repairTitle": {
+        "description": "Title of the online repair page.",
+        "type": "text"
+    },
+    "repairDesc": "Submit dorm/classroom facility repairs and track progress",
+    "@repairDesc": {
+        "description": "Description of the online repair feature on the campus entry card.",
+        "type": "text"
+    },
+    "repairTabSubmit": "Submit",
+    "@repairTabSubmit": {
+        "description": "Tab label of the repair submission form.",
+        "type": "text"
+    },
+    "repairTabMyTickets": "My Repairs",
+    "@repairTabMyTickets": {
+        "description": "Tab label of the my repairs list.",
+        "type": "text"
+    },
+    "repairAddress": "Fault Address",
+    "@repairAddress": {
+        "description": "Field title of the fault address in the repair form.",
+        "type": "text"
+    },
+    "repairSelectAddress": "Please select a fault address",
+    "@repairSelectAddress": {
+        "description": "Hint when no fault address is selected.",
+        "type": "text"
+    },
+    "repairProject": "Repair Item",
+    "@repairProject": {
+        "description": "Field title of the repair item in the form.",
+        "type": "text"
+    },
+    "repairSelectProject": "Please select a repair item",
+    "@repairSelectProject": {
+        "description": "Hint when no repair item is selected.",
+        "type": "text"
+    },
+    "repairSelectCategory": "Please select a category first",
+    "@repairSelectCategory": {
+        "description": "Hint of the repair category dropdown.",
+        "type": "text"
+    },
+    "repairNoProjectInCategory": "No repair items in this category",
+    "@repairNoProjectInCategory": {
+        "description": "Shown when a category has no available repair items.",
+        "type": "text"
+    },
+    "repairSelectProjectHint": "Select a fault address first to load repair items",
+    "@repairSelectProjectHint": {
+        "description": "Hint shown before repair items load.",
+        "type": "text"
+    },
+    "repairContent": "Description",
+    "@repairContent": {
+        "description": "Field title of the fault description in the form.",
+        "type": "text"
+    },
+    "repairContentHint": "Describe the fault in detail to help the technician bring tools",
+    "@repairContentHint": {
+        "description": "Placeholder of the description input.",
+        "type": "text"
+    },
+    "repairContentRequired": "Please fill in the description",
+    "@repairContentRequired": {
+        "description": "Hint when the description is empty.",
+        "type": "text"
+    },
+    "repairPhotos": "Photos / Videos",
+    "@repairPhotos": {
+        "description": "Field title of the photo upload in the form.",
+        "type": "text"
+    },
+    "repairImageUploading": "Uploading image…",
+    "@repairImageUploading": {
+        "description": "Button label shown while images are being uploaded on submit.",
+        "type": "text"
+    },
+    "repairSchedule": "Expected Repair Time",
+    "@repairSchedule": {
+        "description": "Field title of the expected repair time in the form.",
+        "type": "text"
+    },
+    "repairAllowNoOne": "Allow repair when no one is home",
+    "@repairAllowNoOne": {
+        "description": "Switch for allowing the technician to repair unattended.",
+        "type": "text"
+    },
+    "repairBookDate": "Select Date",
+    "@repairBookDate": {
+        "description": "Expected repair date picker item.",
+        "type": "text"
+    },
+    "repairBookTime": "Select Time Slot",
+    "@repairBookTime": {
+        "description": "Expected repair time slot picker item.",
+        "type": "text"
+    },
+    "repairNotSelected": "Not selected",
+    "@repairNotSelected": {
+        "description": "Placeholder when no date/time is selected.",
+        "type": "text"
+    },
+    "repairNoBookDate": "No available booking dates",
+    "@repairNoBookDate": {
+        "description": "Hint when there are no available booking dates.",
+        "type": "text"
+    },
+    "repairNoBookTime": "No available time slots for this date",
+    "@repairNoBookTime": {
+        "description": "Hint when there are no available time slots.",
+        "type": "text"
+    },
+    "repairSubmit": "Submit Repair",
+    "@repairSubmit": {
+        "description": "Submit button label of the repair form.",
+        "type": "text"
+    },
+    "repairSubmitSuccess": "Repair submitted successfully",
+    "@repairSubmitSuccess": {
+        "description": "Toast after a successful repair submission.",
+        "type": "text"
+    },
+    "repairSubmitFailed": "Failed to submit repair, please try again",
+    "@repairSubmitFailed": {
+        "description": "Toast after a failed repair submission.",
+        "type": "text"
+    },
+    "repairTicket": "Repair Ticket",
+    "@repairTicket": {
+        "description": "Generic name of a repair ticket.",
+        "type": "text"
+    },
+    "repairArea": "Fault Location",
+    "@repairArea": {
+        "description": "Fault location label in a repair ticket.",
+        "type": "text"
+    },
+    "repairAddAddress": "Add Address",
+    "@repairAddAddress": {
+        "description": "Button to add a repair address.",
+        "type": "text"
+    },
+    "repairSelectArea": "Select Area",
+    "@repairSelectArea": {
+        "description": "Hint to select an area when adding an address.",
+        "type": "text"
+    },
+    "repairAddressDetail": "Detailed Address",
+    "@repairAddressDetail": {
+        "description": "Detailed address field in the add-address form.",
+        "type": "text"
+    },
+    "repairAddressDetailRequired": "Please fill in the detailed address",
+    "@repairAddressDetailRequired": {
+        "description": "Hint when the detailed address is empty.",
+        "type": "text"
+    },
+    "repairPhoneRequired": "Please fill in the phone number",
+    "@repairPhoneRequired": {
+        "description": "Hint when the phone number is empty.",
+        "type": "text"
+    },
+    "repairPhoneInvalid": "Invalid phone number format",
+    "@repairPhoneInvalid": {
+        "description": "Hint when the phone number format is invalid.",
+        "type": "text"
+    },
+    "repairAddressSaved": "Address saved",
+    "@repairAddressSaved": {
+        "description": "Toast after saving a new address.",
+        "type": "text"
+    },
+    "repairImageTypeInvalid": "Only JPG/PNG/HEIC images are supported",
+    "@repairImageTypeInvalid": {
+        "description": "Toast when the selected image format is not supported.",
+        "type": "text"
+    },
+    "repairImageTooLarge": "Image must be smaller than 10MB",
+    "@repairImageTooLarge": {
+        "description": "Toast when the selected image exceeds the size limit.",
+        "type": "text"
+    },
+    "repairDetail": "Repair Detail",
+    "@repairDetail": {
+        "description": "Title of the repair ticket detail page.",
+        "type": "text"
+    },
+    "repairServiceUnit": "Service Unit",
+    "@repairServiceUnit": {
+        "description": "Label of the service unit field in a repair ticket.",
+        "type": "text"
+    },
+    "repairPayType": "Charge Type",
+    "@repairPayType": {
+        "description": "Label of the charge type field in a repair ticket.",
+        "type": "text"
+    },
+    "repairProgress": "Repair Progress",
+    "@repairProgress": {
+        "description": "Title of the repair progress timeline.",
+        "type": "text"
+    },
+    "repairWithdraw": "Withdraw Repair",
+    "@repairWithdraw": {
+        "description": "Button text to withdraw a repair ticket.",
+        "type": "text"
+    },
+    "repairWithdrawConfirm": "Withdraw this repair ticket?",
+    "@repairWithdrawConfirm": {
+        "description": "Confirmation prompt before withdrawing a repair ticket.",
+        "type": "text"
+    },
+    "repairWithdrawSuccess": "Repair withdrawn",
+    "@repairWithdrawSuccess": {
+        "description": "Toast after a repair ticket is withdrawn.",
+        "type": "text"
+    },
+    "repairWithdrawFailed": "Withdraw failed, please try again later",
+    "@repairWithdrawFailed": {
+        "description": "Toast when withdrawing a repair ticket fails.",
+        "type": "text"
+    },
+    "repairEvaluate": "Evaluate Repair",
+    "@repairEvaluate": {
+        "description": "Button text to evaluate a repair ticket.",
+        "type": "text"
+    },
+    "repairEvaluateHint": "Write your review (optional)",
+    "@repairEvaluateHint": {
+        "description": "Placeholder of the evaluation content input.",
+        "type": "text"
+    },
+    "repairEvaluateSuccess": "Evaluation submitted",
+    "@repairEvaluateSuccess": {
+        "description": "Toast after a repair evaluation is submitted.",
+        "type": "text"
+    },
+    "repairEvaluated": "Evaluated",
+    "@repairEvaluated": {
+        "description": "Status text when a repair ticket has been evaluated.",
+        "type": "text"
+    },
+    "repairWithdrawn": "Withdrawn",
+    "@repairWithdrawn": {
+        "description": "Status text when a repair ticket has been withdrawn.",
+        "type": "text"
+    },
+    "repairEvaluateFailed": "Evaluation failed, please try again later",
+    "@repairEvaluateFailed": {
+        "description": "Toast when submitting a repair evaluation fails.",
+        "type": "text"
+    },
+    "serviceHallTitle": "Service Hall",
+    "@serviceHallTitle": {
+        "description": "Title for the service hall sub-page listing available matters.",
+        "type": "text"
+    },
+    "serviceHallLeaveTitle": "Leave Request",
+    "@serviceHallLeaveTitle": {
+        "description": "Name of the leave matter in the service hall.",
+        "type": "text"
+    },
+    "serviceHallLeaveDesc": "Submit a leave request",
+    "@serviceHallLeaveDesc": {
+        "description": "Description of the leave matter in the service hall.",
+        "type": "text"
+    },
+    "serviceHallMyAppsTitle": "My Applications",
+    "@serviceHallMyAppsTitle": {
+        "description": "Name of the my-applications matter in the service hall.",
+        "type": "text"
+    },
+    "serviceHallMyAppsDesc": "View leave and check-in requests",
+    "@serviceHallMyAppsDesc": {
+        "description": "Description of the my-applications matter in the service hall.",
+        "type": "text"
+    },
+    "serviceHallReturnTitle": "Return-to-School Report",
+    "@serviceHallReturnTitle": {
+        "description": "Name of the return-to-school report matter in the service hall.",
+        "type": "text"
+    },
+    "serviceHallReturnDesc": "Report your return-to-school trip in advance",
+    "@serviceHallReturnDesc": {
+        "description": "Description of the return-to-school report matter in the service hall.",
+        "type": "text"
+    },
+    "serviceHallSummerLeaveTitle": "Summer Leave Report",
+    "@serviceHallSummerLeaveTitle": {
+        "description": "Name of the summer leave report matter in the service hall.",
+        "type": "text"
+    },
+    "serviceHallSummerLeaveDesc": "Report leaving school for the summer vacation",
+    "@serviceHallSummerLeaveDesc": {
+        "description": "Description of the summer leave report matter in the service hall.",
+        "type": "text"
+    },
+    "serviceHallStayRegisterTitle": "Stay-on-Campus Registration",
+    "@serviceHallStayRegisterTitle": {
+        "description": "Name of the stay-on-campus registration matter in the service hall.",
+        "type": "text"
+    },
+    "serviceHallStayRegisterDesc": "Register to stay on campus during the vacation",
+    "@serviceHallStayRegisterDesc": {
+        "description": "Description of the stay-on-campus registration matter in the service hall.",
+        "type": "text"
+    },
+    "serviceFormRequired": "Please fill in {label}",
+    "@serviceFormRequired": {
+        "description": "Validation message when a required service-hall form field is empty.",
+        "type": "text",
+        "placeholders": {
+            "label": {
+                "type": "String",
+                "example": "Campus"
+            }
+        }
+    },
+    "serviceFormSchemaFailed": "Failed to load the form. Please retry later.",
+    "@serviceFormSchemaFailed": {
+        "description": "Error shown when a service-hall form definition cannot be loaded.",
+        "type": "text"
+    },
+    "serviceFormSelectHint": "Please select",
+    "@serviceFormSelectHint": {
+        "description": "Hint text for dropdown fields in service-hall forms.",
+        "type": "text"
+    },
+    "serviceFormOptional": "Optional",
+    "@serviceFormOptional": {
+        "description": "Suffix marking optional fields in service-hall forms.",
+        "type": "text"
+    },
+    "leaveTitle": "Leave Application",
+    "@leaveTitle": {
+        "description": "Page title for leave application.",
+        "type": "text"
+    },
+    "leaveDesc": "Handle leave requests, check-ins and more in the service hall",
+    "@leaveDesc": {
+        "description": "Description shown on the campus entry card for the service hall.",
+        "type": "text"
+    },
+    "leaveApply": "Apply",
+    "@leaveApply": {
+        "description": "Tab label for the leave application form.",
+        "type": "text"
+    },
+    "leaveMyApplications": "My Requests",
+    "@leaveMyApplications": {
+        "description": "Tab label for viewing my submitted leave requests.",
+        "type": "text"
+    },
+    "leaveSubmit": "Submit",
+    "@leaveSubmit": {
+        "description": "Button to submit the leave application.",
+        "type": "text"
+    },
+    "leaveReasonRequired": "Please enter the leave reason",
+    "leaveEndAfterStart": "End time must be after start time",
+    "leaveSubmitSuccess": "Leave request submitted",
+    "leaveSubmitFailed": "Failed to submit. Please try again.",
+    "leaveInfo": "Student Info",
+    "leaveTutor": "Tutor",
+    "leaveCampusRequired": "Please select the campus you are leaving",
+    "leaveDetail": "Other Reason",
+    "leaveDetailHint": "Please specify the reason",
+    "leaveAttachment": "Upload Proof",
+    "leaveAttachmentHint": "Optional: upload 1-3 images as proof",
+    "leaveAttachmentAdd": "Add Image",
+    "leaveDepartReturn": "Leave & Return",
+    "leaveDepartTime": "Depart Time",
+    "leaveReturnTime": "Return Time",
+    "leaveRegionRequired": "Please select your destination address",
+    "regionProvince": "Province",
+    "regionCity": "City",
+    "regionArea": "District",
+    "regionSelectHint": "Select",
+    "regionDetailHint": "Detailed address (street, building no.)",
+    "regionPickProvince": "Select Province",
+    "regionPickCity": "Select City",
+    "regionPickArea": "Select District",
+    "leaveNoApplications": "No leave requests yet",
+    "leaveSubmitTime": "Submitted",
+    "leaveStatusProcessing": "Processing",
+    "leaveStatusDraft": "Draft",
+    "leaveStatusDone": "Done",
+    "@leaveNoApplications": {
+        "description": "Empty state for the my-applications tab.",
+        "type": "text"
+    }
 }

@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/about/about_page.dart';
-import 'package:bugaoshan/pages/course/course_schedule_setting.dart';
-import 'package:bugaoshan/pages/course/schedule_management_page.dart';
+import 'package:bugaoshan/pages/course/management/schedule_management_page.dart';
+import 'package:bugaoshan/pages/course/settings/course_schedule_setting.dart';
 import 'package:bugaoshan/pages/settings/software_setting_page.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
+import 'package:bugaoshan/utils/open_link.dart' show openUserManual;
 import 'package:bugaoshan/widgets/common/info_card.dart';
 import 'package:bugaoshan/widgets/common/styled_tile.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
@@ -48,6 +49,11 @@ class ProfileMenuCard extends StatelessWidget {
           icon: Icons.settings_rounded,
           label: localizations.softwareSetting,
           onTap: () => popupOrNavigate(context, SoftwareSettingPage()),
+        ),
+        LinkTile(
+          icon: Icons.menu_book_rounded,
+          label: localizations.userManual,
+          onTap: openUserManual,
         ),
         ValueListenableBuilder<bool>(
           valueListenable: getIt<AppConfigProvider>().hasUpdateNotification,

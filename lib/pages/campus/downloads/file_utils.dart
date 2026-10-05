@@ -6,7 +6,6 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 
 import 'package:bugaoshan/services/download_manager.dart';
 
@@ -59,7 +58,7 @@ class DownloadPathIndex {
     } finally {
       gate.complete();
       if (identical(_directoryQueues[_queueKey], current)) {
-        _directoryQueues.remove(_queueKey);
+        unawaited(_directoryQueues.remove(_queueKey));
       }
     }
   }
@@ -179,11 +178,11 @@ class DownloadPathIndex {
 // ── File utilities ─────────────────────────────────────────────────────────────────
 
 Future<Directory> getNoticeBaseDir() async {
-  if (AppPlatform.isDesktop) {
+  if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
     final dir = await getDownloadsDirectory();
     if (dir != null) return dir;
   }
-  if (AppPlatform.isAndroid) {
+  if (Platform.isAndroid) {
     final dir = await getExternalStorageDirectory();
     if (dir != null) return dir;
   }
@@ -198,7 +197,7 @@ Future<Directory> getNoticeBaseDir() async {
 /// 不走 `getDownloadsDirectory()` / `getExternalStorageDirectory()`，
 /// 因为 auth log 是调试用的瞬态产物，不是用户文件。
 Future<Directory> getAuthLogBaseDir() async {
-  if (AppPlatform.isAndroid) {
+  if (Platform.isAndroid) {
     final dirs = await getExternalCacheDirectories();
     if (dirs != null && dirs.isNotEmpty) return dirs.first;
   }
@@ -233,8 +232,26 @@ String sanitizeDownloadFileName(String rawName) {
   return fileName.isEmpty ? 'download' : fileName;
 }
 
+/// Exception thrown when the server returns a CAPTCHA page instead of a file.
+class CaptchaRequiredException implements Exception {
+  const CaptchaRequiredException();
+}
+
+/// 验证码表单页中用于识别「需要人工验证」的 DOM 标识（类名/字段名）。
+/// 服务端若改版导致标志失效，请在此追加新的标识。
+const List<String> _captchaPageMarkers = ['codeValue'];
+
+/// Detects if the HTTP response is a CAPTCHA HTML page.
+bool isCaptchaResponse(String? contentType, List<int> bodyBytes) {
+  if (contentType == null || !contentType.contains('text/html')) return false;
+  // 取响应前 4KB 扫描；验证码表单通常位于页面头部脚本区。
+  final head = utf8.decode(bodyBytes.take(4096).toList(), allowMalformed: true);
+  return _captchaPageMarkers.any(head.contains);
+}
+
 /// Downloads a file from [url] into `Bugaoshan/{dirName}/`.
 /// Returns the final local path.
+/// Throws [CaptchaRequiredException] if the server returns a CAPTCHA page.
 Future<String> downloadFile(
   String url,
   String dirName,
@@ -257,6 +274,11 @@ Future<String> downloadFile(
   if (cancelToken?.isCancelled ?? false) throw DownloadCancelledException();
 
   final bytes = response.bodyBytes;
+
+  // Detect CAPTCHA page — server may return 200 with a verification form.
+  if (isCaptchaResponse(response.headers['content-type'], bytes)) {
+    throw const CaptchaRequiredException();
+  }
 
   // Prefer filename from Content-Disposition header.
   var actualFileName = sanitizeDownloadFileName(fileName);

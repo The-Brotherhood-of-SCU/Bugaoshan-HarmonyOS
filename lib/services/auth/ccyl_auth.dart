@@ -65,16 +65,18 @@ class CcylAuth extends ChangeNotifier implements SubsystemAuth {
 
   /// 从安全存储恢复 token（应用启动时调用）。
   Future<void> init() async {
-    final secure = SecureStorageProvider.instance;
-    final raw = await secure.read(key: _keyCcylSession);
-    await secure.delete(key: _keyCcylToken);
-    await secure.delete(key: _keyCcylUserId);
-    if (raw == null) {
-      _log.d(_tag, 'init: no saved token');
-      return;
-    }
-
     try {
+      final secure = SecureStorageProvider.instance;
+      final raw = await secure.read(key: _keyCcylSession).catchError((_) => null);
+      try {
+        await secure.delete(key: _keyCcylToken).catchError((_) {});
+        await secure.delete(key: _keyCcylUserId).catchError((_) {});
+      } catch (_) {}
+      if (raw == null) {
+        _log.d(_tag, 'init: no saved token');
+        return;
+      }
+
       final session = jsonDecode(raw) as Map<String, dynamic>;
       final token = session['token']?.toString();
       final userId = session['userId']?.toString();
@@ -99,8 +101,8 @@ class CcylAuth extends ChangeNotifier implements SubsystemAuth {
         orgName: '',
       );
       _log.i(_tag, 'init: token restored');
-    } catch (_) {
-      _log.w(_tag, 'init: malformed saved session, discarding');
+    } catch (e) {
+      _log.w(_tag, 'init: error restoring saved session, discarding: $e');
       await _clearPersistedSession();
     }
   }
@@ -150,6 +152,23 @@ class CcylAuth extends ChangeNotifier implements SubsystemAuth {
     }
     _log.i(_tag, 'loginWithCode: ok');
     notifyListeners();
+  }
+
+  /// 并发安全的「失效并重登录」：多个并发过期恢复共享同一次重登录。
+  Future<bool> recoverExpiredSession() async {
+    final existing = _reLoginFuture;
+    if (existing != null) return existing;
+    _log.i(_tag, 'recoverExpiredSession: starting');
+    _cancelCurrentAuthentication();
+    unawaited(_clearPersistedSession());
+    final generation = _authGeneration;
+    final future = _doReLogin(generation);
+    _reLoginFuture = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_reLoginFuture, future)) _reLoginFuture = null;
+    }
   }
 
   /// 通过 SCU 自动恢复 CCYL 登录（OAuth 静默绑定）。

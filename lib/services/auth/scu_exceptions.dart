@@ -32,9 +32,19 @@ class RateLimitedException extends ServiceException {
   const RateLimitedException() : super('rateLimited');
 }
 
-/// 登录过程错误（验证码错误、账号密码错误等）
+/// 登录过程错误（验证码错误、账号密码错误等）。
 ///
-/// 仅在 ScuAuth.login() 中产生，由登录页面直接捕获。
+/// 主要由 ScuAuth.login() 中产生；bindSession 的非鉴权失败应使用 [ServiceException]，
+/// 以被 API Service 的重试与 Provider 的错误处理正确捕获。
 class ScuLoginException extends ScuException {
   const ScuLoginException(super.message);
+}
+
+/// 忘记密码流程业务错误（图形验证码错误/过期、账号不存在、
+/// 短信/邮件验证码错误、密码不满足策略等）。
+class ForgotPasswordException extends ScuException {
+  /// 服务端业务错误码（如 400 验证码错误、439 验证码过期）。
+  final int? businessCode;
+
+  const ForgotPasswordException(super.message, {this.businessCode});
 }

@@ -3,15 +3,33 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/models/widget_appearance.dart';
 import 'package:bugaoshan/pages/settings/add_widget/add_widget_page.dart';
 import 'package:bugaoshan/services/widget_update_service.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 
 class FakeWidgetUpdateService implements WidgetUpdateService {
   String? lastSizeArg;
+  bool? lastShowTomorrowArg;
+  WidgetColorStyle? lastColorStyle;
+  WidgetDensity? lastDensity;
 
   @override
   Future<void> updateWidgetData({bool force = false}) async {}
+
+  @override
+  Future<void> syncWidgetShowTomorrow(bool value) async {
+    lastShowTomorrowArg = value;
+  }
+
+  @override
+  Future<void> syncWidgetAppearance({
+    required WidgetColorStyle colorStyle,
+    required WidgetDensity density,
+  }) async {
+    lastColorStyle = colorStyle;
+    lastDensity = density;
+  }
 
   @override
   void dispose() {}
@@ -21,6 +39,15 @@ class FakeWidgetUpdateService implements WidgetUpdateService {
     lastSizeArg = size;
     return true;
   }
+
+  @override
+  Stream<String> get onWidgetPinned => const Stream.empty();
+
+  @override
+  Future<Set<int>> getPinnedWidgetIds() async => {};
+
+  @override
+  Future<bool> openAppSettings() async => false;
 
   @override
   Future<bool> isIgnoringBatteryOptimizations() async => true;
@@ -56,7 +83,10 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: const Scaffold(
           body: SingleChildScrollView(
-            child: AddWidgetContent(showDescription: false),
+            child: AddWidgetContent(
+              showDescription: false,
+              debugPlatformOverride: TargetPlatform.android,
+            ),
           ),
         ),
       ),
@@ -88,5 +118,41 @@ void main() {
     await tester.tap(find.text(l10n.pinWidgetButton));
     await tester.pumpAndSettle();
     expect(fake.lastSizeArg, equals('large'));
+  });
+
+  testWidgets('iOS widget appearance settings sync selected styles', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(
+          body: SingleChildScrollView(
+            child: AddWidgetContent(
+              showDescription: false,
+              debugPlatformOverride: TargetPlatform.iOS,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AddWidgetContent)),
+    )!;
+    final fake = getIt<WidgetUpdateService>() as FakeWidgetUpdateService;
+
+    expect(find.text(l10n.widgetAppearanceTitle), findsOneWidget);
+    await tester.tap(find.text(l10n.widgetMonochrome));
+    await tester.pumpAndSettle();
+    expect(fake.lastColorStyle, WidgetColorStyle.monochrome);
+    expect(fake.lastDensity, WidgetDensity.standard);
+
+    await tester.tap(find.text(l10n.widgetDensityCompact));
+    await tester.pumpAndSettle();
+    expect(fake.lastColorStyle, WidgetColorStyle.monochrome);
+    expect(fake.lastDensity, WidgetDensity.compact);
   });
 }

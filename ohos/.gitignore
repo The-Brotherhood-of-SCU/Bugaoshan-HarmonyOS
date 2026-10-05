@@ -1,19 +1,27 @@
 /node_modules
 /oh_modules
 /local.properties
+# 本地 CPF 源码克隆；根 pubspec.yaml 通过 path 引用其中两个独立 OH 包。
+/vendor/cpf/
+# Flutter / DevEco / 构建产物
+/.flutter-workspace/
+/.flutter-workspace.lock
+/.pub-cache/
+/build/
 /.idea
-**/build
+/.appanalyzer
 /.hvigor
-.cxx
 /.clangd
 /.clang-format
 /.clang-tidy
+/.test
+**/build
 **/.test
 **/BuildProfile.ets
 **/oh-package-lock.json5
 /package.json
 /package-lock.json
-/build-profile.json5
+.cxx
 
 **/src/main/resources/rawfile/flutter_assets/
 **/libs/**/libapp.so

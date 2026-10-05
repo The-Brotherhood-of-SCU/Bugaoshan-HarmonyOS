@@ -1,19 +1,16 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:bugaoshan/pages/campus/fitness_test/models/fitness_models.dart';
+import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/providers/fitness_test_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/auth/fitness_auth.dart';
-import 'package:bugaoshan/services/auth/scu_exceptions.dart';
-import 'package:bugaoshan/services/auth/cookie_client.dart';
-import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/info_row.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
+import 'package:bugaoshan/widgets/common/swipe_page_view.dart';
 
 class FitnessTestPage extends StatefulWidget {
   const FitnessTestPage({super.key});
@@ -22,306 +19,80 @@ class FitnessTestPage extends StatefulWidget {
   State<FitnessTestPage> createState() => _FitnessTestPageState();
 }
 
-class _FitnessSessionExpiredException implements Exception {
-  const _FitnessSessionExpiredException();
-}
-
 class _FitnessTestPageState extends State<FitnessTestPage>
     with SingleTickerProviderStateMixin {
-  static const _baseUrl =
-      'https://pead.scu.edu.cn/bdlp_h5_fitness_test/public/index.php';
-  static const _yearCacheKey = 'fitness_test_selected_year';
-
   late final TabController _tabController;
-
-  bool _loading = false;
-  LoadErrorType? _error;
-
-  // Notices
-  List<Map<String, dynamic>> _notices = [];
-
-  // Scores
-  int _selectedYear = DateTime.now().year;
-  Map<String, dynamic>? _scoreData;
-  bool _scoreLoading = false;
-  Object? _scoreError;
+  late final FitnessTestProvider _provider;
   bool _privacyHidden = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    final prefs = getIt<SharedPreferences>();
-    final savedYear = prefs.getInt(_yearCacheKey);
-    if (savedYear != null) {
-      _selectedYear = savedYear;
-    }
-    getIt<ScuAuthProvider>().addListener(_onAuthChanged);
-    getIt<FitnessAuth>().addListener(_onFitnessAuthChanged);
-    _loadData();
+    _provider = getIt<FitnessTestProvider>();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    getIt<ScuAuthProvider>().removeListener(_onAuthChanged);
-    getIt<FitnessAuth>().removeListener(_onFitnessAuthChanged);
     super.dispose();
   }
-
-  void _onAuthChanged() {
-    final auth = getIt<ScuAuthProvider>();
-    if (auth.isLoggedIn && mounted) {
-      _loadData();
-    } else if (mounted) {
-      setState(() {});
-    }
-  }
-
-  void _onFitnessAuthChanged() {
-    if (getIt<FitnessAuth>().isReady && mounted) {
-      _loadData();
-    }
-  }
-
-  /// 检查体测 API 响应是否表示 session 过期。
-  bool _isSessionExpired(Map<String, dynamic> json) {
-    if (json['status'] != 1) {
-      final info = json['info']?.toString() ?? '';
-      return info.contains('登录信息失效') || info.contains('请重新登录');
-    }
-    return false;
-  }
-
-  /// 通过 FitnessAuth 发送带自动重试的请求。
-  /// [fn] 接收已认证的 CookieClient 并返回响应数据。
-  ///
-  /// 自动处理两种认证失败：
-  /// - [UnauthenticatedException]：SCU token 过期（由 auth 层抛出）
-  /// - [_FitnessSessionExpiredException]：体测服务端 session 过期（业务响应）
-  Future<T> _fitnessRequest<T>(
-    Future<T> Function(CookieClient client) fn,
-  ) async {
-    Future<T> execute() async {
-      final client = await getIt<FitnessAuth>().getClient();
-      return await fn(client);
-    }
-
-    try {
-      return await execute();
-    } on UnauthenticatedException {
-      return await execute();
-    } on _FitnessSessionExpiredException {
-      getIt<FitnessAuth>().invalidate();
-      return await execute();
-    }
-  }
-
-  Future<void> _loadData() async {
-    final auth = getIt<ScuAuthProvider>();
-    if (!auth.isLoggedIn) {
-      if (auth.isAutoLoggingIn) return;
-      setState(() => _error = LoadErrorType.notLoggedIn);
-      return;
-    }
-
-    // 不在此等待 FitnessAuth.isReady：_fitnessRequest 内部通过
-    // FitnessAuth.getClient 自驱动 SSO 认证，预热失败会走 catch 分支
-    // 显示可重试的错误页，避免预热曾失败时永远停留在加载态。
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      await _fitnessRequest((client) async {
-        final noticeResp = await client.post(
-          Uri.parse('$_baseUrl/index/News/getSchoolNoticeList'),
-          headers: _headers,
-        );
-        final noticeJson = _parseJson(noticeResp.body, 'getSchoolNoticeList');
-        if (noticeJson['status'] != 1) {
-          if (_isSessionExpired(noticeJson)) {
-            throw const _FitnessSessionExpiredException();
-          }
-          throw Exception(noticeJson['info'] ?? '获取通知失败');
-        }
-        _notices = (noticeJson['data'] as List)
-            .map((e) => e as Map<String, dynamic>)
-            .toList();
-
-        await _loadScore(client);
-
-        if (mounted) {
-          setState(() => _loading = false);
-        }
-        return true;
-      });
-    } on UnauthenticatedException catch (_) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = LoadErrorType.notLoggedIn;
-        });
-      }
-    } on _FitnessSessionExpiredException catch (_) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = LoadErrorType.notLoggedIn;
-        });
-      }
-    } catch (e) {
-      debugPrint('Fitness test load error: $e');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = campusNetworkErrorType(LoadErrorType.networkError);
-        });
-      }
-    }
-  }
-
-  Future<void> _loadScore(CookieClient client) async {
-    setState(() {
-      _scoreLoading = true;
-      _scoreError = null;
-    });
-
-    try {
-      final resp = await client.post(
-        Uri.parse('$_baseUrl/index/Report/getStudentScore'),
-        headers: _headers,
-        body: 'year_num=$_selectedYear',
-      );
-      final json = _parseJson(resp.body, 'getStudentScore');
-      if (json['status'] != 1) {
-        if (_isSessionExpired(json)) {
-          setState(() {
-            _scoreLoading = false;
-            _scoreError = json['info'] ?? '查询失败';
-          });
-          throw const _FitnessSessionExpiredException();
-        }
-        setState(() {
-          _scoreLoading = false;
-          _scoreError = json['info'] ?? '查询失败';
-        });
-        return;
-      }
-      final data = json['data'];
-      setState(() {
-        _scoreData = data is Map<String, dynamic> ? data : null;
-        _scoreLoading = false;
-      });
-    } on _FitnessSessionExpiredException {
-      rethrow;
-    } catch (e) {
-      debugPrint('Fitness test score error: $e');
-      setState(() {
-        _scoreLoading = false;
-        _scoreError = campusNetworkErrorType(LoadErrorType.networkError);
-      });
-    }
-  }
-
-  Future<void> _retryScore() async {
-    final auth = getIt<ScuAuthProvider>();
-    if (!auth.isLoggedIn) return;
-    try {
-      await _fitnessRequest((client) async {
-        await _loadScore(client);
-        return true;
-      });
-    } catch (e) {
-      debugPrint('Retry score error: $e');
-    }
-  }
-
-  Future<void> _onYearChanged(int year) async {
-    _selectedYear = year;
-    getIt<SharedPreferences>().setInt(_yearCacheKey, year);
-    final auth = getIt<ScuAuthProvider>();
-    if (!auth.isLoggedIn) return;
-
-    try {
-      await _fitnessRequest((client) async {
-        await _loadScore(client);
-        return true;
-      });
-    } catch (e) {
-      debugPrint('Year change error: $e');
-    }
-  }
-
-  Map<String, dynamic> _parseJson(String body, String api) {
-    try {
-      return jsonDecode(body) as Map<String, dynamic>;
-    } catch (e) {
-      throw Exception('[$api] JSON 解析失败: $body');
-    }
-  }
-
-  Map<String, String> get _headers => {
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Encoding': 'gzip, deflate, br, zstd',
-    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Origin': 'https://pead.scu.edu.cn',
-    'Pragma': 'no-cache',
-    'Referer':
-        'https://pead.scu.edu.cn/bdlp_h5_fitness_test/public/index.php/index/index',
-    'User-Agent': kDefaultUserAgent,
-    'X-Requested-With': 'XMLHttpRequest',
-    'sec-ch-ua':
-        '"Microsoft Edge";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-  };
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.fitnessTest),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(text: l10n.fitnessTestScores),
-            Tab(text: l10n.fitnessTestNotices),
-          ],
+    return ListenableBuilder(
+      listenable: Listenable.merge([getIt<ScuAuthProvider>(), _provider]),
+      builder: (context, _) => Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.fitnessTest),
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(text: l10n.fitnessTestScores),
+              Tab(text: l10n.fitnessTestNotices),
+            ],
+          ),
         ),
+        body: _buildBody(l10n),
       ),
-      body: _buildBody(l10n),
     );
   }
 
   Widget _buildBody(AppLocalizations l10n) {
     final auth = getIt<ScuAuthProvider>();
-    if (!auth.isLoggedIn && auth.isAutoLoggingIn) {
-      return const AutoLoginLoadingWidget();
+    if (!auth.isLoggedIn) {
+      return auth.isAutoLoggingIn
+          ? const AutoLoginLoadingWidget()
+          : const LoginRequiredWidget();
     }
 
-    if (_loading) {
+    // Provider 是数据的唯一来源。首次进入或登出后重新登录时，页面只表达
+    // 「确保已加载」意图；它不保存请求结果、加载态或认证会话。
+    if (_provider.noticesState == FitnessTestLoadState.idle ||
+        _provider.scoreState == FitnessTestLoadState.idle) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && getIt<ScuAuthProvider>().isLoggedIn) {
+          _provider.ensureLoaded();
+        }
+      });
+    }
+
+    if (_provider.noticesState == FitnessTestLoadState.loading &&
+        _provider.notices.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
-      if (_error == LoadErrorType.notLoggedIn) {
-        if (getIt<ScuAuthProvider>().isAutoLoggingIn) {
-          return const AutoLoginLoadingWidget();
-        }
-        return const LoginRequiredWidget();
-      }
-      return RetryableErrorWidget(errorType: _error!, onRetry: _loadData);
+    final noticesError = _provider.noticesError;
+    if (_provider.noticesState == FitnessTestLoadState.error &&
+        noticesError != null) {
+      return _buildError(noticesError, _provider.refresh);
     }
 
-    return TabBarView(
-      controller: _tabController,
+    return SwipePageView(
+      tabController: _tabController,
+      keepPagesAlive: true,
       children: [_buildScoresTab(l10n), _buildNoticesTab(l10n)],
     );
   }
@@ -329,7 +100,8 @@ class _FitnessTestPageState extends State<FitnessTestPage>
   // ==================== Notices Tab ====================
 
   Widget _buildNoticesTab(AppLocalizations l10n) {
-    if (_notices.isEmpty) {
+    final notices = _provider.notices;
+    if (notices.isEmpty) {
       return Center(
         child: Text(
           l10n.noData,
@@ -341,100 +113,102 @@ class _FitnessTestPageState extends State<FitnessTestPage>
     }
 
     return RefreshIndicator(
-      onRefresh: _loadData,
+      onRefresh: _provider.refresh,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _notices.length,
-        itemBuilder: (context, index) =>
-            _buildNoticeCard(_notices[index], l10n),
+        itemCount: notices.length,
+        itemBuilder: (context, index) => _buildNoticeCard(notices[index], l10n),
       ),
     );
   }
 
-  Widget _buildNoticeCard(Map<String, dynamic> notice, AppLocalizations l10n) {
-    final isSticky = notice['is_stick'] == 1;
+  Widget _buildError(Object error, Future<void> Function() onRetry) {
+    if (error is LoadErrorType) {
+      return RetryableErrorWidget(errorType: error, onRetry: onRetry);
+    }
+    return RetryableErrorWidget.message(
+      message: error.toString(),
+      onRetry: onRetry,
+    );
+  }
 
-    return Card(
+  Widget _buildNoticeCard(FitnessNotice notice, AppLocalizations l10n) {
+    return StyledCard(
       margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: () => _showNoticeDetail(notice, l10n),
-        borderRadius: BorderRadius.circular(AppShapes.medium),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  if (isSticky) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(AppShapes.xs),
-                      ),
-                      child: Text(
-                        l10n.fitnessTestSticky,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
-                        ),
-                      ),
+      onTap: () => _showNoticeDetail(notice, l10n),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (notice.isSticky) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
                     ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(AppShapes.xs),
+                    ),
                     child: Text(
-                      notice['title'] ?? '',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      l10n.fitnessTestSticky,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                 ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(
-                    Icons.access_time,
-                    size: 14,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    notice['create_time'] ?? '',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                Expanded(
+                  child: Text(
+                    notice.title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const Spacer(),
-                  Icon(
-                    Icons.visibility_outlined,
-                    size: 14,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  notice.createTime,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${notice['read_num'] ?? 0} ${l10n.fitnessTestReadCount}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.visibility_outlined,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${notice.readNum} ${l10n.fitnessTestReadCount}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  void _showNoticeDetail(Map<String, dynamic> notice, AppLocalizations l10n) {
+  void _showNoticeDetail(FitnessNotice notice, AppLocalizations l10n) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -451,7 +225,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
                 children: [
                   Expanded(
                     child: Text(
-                      notice['title'] ?? '',
+                      notice.title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -479,7 +253,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        notice['create_time'] ?? '',
+                        notice.createTime,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -492,7 +266,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${notice['read_num'] ?? 0} ${l10n.fitnessTestReadCount}',
+                        '${notice.readNum} ${l10n.fitnessTestReadCount}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -501,7 +275,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _stripHtml(notice['content'] ?? ''),
+                    notice.plainContent,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
@@ -513,20 +287,6 @@ class _FitnessTestPageState extends State<FitnessTestPage>
     );
   }
 
-  String _stripHtml(String html) {
-    return html
-        .replaceAll(RegExp(r'<br\s*/?>'), '\n')
-        .replaceAll(RegExp(r'<p>|<p\s[^>]*>'), '')
-        .replaceAll('</p>', '\n')
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&amp;', '&')
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
-        .trim();
-  }
-
   // ==================== Scores Tab ====================
 
   Widget _buildScoresTab(AppLocalizations l10n) {
@@ -534,12 +294,12 @@ class _FitnessTestPageState extends State<FitnessTestPage>
     final years = List.generate(9, (i) => currentYear - i);
 
     return RefreshIndicator(
-      onRefresh: _loadData,
+      onRefresh: _provider.refresh,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // Year selector
-          Card(
+          StyledCard(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
@@ -550,16 +310,19 @@ class _FitnessTestPageState extends State<FitnessTestPage>
                   ),
                   const Spacer(),
                   DropdownButton<int>(
-                    value: _selectedYear,
+                    value: _provider.selectedYear,
                     underline: const SizedBox(),
+                    // 桌面端收起菜单后按钮仍持有焦点，默认 focusColor 会留下一块
+                    // 常驻灰底；这里将其去掉（悬停高亮保留，可正常随鼠标移出消失）。
+                    focusColor: Colors.transparent,
                     items: years
                         .map(
                           (y) => DropdownMenuItem(value: y, child: Text('$y')),
                         )
                         .toList(),
                     onChanged: (value) {
-                      if (value != null && value != _selectedYear) {
-                        _onYearChanged(value);
+                      if (value != null && value != _provider.selectedYear) {
+                        _provider.selectYear(value);
                       }
                     },
                   ),
@@ -576,7 +339,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
   }
 
   Widget _buildScoreContent(AppLocalizations l10n) {
-    if (_scoreLoading) {
+    if (_provider.scoreState == FitnessTestLoadState.loading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(32),
@@ -585,22 +348,16 @@ class _FitnessTestPageState extends State<FitnessTestPage>
       );
     }
 
-    if (_scoreError != null) {
+    final scoreError = _provider.scoreError;
+    if (_provider.scoreState == FitnessTestLoadState.error &&
+        scoreError != null) {
       return Padding(
         padding: const EdgeInsets.all(32),
-        child: _scoreError is LoadErrorType
-            ? RetryableErrorWidget(
-                errorType: _scoreError as LoadErrorType,
-                onRetry: _retryScore,
-              )
-            : RetryableErrorWidget.message(
-                message: _scoreError as String,
-                onRetry: _retryScore,
-              ),
+        child: _buildError(scoreError, _provider.refreshScore),
       );
     }
 
-    if (_scoreData == null) {
+    if (_provider.scoreData == null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -626,11 +383,10 @@ class _FitnessTestPageState extends State<FitnessTestPage>
   }
 
   Widget _buildTotalScoreCard(AppLocalizations l10n) {
-    final totalScore = _scoreData!['total_score'] ?? 0;
-    final totalGrade = _scoreData!['total_grade'] ?? '';
-    final gradeColor = _getGradeColor(totalGrade);
+    final score = _provider.scoreData!;
+    final gradeColor = score.gradeColorFor(context);
 
-    return Card(
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
@@ -645,7 +401,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
               ),
               alignment: Alignment.center,
               child: Text(
-                '$totalScore',
+                '${score.totalScore}',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: gradeColor,
@@ -674,7 +430,7 @@ class _FitnessTestPageState extends State<FitnessTestPage>
                       borderRadius: BorderRadius.circular(AppShapes.medium),
                     ),
                     child: Text(
-                      totalGrade,
+                      score.totalGrade,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: gradeColor,
                         fontWeight: FontWeight.w600,
@@ -699,10 +455,9 @@ class _FitnessTestPageState extends State<FitnessTestPage>
   }
 
   Widget _buildInfoCard(AppLocalizations l10n) {
-    final name = _scoreData!['student_name'] ?? '-';
-    final studentNum = _scoreData!['student_num'] ?? '-';
+    final score = _provider.scoreData!;
 
-    return Card(
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -711,7 +466,9 @@ class _FitnessTestPageState extends State<FitnessTestPage>
               onTap: () => setState(() => _privacyHidden = !_privacyHidden),
               child: _infoRow(
                 l10n.fitnessTestStudentName,
-                _privacyHidden ? _maskText(name) : name,
+                _privacyHidden
+                    ? _maskText(score.studentName)
+                    : score.studentName,
                 trailing: Icon(
                   _privacyHidden
                       ? Icons.visibility_off_outlined
@@ -726,8 +483,12 @@ class _FitnessTestPageState extends State<FitnessTestPage>
               child: _infoRow(
                 l10n.fitnessTestStudentNum,
                 _privacyHidden
-                    ? _maskText(studentNum, visibleStart: 2, visibleEnd: 2)
-                    : studentNum,
+                    ? _maskText(
+                        score.studentNum,
+                        visibleStart: 2,
+                        visibleEnd: 2,
+                      )
+                    : score.studentNum,
                 trailing: Icon(
                   _privacyHidden
                       ? Icons.visibility_off_outlined
@@ -737,19 +498,10 @@ class _FitnessTestPageState extends State<FitnessTestPage>
                 ),
               ),
             ),
-            _infoRow(l10n.fitnessTestSex, _scoreData!['sex'] ?? '-'),
-            _infoRow(
-              l10n.fitnessTestStudentYear,
-              _scoreData!['studentYear'] ?? '-',
-            ),
-            _infoRow(
-              l10n.fitnessTestReportType,
-              _scoreData!['report_type'] ?? '-',
-            ),
-            _infoRow(
-              l10n.fitnessTestReportStatus,
-              _scoreData!['report_status'] ?? '-',
-            ),
+            _infoRow(l10n.fitnessTestSex, score.sex),
+            _infoRow(l10n.fitnessTestStudentYear, score.studentYear),
+            _infoRow(l10n.fitnessTestReportType, score.reportType),
+            _infoRow(l10n.fitnessTestReportStatus, score.reportStatus),
           ],
         ),
       ),
@@ -761,89 +513,67 @@ class _FitnessTestPageState extends State<FitnessTestPage>
   }
 
   Widget _buildScoreItemsCard(AppLocalizations l10n) {
+    final score = _provider.scoreData!;
     final items = [
       _ScoreItem(
         icon: Icons.monitor_weight_outlined,
         label: l10n.fitnessTestBmi,
-        rawScore: _scoreData!['bmi_score'] ?? '-',
-        gradedScore: '${_scoreData!['bmi_score2'] ?? '-'}',
-        grade: _scoreData!['bmi_grade'] ?? '-',
-        colorClass: _scoreData!['bmi_class'] ?? 'green',
+        data: score.bmi,
+        rawScoreDisplay: score.bmi.rawScore,
       ),
       _ScoreItem(
         icon: Icons.air,
         label: l10n.fitnessTestVitalCapacity,
-        rawScore: '${_scoreData!['vc_score'] ?? '-'}',
-        gradedScore: '${_scoreData!['vc_score2'] ?? '-'}',
-        grade: _scoreData!['vc_grade'] ?? '-',
-        colorClass: _scoreData!['vc_class'] ?? 'green',
+        data: score.vitalCapacity,
+        rawScoreDisplay: score.vitalCapacity.rawScore,
       ),
       _ScoreItem(
         icon: Icons.directions_run,
         label: l10n.fitnessTestStandingLongJump,
-        rawScore: '${_scoreData!['jump_score'] ?? '-'} cm',
-        gradedScore: '${_scoreData!['jump_score2'] ?? '-'}',
-        grade: _scoreData!['jump_grade'] ?? '-',
-        colorClass: _scoreData!['jump_class'] ?? 'green',
+        data: score.jump,
+        rawScoreDisplay: '${score.jump.rawScore} cm',
       ),
       _ScoreItem(
         icon: Icons.accessibility_new,
         label: l10n.fitnessTestSitAndReach,
-        rawScore: '${_scoreData!['sit_and_reach_score'] ?? '-'} cm',
-        gradedScore: '${_scoreData!['sit_and_reach_score2'] ?? '-'}',
-        grade: _scoreData!['sit_and_reach_grade'] ?? '-',
-        colorClass: _scoreData!['sit_and_reach_class'] ?? 'green',
+        data: score.sitAndReach,
+        rawScoreDisplay: '${score.sitAndReach.rawScore} cm',
       ),
       _ScoreItem(
         icon: Icons.fitness_center,
-        label: _scoreData!['sex'] == '女'
+        label: score.sex == '女'
             ? l10n.fitnessTestSitUp
             : l10n.fitnessTestPullUp,
-        rawScore: '${_scoreData!['pull_and_sit_score'] ?? '-'}',
-        gradedScore: '${_scoreData!['pull_and_sit_score2'] ?? '-'}',
-        grade: _scoreData!['pull_and_sit_grade'] ?? '-',
-        colorClass: _scoreData!['pull_and_sit_class'] ?? 'green',
+        data: score.pullAndSit,
+        rawScoreDisplay: score.pullAndSit.rawScore,
       ),
       _ScoreItem(
         icon: Icons.speed,
         label: l10n.fitnessTestFiftyMeters,
-        rawScore: '${_scoreData!['50m_score'] ?? '-'} s',
-        gradedScore: '${_scoreData!['50m_score2'] ?? '-'}',
-        grade: _scoreData!['50m_grade'] ?? '-',
-        colorClass: _scoreData!['50m_class'] ?? 'green',
+        data: score.fiftyM,
+        rawScoreDisplay: '${score.fiftyM.rawScore} s',
       ),
       _ScoreItem(
         icon: Icons.timer_outlined,
         label: l10n.fitnessTestRun,
-        rawScore: '${_scoreData!['run_score'] ?? '-'}',
-        gradedScore: '${_scoreData!['run_score2'] ?? '-'}',
-        grade: _scoreData!['run_grade'] ?? '-',
-        colorClass: _scoreData!['run_class'] ?? 'green',
+        data: score.run,
+        rawScoreDisplay: score.run.rawScore,
       ),
     ];
 
-    return Card(
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.fitnessTestScores,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const Divider(height: 24),
-            ...items.map((item) => _buildScoreItemRow(item)),
-          ],
+          children: [...items.map((item) => _buildScoreItemRow(item))],
         ),
       ),
     );
   }
 
   Widget _buildScoreItemRow(_ScoreItem item) {
-    final color = item.colorClass == 'red'
+    final color = item.data.isFail
         ? Theme.of(context).colorScheme.error
         : Colors.green;
 
@@ -863,13 +593,13 @@ class _FitnessTestPageState extends State<FitnessTestPage>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                item.rawScore,
+                item.rawScoreDisplay,
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
               ),
               Text(
-                '${item.gradedScore} · ${item.grade}',
+                '${item.data.gradedScore} · ${item.data.grade}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: color,
                   fontWeight: FontWeight.w500,
@@ -881,38 +611,18 @@ class _FitnessTestPageState extends State<FitnessTestPage>
       ),
     );
   }
-
-  Color _getGradeColor(String grade) {
-    if (grade.contains('优秀') || grade.contains('Excellent')) {
-      return Colors.blue;
-    }
-    if (grade.contains('良好') || grade.contains('Good')) {
-      return Colors.green;
-    }
-    if (grade.contains('及格') || grade.contains('Pass')) {
-      return Colors.orange;
-    }
-    if (grade.contains('不及格') || grade.contains('Fail')) {
-      return Colors.red;
-    }
-    return Colors.grey;
-  }
 }
 
 class _ScoreItem {
   const _ScoreItem({
     required this.icon,
     required this.label,
-    required this.rawScore,
-    required this.gradedScore,
-    required this.grade,
-    required this.colorClass,
+    required this.data,
+    required this.rawScoreDisplay,
   });
 
   final IconData icon;
   final String label;
-  final String rawScore;
-  final String gradedScore;
-  final String grade;
-  final String colorClass;
+  final FitnessScoreItem data;
+  final String rawScoreDisplay;
 }

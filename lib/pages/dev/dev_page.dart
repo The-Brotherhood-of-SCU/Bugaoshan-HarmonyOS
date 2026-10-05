@@ -141,6 +141,19 @@ class _DevPageState extends State<DevPage> {
           const Divider(),
           const ChangelogTile(),
           const Divider(),
+          ValueListenableBuilder<bool>(
+            valueListenable: _appConfig.forceCaptchaForDownload,
+            builder: (context, value, _) => SwitchListTile(
+              secondary: const Icon(Icons.tab),
+              title: Text(localizations.forceCaptchaForDownload),
+              subtitle: Text(
+                localizations.forceCaptchaForDownloadHint,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              value: value,
+              onChanged: (v) => _appConfig.forceCaptchaForDownload.value = v,
+            ),
+          ),
           if (_supportsUpdate) ..._buildUpdateSection(context, localizations),
         ],
       ),

@@ -1,10 +1,10 @@
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/pages/wizard/welcome_page.dart';
 import 'package:bugaoshan/pages/wizard/login_page.dart';
 import 'package:bugaoshan/pages/wizard/features_page.dart';
@@ -34,7 +34,7 @@ class _WizardPageState extends State<WizardPage> {
       const WelcomePage(),
       const LoginPage(),
       const FeaturesPage(),
-      if (AppPlatform.supportsHomeWidget) const WidgetPage(),
+      if (Platform.isAndroid) const WidgetPage(),
     ];
     _totalPages = _pages.length;
 

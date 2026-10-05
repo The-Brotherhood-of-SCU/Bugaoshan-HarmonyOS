@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/auth/scu_login_page.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
+import 'package:bugaoshan/utils/secure_storage.dart';
+import 'package:bugaoshan/utils/storage_keys.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 
 enum LoginStatus {
@@ -42,8 +46,7 @@ class LoginStatusCard extends StatefulWidget {
 }
 
 class _LoginStatusCardState extends State<LoginStatusCard> {
-  static const _keyUsername = 'scu_saved_username';
-  static const _storage = FlutterSecureStorage();
+  static final _storage = SecureStorageProvider.instance;
 
   final _authProvider = getIt<ScuAuthProvider>();
   String? _username;
@@ -63,12 +66,11 @@ class _LoginStatusCardState extends State<LoginStatusCard> {
   }
 
   void _onChanged() {
-    if (mounted) setState(() {});
     _loadUsername();
   }
 
   Future<void> _loadUsername() async {
-    final username = await _storage.read(key: _keyUsername);
+    final username = await _storage.read(key: kScuSavedUsername);
     if (mounted && username != _username) {
       setState(() => _username = username);
     }
@@ -78,10 +80,11 @@ class _LoginStatusCardState extends State<LoginStatusCard> {
     final result = await popupOrNavigate(context, const ScuLoginPage());
     if (!mounted) return;
     if (result == true) {
-      _loadUsername();
+      unawaited(_loadUsername());
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('登录成功')));
+      ).showSnackBar(SnackBar(content: Text(l10n.loginSuccess)));
     }
   }
 
@@ -116,17 +119,19 @@ class _LoginStatusCardState extends State<LoginStatusCard> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _authProvider,
+      builder: (context, _) => _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final theme = Theme.of(context);
     final localizations = AppLocalizations.of(context)!;
     final primaryColor = theme.colorScheme.primary;
     final status = LoginStatus.from(_authProvider);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.08)),
-      ),
+    return StyledCard(
       child: Column(
         children: [
           Padding(
@@ -153,7 +158,11 @@ class _LoginStatusCardState extends State<LoginStatusCard> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                '${localizations.scuLogin}${_username != null ? ' (${_privacyHidden ? _maskUsername(_username!) : _username})' : ''}',
+                                _username != null
+                                    ? (_privacyHidden
+                                          ? _maskUsername(_username!)
+                                          : _username!)
+                                    : localizations.scuLogin,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),

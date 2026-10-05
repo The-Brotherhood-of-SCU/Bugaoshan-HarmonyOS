@@ -1,6 +1,8 @@
+import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/campus/downloads/shared_notice_downloads.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -11,6 +13,7 @@ import 'download_options.dart';
 import 'webview_notice_handlers.dart';
 
 export 'download_options.dart';
+export 'webview_unsupported_page.dart';
 
 /// Shared WebView-based notice page used by party/XGB and tuanwei/Youth SCU.
 class WebViewNoticePage extends StatefulWidget {
@@ -139,13 +142,19 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
       try {
         await controller.evaluateJavascript(source: _beautifyScript);
       } catch (e) {
-        debugPrint('${widget.debugLabel} beautify script error: $e');
+        AppLog.e(
+          'WebViewNoticePage',
+          '${widget.debugLabel} beautify script error: $e',
+        );
       }
       if (_domReadyScript.isNotEmpty) {
         try {
           await controller.evaluateJavascript(source: _domReadyScript);
         } catch (e) {
-          debugPrint('${widget.debugLabel} dom ready script error: $e');
+          AppLog.e(
+            'WebViewNoticePage',
+            '${widget.debugLabel} dom ready script error: $e',
+          );
           await _finishLoading();
         }
         return;
@@ -194,6 +203,11 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
 
   @override
   Widget build(BuildContext context) {
+    return _buildWebViewPage(context);
+  }
+
+  Widget _buildWebViewPage(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -210,7 +224,11 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
         appBar: AppBar(
           leadingWidth: 152,
           centerTitle: true,
-          title: Text(widget.title),
+          title: Text(
+            widget.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           leading: Padding(
             padding: const EdgeInsets.only(left: 4),
             child: Row(
@@ -218,7 +236,7 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
               children: [
                 IconButton(
                   icon: const Icon(Icons.close),
-                  tooltip: '关闭',
+                  tooltip: l10n.close,
                   onPressed: () {
                     if (logicRootContext.mounted) {
                       Navigator.of(logicRootContext).pop();
@@ -227,12 +245,12 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
                 ),
                 IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  tooltip: '后退',
+                  tooltip: l10n.goBack,
                   onPressed: _canGoBack ? _goBack : null,
                 ),
                 IconButton(
                   icon: const Icon(Icons.arrow_forward),
-                  tooltip: '前进',
+                  tooltip: l10n.goForward,
                   onPressed: _canGoForward ? _goForward : null,
                 ),
               ],
@@ -242,7 +260,7 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
             if (widget.downloadOptions != null)
               IconButton(
                 icon: const Icon(Icons.folder_open),
-                tooltip: '已下载附件',
+                tooltip: l10n.downloadedAttachments,
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -254,7 +272,7 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
               ),
             IconButton(
               icon: const Icon(Icons.open_in_new),
-              tooltip: '在浏览器中打开',
+              tooltip: l10n.openInBrowser,
               onPressed: _openInBrowser,
             ),
           ],
@@ -273,7 +291,10 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
                 onLoadStart: _onLoadStart,
                 onLoadStop: _onLoadStop,
                 onReceivedError: (controller, request, error) {
-                  debugPrint('${widget.debugLabel} WebView error: $error');
+                  AppLog.e(
+                    'WebViewNoticePage',
+                    '${widget.debugLabel} WebView error: $error',
+                  );
                   if ((request.isForMainFrame ?? false) &&
                       _errorHtmlTemplate.isNotEmpty) {
                     final html = _errorHtmlTemplate.replaceAll(

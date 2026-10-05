@@ -1,5 +1,9 @@
+import 'package:flutter/services.dart';
+
 const String orgLink = "https://github.com/The-Brotherhood-of-SCU";
 const String appLink = "https://github.com/The-Brotherhood-of-SCU/Bugaoshan";
+const String officialWebsiteLink = "https://bugaoshan.scubro.dev/";
+const String userManualLink = "https://bugaoshan-docs.scubro.dev/manual/";
 
 const String dockIdCourse = 'course';
 const String dockIdCampus = 'campus';
@@ -10,14 +14,18 @@ const String dockIdPlanCompletion = 'plan_completion';
 const String dockIdTrainProgram = 'train_program';
 const String dockIdClassroom = 'classroom';
 const String dockIdNetworkDevice = 'network_device';
+const String dockIdPasspoint = 'passpoint';
 const String dockIdBalanceQuery = 'balance_query';
 const String dockIdAcademicCalendar = 'academic_calendar';
 const String dockIdFitnessTest = 'fitness_test';
 const String dockIdNotice = 'notice';
 const String dockIdDownloadedAttachments = 'downloaded_attachments';
 const String dockIdClassScheduleInquiry = 'class_schedule_inquiry';
+const String dockIdCourseCurriculum = 'course_curriculum';
 const String dockIdExamPlan = 'exam_plan';
 const String dockIdZysc = 'zysc';
+const String dockIdLeave = 'leave';
+const String dockIdRepair = 'repair';
 
 const Duration kHttpTimeout = Duration(seconds: 15);
 
@@ -27,3 +35,11 @@ const String kCcylSpCode =
 const String kDefaultUserAgent =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0';
+
+const MethodChannel kUpdateMethodChannel = MethodChannel('bugaoshan/update');
+const MethodChannel kDynamicIconMethodChannel = MethodChannel(
+  'bugaoshan/dynamic_icon',
+);
+const EventChannel kDownloadCancelEventChannel = EventChannel(
+  'bugaoshan/download_cancel',
+);

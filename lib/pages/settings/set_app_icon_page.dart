@@ -1,5 +1,7 @@
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/services/dynamic_icon_service.dart';
+import 'package:bugaoshan/theme_shape.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:flutter/material.dart';
 
 class SetAppIconPage extends StatefulWidget {
@@ -161,7 +163,7 @@ class _IconOption extends StatelessWidget {
     final size = 64.0;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppShapes.large),
       child: Image.asset(
         iconAsset,
         width: size,
@@ -172,7 +174,7 @@ class _IconOption extends StatelessWidget {
           height: size,
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppShapes.large),
           ),
           child: Icon(
             Icons.broken_image,
@@ -187,46 +189,43 @@ class _IconOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 200),
-          opacity: isLoading ? 0.5 : 1.0,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // 图标预览
-                _buildIconPreview(context),
-                const SizedBox(width: 16),
-                // 文字说明
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+    return StyledCard(
+      onTap: onTap,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: isLoading ? 0.5 : 1.0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // 图标预览
+              _buildIconPreview(context),
+              const SizedBox(width: 16),
+              // 文字说明
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                // 选中标记
-                if (isSelected)
-                  Icon(Icons.check_circle, color: theme.colorScheme.primary),
-              ],
-            ),
+              ),
+              // 选中标记
+              if (isSelected)
+                Icon(Icons.check_circle, color: theme.colorScheme.primary),
+            ],
           ),
         ),
       ),

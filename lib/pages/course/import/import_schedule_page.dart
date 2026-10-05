@@ -1,0 +1,678 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:bugaoshan/injection/injector.dart';
+import 'package:bugaoshan/l10n/app_localizations.dart';
+import 'package:bugaoshan/models/course.dart';
+import 'package:bugaoshan/pages/course/import/jwxt_parser.dart' as jwxt_parser;
+import 'package:bugaoshan/providers/app_config_provider.dart';
+import 'package:bugaoshan/providers/course_provider.dart';
+import 'package:bugaoshan/providers/scu_auth_provider.dart';
+import 'package:bugaoshan/services/api/academic_calendar_service.dart';
+import 'package:bugaoshan/services/api/zhjw_api_service.dart';
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
+import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/widgets/dialog/dialog.dart';
+import 'package:bugaoshan/widgets/route/router_utils.dart';
+
+enum ImportMode { share, jwxt, online }
+
+/// 课表名称冲突时的用户选择结果。
+class _NameConflictResult {
+  final bool isCancel;
+  final bool isUpdate;
+  final String? finalName;
+  final String? existingScheduleId;
+
+  _NameConflictResult._({
+    this.isCancel = false,
+    this.isUpdate = false,
+    this.finalName,
+    this.existingScheduleId,
+  });
+
+  factory _NameConflictResult.cancel() => _NameConflictResult._(isCancel: true);
+
+  factory _NameConflictResult.addSuffix(String name) =>
+      _NameConflictResult._(finalName: name);
+
+  factory _NameConflictResult.update(String scheduleId) =>
+      _NameConflictResult._(isUpdate: true, existingScheduleId: scheduleId);
+}
+
+/// 批量导入时的统一操作方式。
+enum _BatchAction { addSuffix, update }
+
+class ImportSchedulePage extends StatefulWidget {
+  final CourseProvider courseProvider;
+  final ImportMode mode;
+
+  const ImportSchedulePage({
+    super.key,
+    required this.courseProvider,
+    this.mode = ImportMode.share,
+  });
+
+  @override
+  State<ImportSchedulePage> createState() => _ImportSchedulePageState();
+}
+
+class _ImportSchedulePageState extends State<ImportSchedulePage> {
+  final _controller = TextEditingController();
+  bool _loading = false;
+  int _currentProgress = 0;
+  int _totalToImport = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _import() async {
+    // online 模式走独立流程
+    if (widget.mode == ImportMode.online) {
+      await _importOnline();
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    try {
+      final data = json.decode(text);
+      ScheduleConfig config;
+      List<Course> courses;
+
+      if (widget.mode == ImportMode.jwxt) {
+        // Prompt for schedule name first
+        final nameController = TextEditingController(
+          text: l10n.importedScheduleName(
+            DateTime.now().month,
+            DateTime.now().day,
+          ),
+        );
+        if (!mounted) return;
+        final newName = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(l10n.importFromJwxt),
+            content: TextField(
+              controller: nameController,
+              autofocus: true,
+              decoration: InputDecoration(hintText: l10n.semesterName),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed: () {
+                  final t = nameController.text.trim();
+                  if (t.isNotEmpty) {
+                    Navigator.pop(context, t);
+                  }
+                },
+                child: Text(l10n.save),
+              ),
+            ],
+          ),
+        );
+
+        if (newName == null) return; // User cancelled
+
+        final parsed = _parseJwxtData(data);
+        config = parsed.config;
+        config.semesterName = newName;
+        courses = parsed.courses;
+      } else {
+        final Map<String, dynamic> mapData = data as Map<String, dynamic>;
+        // Parse config
+        final configJson = mapData['config'] as Map<String, dynamic>;
+        config = ScheduleConfig.fromJson(configJson);
+        // Parse courses
+        final coursesJson = mapData['courses'] as List<dynamic>;
+        courses = coursesJson
+            .map((e) => Course.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+
+      config.id = DateTime.now().millisecondsSinceEpoch.toString();
+      _validateImportedSchedule(config, courses);
+      // 按主导校区自动应用预置时间表（无主导校区时保持原时间表）
+      ScheduleConfig.applyCampusTimeSlotsForCourses(config, courses);
+
+      // Resolve name conflict if any
+      final desiredName = config.semesterName.isEmpty
+          ? l10n.importedScheduleDefaultName
+          : config.semesterName;
+      final resolution = await _resolveNameConflict(desiredName);
+
+      if (resolution == null) {
+        // No conflict — proceed with desired name
+        config.semesterName = desiredName;
+      } else if (resolution.isCancel) {
+        return;
+      } else if (resolution.isUpdate) {
+        // Regenerate IDs to avoid PRIMARY KEY conflicts (source JSON may have
+        // empty or duplicate IDs). copyWith 保留全部字段（含 campus）。
+        final newCourses = courses
+            .map((c) => c.copyWith(id: Course.generateId()))
+            .toList();
+        await widget.courseProvider.replaceScheduleCourses(
+          resolution.existingScheduleId!,
+          newCourses,
+        );
+        // 课程已整体替换，同步按主导校区刷新已有课表的时间表
+        await _applyCampusTimeSlotsToExisting(
+          resolution.existingScheduleId!,
+          newCourses,
+        );
+        if (mounted) {
+          _showSuccessAndPop();
+        }
+        return; // Done
+      } else {
+        // addSuffix
+        config.semesterName = resolution.finalName!;
+      }
+
+      // Save to DB via provider
+      await widget.courseProvider.addSchedule(config);
+      // Switch is automatic in addSchedule, now add courses.
+      // 传入原对象以保留全部字段（含 campus），避免逐字段复制时遗漏；
+      // 分享 JSON 可能带空/重复 ID，重新生成以避免主键冲突。
+      for (var course in courses) {
+        if (course.id.isEmpty) {
+          course = course.copyWith(id: Course.generateId());
+        }
+        await widget.courseProvider.addCourse(course);
+      }
+
+      if (mounted) {
+        _showSuccessAndPop();
+      }
+    } catch (e) {
+      AppLog.e('ImportSchedulePage', 'Import from share error: $e');
+      if (mounted) {
+        unawaited(
+          showInfoDialog(
+            title: l10n.importFailed,
+            content: l10n.importFailedTip,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _importOnline() async {
+    final l10n = AppLocalizations.of(context)!;
+    final authProvider = getIt<ScuAuthProvider>();
+
+    if (!authProvider.isLoggedIn) {
+      if (mounted) {
+        unawaited(
+          showInfoDialog(title: l10n.loginRequired, content: l10n.scuLogin),
+        );
+      }
+      return;
+    }
+
+    // 记录教务处标记为"（当前）"的学期名（剥离后缀后），导入完成后切到它
+    String? currentSemesterCleanName;
+
+    setState(() => _loading = true);
+
+    // 1. 获取学期列表
+    List<({String value, String label})> semesters;
+    try {
+      semesters = await getIt<ZhjwApiService>().fetchSemesters();
+
+      for (final s in semesters) {
+        if (s.label.contains('（当前）') || s.label.contains('(当前)')) {
+          currentSemesterCleanName = _cleanSemesterLabel(s.label);
+          break;
+        }
+      }
+    } on ScuException catch (e) {
+      if (mounted) {
+        unawaited(showInfoDialog(title: l10n.importFailed, content: e.message));
+      }
+      if (mounted) setState(() => _loading = false);
+      return;
+    } catch (e) {
+      AppLog.e('ImportSchedulePage', 'Import online error: $e');
+      if (mounted) {
+        unawaited(
+          showInfoDialog(title: l10n.importFailed, content: l10n.importFailed),
+        );
+        setState(() => _loading = false);
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+
+    if (!mounted) return;
+
+    // 2. 让用户选择学期（单个或全部）—— 下拉框保持显示原始 label（含"（当前）"），方便用户识别
+    String selectedValue = semesters.first.value;
+    // null = 取消, true = 全部导入, false = 导入选中学期
+    final choice = await showDialog<Object>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: Text(l10n.selectSemester),
+            content: DropdownButton<String>(
+              value: selectedValue,
+              isExpanded: true,
+              items: semesters
+                  .map(
+                    (s) =>
+                        DropdownMenuItem(value: s.value, child: Text(s.label)),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setDialogState(() => selectedValue = v);
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'all'),
+                child: Text(l10n.importAll),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'one'),
+                child: Text(l10n.confirm),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (choice == null || !mounted) return;
+
+    final importAll = choice == 'all';
+    final toImport = importAll
+        ? semesters.reversed.toList()
+        : [semesters.firstWhere((s) => s.value == selectedValue)];
+
+    // 批量导入：先检查是否有名称冲突，询问统一操作方式
+    _BatchAction? batchAction;
+    if (importAll) {
+      final hasConflict = toImport.any(
+        (s) => widget.courseProvider.isScheduleNameTaken(
+          _cleanSemesterLabel(s.label),
+        ),
+      );
+      if (hasConflict && mounted) {
+        batchAction = await showDialog<_BatchAction>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.duplicateScheduleName),
+            content: Text(l10n.importAllConflictAction),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, _BatchAction.addSuffix),
+                child: Text(l10n.importAllConflictAddSuffix),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, _BatchAction.update),
+                child: Text(l10n.importAllConflictUpdate),
+              ),
+            ],
+          ),
+        );
+        if (batchAction == null || !mounted) return;
+      }
+    }
+
+    setState(() {
+      _loading = true;
+      _totalToImport = toImport.length;
+      _currentProgress = 0;
+    });
+    try {
+      final importedSchedules = <({String id, String name})>[];
+      for (final semester in toImport) {
+        setState(() => _currentProgress++);
+        final data = await getIt<ZhjwApiService>().fetchJwxtSchedule(
+          planCode: semester.value,
+        );
+        if (!mounted) return;
+
+        // 剥离"（当前）"后缀，教务处用此标记当前学期，但不应出现在课表名中
+        String scheduleName = _cleanSemesterLabel(semester.label);
+
+        // 单个导入时让用户自定义名称
+        if (!importAll) {
+          final nameController = TextEditingController(text: scheduleName);
+          if (!mounted) return;
+          final newName = await showDialog<String>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(l10n.importFromJwxt),
+              content: TextField(
+                controller: nameController,
+                autofocus: true,
+                decoration: InputDecoration(hintText: l10n.semesterName),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l10n.cancel),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final t = nameController.text.trim();
+                    if (t.isNotEmpty) Navigator.pop(ctx, t);
+                  },
+                  child: Text(l10n.save),
+                ),
+              ],
+            ),
+          );
+          if (newName == null || !mounted) return;
+          scheduleName = newName;
+        }
+
+        final parsed = _parseJwxtData(data);
+        final config = parsed.config;
+        config.semesterName = scheduleName;
+        config.id = DateTime.now().millisecondsSinceEpoch.toString();
+        _validateImportedSchedule(config, parsed.courses);
+        // 按主导校区自动应用预置时间表（无主导校区时保持原时间表）
+        ScheduleConfig.applyCampusTimeSlotsForCourses(config, parsed.courses);
+
+        if (!importAll) {
+          // 单个导入：询问用户如何处理名称冲突
+          final resolution = await _resolveNameConflict(scheduleName);
+          if (resolution == null) {
+            // 无冲突，保持原名
+          } else if (resolution.isCancel) {
+            return;
+          } else if (resolution.isUpdate) {
+            await widget.courseProvider.replaceScheduleCourses(
+              resolution.existingScheduleId!,
+              parsed.courses,
+            );
+            // 课程已整体替换，同步按主导校区刷新已有课表的时间表
+            await _applyCampusTimeSlotsToExisting(
+              resolution.existingScheduleId!,
+              parsed.courses,
+            );
+            importedSchedules.add((
+              id: resolution.existingScheduleId!,
+              name: scheduleName,
+            ));
+            continue;
+          } else {
+            config.semesterName = resolution.finalName!;
+          }
+        } else if (batchAction == _BatchAction.update) {
+          // 批量-全部更新：替换已有课表的全部课程
+          final existingId = widget.courseProvider.findScheduleIdByName(
+            scheduleName,
+          );
+          if (existingId != null) {
+            await widget.courseProvider.replaceScheduleCourses(
+              existingId,
+              parsed.courses,
+            );
+            // 课程已整体替换，同步按主导校区刷新已有课表的时间表
+            await _applyCampusTimeSlotsToExisting(existingId, parsed.courses);
+            importedSchedules.add((id: existingId, name: scheduleName));
+            continue;
+          }
+          // existingId == null 表示该学期无冲突，正常添加即可
+        } else if (batchAction == _BatchAction.addSuffix) {
+          // 批量-全部添加后缀：为每个冲突名称追加时间戳
+          if (widget.courseProvider.isScheduleNameTaken(config.semesterName)) {
+            config.semesterName =
+                '${config.semesterName} (${DateTime.now().millisecondsSinceEpoch % 1000})';
+          }
+        }
+        // batchAction == null 表示预检查时无冲突，保持原名正常导入
+
+        await widget.courseProvider.addSchedule(config);
+        for (final course in parsed.courses) {
+          await widget.courseProvider.addCourse(course);
+        }
+        importedSchedules.add((id: config.id, name: config.semesterName));
+      }
+
+      // 导入完成后，将教务处标记为"（当前）"的课表设为当前
+      if (currentSemesterCleanName != null && mounted) {
+        final allSchedules = widget.courseProvider.allSchedules.value;
+        final match = allSchedules.where(
+          (s) => s.semesterName.trim() == currentSemesterCleanName,
+        );
+        if (match.isNotEmpty) {
+          await widget.courseProvider.switchSchedule(match.first.id);
+        }
+      }
+
+      if (mounted) {
+        // 静默根据校历自动设置学期开始日期和周数
+        for (final imported in importedSchedules) {
+          try {
+            final semester = await AcademicCalendarService.findMatchingSemester(
+              imported.name,
+            );
+            if (semester != null) {
+              final allSchedules = widget.courseProvider.allSchedules.value;
+              final schedule = allSchedules
+                  .where((s) => s.id == imported.id)
+                  .firstOrNull;
+              if (schedule != null) {
+                final updated = schedule.copyWith(
+                  semesterStartDate: semester.startDate,
+                  totalWeeks: semester.totalWeeks,
+                );
+                await widget.courseProvider.updateScheduleConfig(updated);
+              }
+            }
+          } catch (_) {
+            // 单个匹配失败不阻断，继续下一个
+          }
+        }
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.importSuccess)));
+
+        if (logicRootContext.mounted &&
+            Navigator.of(logicRootContext).canPop()) {
+          Navigator.of(logicRootContext).pop();
+        }
+      }
+    } on ScuException catch (e) {
+      if (mounted) {
+        unawaited(showInfoDialog(title: l10n.importFailed, content: e.message));
+      }
+    } catch (e) {
+      AppLog.e('ImportSchedulePage', 'Import from jwxt error: $e');
+      if (mounted) {
+        unawaited(
+          showInfoDialog(title: l10n.importFailed, content: l10n.importFailed),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// 剥离教务处学期标签中的"（当前）"标记。
+  String _cleanSemesterLabel(String label) =>
+      jwxt_parser.cleanSemesterLabel(label);
+
+  ({ScheduleConfig config, List<Course> courses}) _parseJwxtData(dynamic data) {
+    final l10n = AppLocalizations.of(context)!;
+    final defaultName = l10n.importedScheduleName(
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    final result = jwxt_parser.parseJwxtData(data, defaultName);
+    getIt<AppConfigProvider>().showWeekend.value = result.hasWeekend;
+    return (config: result.config, courses: result.courses);
+  }
+
+  void _validateImportedSchedule(ScheduleConfig config, List<Course> courses) =>
+      jwxt_parser.validateImportedSchedule(config, courses);
+
+  /// 更新已有课表（仅替换课程）后，按课程主导校区刷新其时间表。
+  ///
+  /// 仅当已有课表的时间表仍是预置（用户未自定义）时才覆盖，避免静默
+  /// 改动用户手动调整过的每节课起止时间。
+  Future<void> _applyCampusTimeSlotsToExisting(
+    String scheduleId,
+    List<Course> courses,
+  ) async {
+    final existing = widget.courseProvider.allSchedules.value
+        .where((s) => s.id == scheduleId)
+        .firstOrNull;
+    if (existing == null) return;
+    if (!ScheduleConfig.isPresetTimeSlots(existing.timeSlots)) return;
+    final slots = ScheduleConfig.campusTimeSlotsForCourses(courses);
+    if (slots == null) return;
+    // 拷贝后再落库，避免原地修改 allSchedules 缓存中的对象，
+    // 造成内存与 DB 状态不一致。
+    await widget.courseProvider.updateScheduleConfig(
+      existing.copyWith(timeSlots: List.of(slots)),
+    );
+  }
+
+  /// 检查课表名称是否冲突，如果冲突则弹出对话框询问用户操作。
+  /// 返回 `null` 表示无冲突（可继续以原名称导入）。
+  Future<_NameConflictResult?> _resolveNameConflict(String desiredName) async {
+    final l10n = AppLocalizations.of(context)!;
+    if (!widget.courseProvider.isScheduleNameTaken(desiredName)) {
+      return null; // No conflict
+    }
+
+    final existingId = widget.courseProvider.findScheduleIdByName(desiredName);
+
+    if (!mounted) return _NameConflictResult.cancel();
+    return showDialog<_NameConflictResult>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.duplicateScheduleName),
+        content: Text(l10n.importNameConflictAction(desiredName)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(
+              ctx,
+              _NameConflictResult.addSuffix(
+                '$desiredName ${l10n.importNameSuffix}',
+              ),
+            ),
+            child: Text(l10n.importNameConflictAddSuffix),
+          ),
+          if (existingId != null)
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, _NameConflictResult.update(existingId)),
+              child: Text(l10n.importNameConflictUpdate),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示导入成功提示并关闭页面。
+  void _showSuccessAndPop() {
+    final l10n = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.importSuccess)));
+    if (logicRootContext.mounted && Navigator.of(logicRootContext).canPop()) {
+      Navigator.of(logicRootContext).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final title = switch (widget.mode) {
+      ImportMode.jwxt => l10n.importFromJwxt,
+      ImportMode.online => l10n.importFromJwxtOnline,
+      ImportMode.share => l10n.importFromShare,
+    };
+
+    if (widget.mode == ImportMode.online) {
+      return Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 16,
+              children: [
+                const Icon(Icons.cloud_download_outlined, size: 64),
+                Text(
+                  l10n.importFromJwxtOnlineHint,
+                  textAlign: TextAlign.center,
+                ),
+                if (_loading && _totalToImport > 1) ...[
+                  LinearProgressIndicator(
+                    value: _totalToImport > 0
+                        ? _currentProgress / _totalToImport
+                        : null,
+                  ),
+                  Text(
+                    l10n.importingProgress(_currentProgress, _totalToImport),
+                  ),
+                ],
+                if (_loading && _totalToImport <= 1)
+                  const CircularProgressIndicator(),
+                if (!_loading)
+                  FilledButton.icon(
+                    onPressed: _import,
+                    icon: const Icon(Icons.download),
+                    label: Text(l10n.importFromJwxtOnline),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        actions: [TextButton(onPressed: _import, child: Text(l10n.save))],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: TextField(
+          controller: _controller,
+          maxLines: null,
+          expands: true,
+          textAlignVertical: TextAlignVertical.top,
+          decoration: InputDecoration(
+            hintText: l10n.importDataHint,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+      ),
+    );
+  }
+}

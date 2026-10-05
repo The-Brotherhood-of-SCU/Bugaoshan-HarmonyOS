@@ -1,8 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app_group_directory/flutter_app_group_directory.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:bugaoshan/utils/app_log.dart';
+
 import 'package:sqflite/sqflite.dart';
 import 'package:bugaoshan/models/balance_record.dart';
 import 'package:bugaoshan/models/course.dart';
@@ -33,12 +37,79 @@ class DatabaseService {
   }
 
   Future<void> init() async {
-    final dir = await getApplicationSupportDirectory();
+    debugPrint('BugaoShan Database: Initializing database...');
+
+    Directory dir;
+    // iOS 使用 App Group 共享目录，让 Widget Extension 也能访问数据库。
+    // macOS 没有 Widget Extension，继续使用应用自己的 Support 目录。
+    if (!kIsWeb && Platform.isIOS) {
+      const appGroupId = 'group.io.github.thebrotherhoodofscu.bugaoshan';
+      try {
+        final appGroupDir = await FlutterAppGroupDirectory.getAppGroupDirectory(
+          appGroupId,
+        );
+        if (appGroupDir != null) {
+          dir = appGroupDir;
+          debugPrint(
+            'BugaoShan Database: Using App Group directory: ${appGroupDir.path}',
+          );
+        } else {
+          debugPrint(
+            'BugaoShan Database: App Group directory is null, using application support directory',
+          );
+          dir = await getApplicationSupportDirectory();
+        }
+      } catch (e) {
+        AppLog.w('DatabaseService', 'Failed to get App Group directory: $e');
+        dir = await getApplicationSupportDirectory();
+      }
+    } else {
+      dir = await getApplicationSupportDirectory();
+    }
     final dbPath = p.join(dir.path, 'bugaoshan.db');
+    debugPrint('BugaoShan Database: Database path: $dbPath');
+
+    // iOS 检查是否需要从旧位置迁移数据库到 App Group。
+    if (!kIsWeb && Platform.isIOS) {
+      try {
+        final oldDir = await getApplicationSupportDirectory();
+        final oldDbPath = p.join(oldDir.path, 'bugaoshan.db');
+        final oldFile = File(oldDbPath);
+        final newFile = File(dbPath);
+
+        if (await oldFile.exists() && !await newFile.exists()) {
+          debugPrint(
+            'BugaoShan Database: Migrating database from old location to App Group directory...',
+          );
+          await oldFile.copy(dbPath);
+          debugPrint(
+            'BugaoShan Database: Database migrated successfully to new location',
+          );
+        } else if (!await oldFile.exists() && !await newFile.exists()) {
+          debugPrint(
+            'BugaoShan Database: No existing database found at either location, will create new one',
+          );
+        } else if (await newFile.exists()) {
+          debugPrint(
+            'BugaoShan Database: Database already exists at App Group directory',
+          );
+        }
+      } catch (e) {
+        AppLog.w('DatabaseService', 'Error during database migration: $e');
+      }
+    }
 
     _db = await openDatabase(
       dbPath,
-      version: 1,
+      version: 2,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          // v2: courses 增加 campus 列（教务处 campusName 字段）
+          await db.execute(
+            "ALTER TABLE courses ADD COLUMN campus TEXT NOT NULL DEFAULT ''",
+          );
+        }
+      },
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE metadata (
@@ -59,6 +130,7 @@ class DatabaseService {
             name TEXT,
             teacher TEXT,
             location TEXT,
+            campus TEXT NOT NULL DEFAULT '',
             start_week INTEGER,
             end_week INTEGER,
             day_of_week INTEGER,
@@ -119,6 +191,7 @@ class DatabaseService {
     'name': course.name,
     'teacher': course.teacher,
     'location': course.location,
+    'campus': course.campus,
     'start_week': course.startWeek,
     'end_week': course.endWeek,
     'day_of_week': course.dayOfWeek,
@@ -135,6 +208,7 @@ class DatabaseService {
       name: row['name'] as String? ?? '',
       teacher: row['teacher'] as String? ?? '',
       location: row['location'] as String? ?? '',
+      campus: row['campus'] as String? ?? '',
       startWeek: row['start_week'] as int,
       endWeek: row['end_week'] as int,
       dayOfWeek: row['day_of_week'] as int,
@@ -167,8 +241,8 @@ class DatabaseService {
 
   List<ScheduleConfig> getAllSchedules() => List.unmodifiable(_schedulesCache);
 
-  ScheduleConfig getScheduleConfig() {
-    if (_schedulesCache.isEmpty) return _placeholderScheduleConfig();
+  ScheduleConfig? getScheduleConfig() {
+    if (_schedulesCache.isEmpty) return null;
     return _schedulesCache.firstWhere(
       (s) => s.id == _currentScheduleId,
       orElse: () => _schedulesCache.first,
@@ -319,18 +393,6 @@ class DatabaseService {
   }
 
   // ==================== Helpers ====================
-
-  /// 占位用 ScheduleConfig，仅在 _schedulesCache 为空时返回，
-  /// 用于周次/总周数等算术保护，**不会**被持久化。
-  ScheduleConfig _placeholderScheduleConfig() {
-    final now = DateTime.now();
-    return ScheduleConfig(
-      id: '',
-      semesterName: '',
-      semesterStartDate: now.toMonday(),
-      totalWeeks: 20,
-    );
-  }
 
   Map<String, dynamic> _decodeJson(String str) =>
       Map<String, dynamic>.from(json.decode(str) as Map);

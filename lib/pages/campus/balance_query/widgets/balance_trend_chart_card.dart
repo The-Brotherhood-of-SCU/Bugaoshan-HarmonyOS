@@ -4,6 +4,7 @@ import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/campus/balance_query/widgets/balance_trend_format.dart';
 import 'package:bugaoshan/services/balance/balance_trend_calculator.dart';
 import 'package:bugaoshan/utils/beijing_time.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 
 /// 余额趋势折线图卡片。
 ///
@@ -29,7 +30,7 @@ class BalanceTrendChartCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     if (isLoading) {
-      return Card(
+      return StyledCard(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(8, 20, 16, 8),
           child: Column(
@@ -60,7 +61,7 @@ class BalanceTrendChartCard extends StatelessWidget {
     }
 
     if (trend.dailyPoints.isEmpty) {
-      return Card(
+      return StyledCard(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -103,7 +104,11 @@ class BalanceTrendChartCard extends StatelessWidget {
     minY -= padding;
     maxY += padding;
 
-    return Card(
+    // 底部日期标签去重状态:fl_chart 边界处可能生成同一天的重复刻度,
+    // 闭包内按日期字符串去重,同一天只显示第一个标签。
+    String? lastShownBottomDate;
+
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 20, 16, 8),
         child: Column(
@@ -123,7 +128,12 @@ class BalanceTrendChartCard extends StatelessWidget {
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    horizontalInterval: niceInterval(minY, maxY),
+                    horizontalInterval: niceInterval(
+                      minY,
+                      maxY,
+                      chartHeight: 240,
+                      minPixelSpacing: 40,
+                    ),
                     getDrawingHorizontalLine: (v) => FlLine(
                       color: theme.colorScheme.outlineVariant.withValues(
                         alpha: 0.5,
@@ -144,15 +154,54 @@ class BalanceTrendChartCard extends StatelessWidget {
                         showTitles: true,
                         reservedSize: 32,
                         interval: niceTimeInterval(minX, maxX),
-                        getTitlesWidget: (value, meta) =>
-                            _bottomTitle(context, value, meta, minX, maxX),
+                        getTitlesWidget: (value, meta) {
+                          final range = maxX - minX;
+                          if (range <= 0) return const SizedBox.shrink();
+                          final pos = (value - minX) / range;
+                          if ((pos - pos.round()).abs() > 0.02) {
+                            return const SizedBox.shrink();
+                          }
+                          final dt = DateTime.fromMillisecondsSinceEpoch(
+                            value.toInt(),
+                            isUtc: true,
+                          );
+                          final dateStr = formatBeijing(dt, 'MM/dd');
+                          // fl_chart 边界处会同时生成 interval 序列末尾刻度
+                          // 与 max(或 min 与序列首刻度),两者可能落在同一天且都
+                          // 通过 pos 过滤,导致左下角出现两个相同日期标签重叠。
+                          // 按日期去重,同一天只保留第一个标签。
+                          if (dateStr == lastShownBottomDate) {
+                            return const SizedBox.shrink();
+                          }
+                          lastShownBottomDate = dateStr;
+                          return SideTitleWidget(
+                            meta: meta,
+                            child: Text(
+                              dateStr,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(fontSize: 10),
+                            ),
+                          );
+                        },
                       ),
                     ),
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 48,
-                        interval: niceInterval(minY, maxY),
+                        // 数据范围很窄时(如照明电量在 272.x 附近波动),
+                        // 边界刻度(min/max)会与相邻 interval 刻度几乎重合,
+                        // 顶部标签与相邻刻度重叠。关闭边界刻度,只保留
+                        // 均匀间隔的刻度,并保证刻度像素间距不小于标签高度。
+                        minIncluded: false,
+                        maxIncluded: false,
+                        interval: niceInterval(
+                          minY,
+                          maxY,
+                          chartHeight: 240,
+                          minPixelSpacing: 40,
+                        ),
                         getTitlesWidget: (value, meta) =>
                             _leftTitle(value, meta, theme),
                       ),
@@ -209,29 +258,6 @@ class BalanceTrendChartCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _bottomTitle(
-    BuildContext context,
-    double value,
-    TitleMeta meta,
-    double minX,
-    double maxX,
-  ) {
-    final range = maxX - minX;
-    if (range <= 0) return const SizedBox.shrink();
-    final pos = (value - minX) / range;
-    if ((pos - pos.round()).abs() > 0.02) {
-      return const SizedBox.shrink();
-    }
-    final dt = DateTime.fromMillisecondsSinceEpoch(value.toInt(), isUtc: true);
-    return SideTitleWidget(
-      meta: meta,
-      child: Text(
-        formatBeijing(dt, 'MM/dd'),
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10),
       ),
     );
   }

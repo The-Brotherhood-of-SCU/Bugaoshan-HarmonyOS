@@ -1,4 +1,5 @@
 import java.util.Properties
+import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 
 plugins {
     id("com.android.application")
@@ -14,6 +15,12 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
+    // 关闭依赖信息块，F-Droid 会检查 APK 中不能有 AGP 自动注入的依赖元数据签名块，否则直接拒绝。
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     namespace = "io.github.the_brotherhood_of_scu.bugaoshan"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -64,6 +71,20 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+        }
+    }
+}
+
+// F-Droid ABI split 版本号方案：versionCode = base*10 + abiCode
+// （base 来自 pubspec.yaml 的 +N / flutter build --build-number）
+// 见 https://f-droid.org/en/docs/Submitting_to_F-Droid_Quick_Start_Guide/#setup-abi-split
+val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86_64" to 4)
+android.applicationVariants.configureEach {
+    val variant = this
+    variant.outputs.forEach { output ->
+        val abiVersionCode = abiCodes[output.filters.find { it.filterType == "ABI" }?.identifier]
+        if (abiVersionCode != null) {
+            (output as ApkVariantOutputImpl).versionCodeOverride = variant.versionCode * 10 + abiVersionCode
         }
     }
 }

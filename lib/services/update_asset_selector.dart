@@ -1,5 +1,6 @@
+import 'dart:io';
+
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 
 enum UpdateAssetPlatform { android, windows, linux }
 
@@ -24,7 +25,7 @@ class AndroidArchProvider {
     if (_loaded) return _cachedArch;
     _loaded = true;
 
-    if (!AppPlatform.isAndroid) return null;
+    if (!Platform.isAndroid) return null;
 
     try {
       final deviceInfo = DeviceInfoPlugin();

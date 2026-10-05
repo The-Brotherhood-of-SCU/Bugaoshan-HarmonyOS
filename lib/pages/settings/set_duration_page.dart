@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 
 class SetDurationPage extends StatefulWidget {
   const SetDurationPage({super.key});
@@ -78,25 +78,26 @@ class _SetDurationPageState extends State<SetDurationPage> {
       appBar: AppBar(
         centerTitle: false,
         title: Text(appLang.animationDuration),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              ),
-              onPressed: _confirmChanges,
-              child: Text(appLang.confirmButton),
-            ),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            ValueListenableBuilder<bool>(
+              valueListenable: appConfigService.enablePageTransitionAnimation,
+              builder: (context, enabled, _) {
+                return SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(appLang.enablePageTransitionAnimation),
+                  subtitle: Text(appLang.enablePageTransitionAnimationHint),
+                  value: enabled,
+                  onChanged: (v) =>
+                      appConfigService.enablePageTransitionAnimation.value = v,
+                );
+              },
+            ),
+            const Divider(),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: Text(
@@ -159,6 +160,18 @@ class _SetDurationPageState extends State<SetDurationPage> {
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                ),
+                onPressed: _confirmChanges,
+                child: Text(appLang.confirmButton),
               ),
             ),
           ],

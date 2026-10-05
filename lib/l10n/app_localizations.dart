@@ -106,7 +106,7 @@ abstract class AppLocalizations {
   /// No description provided for @bugaoshan.
   ///
   /// In en, this message translates to:
-  /// **'不高山上'**
+  /// **'Bugaoshan'**
   String get bugaoshan;
 
   /// No description provided for @selfLanguage.
@@ -118,7 +118,7 @@ abstract class AppLocalizations {
   /// No description provided for @wizardWelcomeTitle.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to 不高山上'**
+  /// **'Welcome to Bugaoshan'**
   String get wizardWelcomeTitle;
 
   /// No description provided for @wizardWelcomeDesc.
@@ -252,6 +252,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show next day\'s courses after today\'s classes finish'**
   String get widgetShowTomorrowAfterEnd;
+
+  /// No description provided for @widgetAppearanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Widget Appearance'**
+  String get widgetAppearanceTitle;
+
+  /// No description provided for @widgetAppearanceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize every Bugaoshan course widget on this device.'**
+  String get widgetAppearanceDescription;
+
+  /// No description provided for @widgetColorStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get widgetColorStyle;
+
+  /// No description provided for @widgetColorful.
+  ///
+  /// In en, this message translates to:
+  /// **'Course colors'**
+  String get widgetColorful;
+
+  /// No description provided for @widgetMonochrome.
+  ///
+  /// In en, this message translates to:
+  /// **'Monochrome'**
+  String get widgetMonochrome;
+
+  /// No description provided for @widgetDensity.
+  ///
+  /// In en, this message translates to:
+  /// **'Information density'**
+  String get widgetDensity;
+
+  /// No description provided for @widgetDensityStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get widgetDensityStandard;
+
+  /// No description provided for @widgetDensityCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact'**
+  String get widgetDensityCompact;
+
+  /// No description provided for @widgetSystemAppearanceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'On iOS 26 and later, Clear and Tinted Home Screen appearances automatically use the system glass or tint treatment.'**
+  String get widgetSystemAppearanceHint;
 
   /// No description provided for @onboardingSkip.
   ///
@@ -547,6 +601,18 @@ abstract class AppLocalizations {
   /// **'Hint: Adjust the slider to preview the animation, click Confirm to save the settings'**
   String get animationDurationHint;
 
+  /// No description provided for @enablePageTransitionAnimation.
+  ///
+  /// In en, this message translates to:
+  /// **'Dock Page Transition Animation'**
+  String get enablePageTransitionAnimation;
+
+  /// No description provided for @enablePageTransitionAnimationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable slide and fade animation when switching Dock pages'**
+  String get enablePageTransitionAnimationHint;
+
   /// No description provided for @themeColor.
   ///
   /// In en, this message translates to:
@@ -631,29 +697,17 @@ abstract class AppLocalizations {
   /// **'About'**
   String get about;
 
+  /// No description provided for @userManual.
+  ///
+  /// In en, this message translates to:
+  /// **'User Manual'**
+  String get userManual;
+
   /// No description provided for @developmentTeam.
   ///
   /// In en, this message translates to:
   /// **'Dev Team'**
   String get developmentTeam;
-
-  /// No description provided for @developerAndOperator.
-  ///
-  /// In en, this message translates to:
-  /// **'Developer and Operator'**
-  String get developerAndOperator;
-
-  /// No description provided for @openSourceMaintenanceTeam.
-  ///
-  /// In en, this message translates to:
-  /// **'Open-source Maintenance Team'**
-  String get openSourceMaintenanceTeam;
-
-  /// No description provided for @openSourceProjectCopyright.
-  ///
-  /// In en, this message translates to:
-  /// **'Open-source project © 2026 The-Brotherhood-of-SCU'**
-  String get openSourceProjectCopyright;
 
   /// No description provided for @projectInfo.
   ///
@@ -682,7 +736,7 @@ abstract class AppLocalizations {
   /// No description provided for @appDescription.
   ///
   /// In en, this message translates to:
-  /// **'Explore everything with 不高山上'**
+  /// **'Explore everything, all on the Bugaoshan'**
   String get appDescription;
 
   /// No description provided for @contactUs.
@@ -708,6 +762,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Repository'**
   String get projectRepository;
+
+  /// No description provided for @officialWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Website'**
+  String get officialWebsite;
 
   /// No description provided for @checkForUpdates.
   ///
@@ -774,6 +834,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Affects only the automatic checks on the home and about pages. The test page always checks both channels.'**
   String get usePreviewUpdateSourceHint;
+
+  /// Toggle in the developer page to force the CAPTCHA dialog when downloading attachments, for testing the CAPTCHA flow.
+  ///
+  /// In en, this message translates to:
+  /// **'Force CAPTCHA for Download'**
+  String get forceCaptchaForDownload;
+
+  /// No description provided for @forceCaptchaForDownloadHint.
+  ///
+  /// In en, this message translates to:
+  /// **'When enabled, tapping an attachment download will show the CAPTCHA dialog for testing.'**
+  String get forceCaptchaForDownloadHint;
+
+  /// No description provided for @captchaDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter CAPTCHA'**
+  String get captchaDialogTitle;
+
+  /// No description provided for @captchaCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'CAPTCHA cancelled'**
+  String get captchaCancelled;
 
   /// No description provided for @downloading.
   ///
@@ -1045,6 +1129,12 @@ abstract class AppLocalizations {
   /// **'Week {week}'**
   String currentWeek(Object week);
 
+  /// No description provided for @notStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Started'**
+  String get notStarted;
+
   /// No description provided for @thisWeek.
   ///
   /// In en, this message translates to:
@@ -1158,6 +1248,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fetch current teaching week from academic system'**
   String get autoFetchCurrentWeekHint;
+
+  /// No description provided for @autoFetchCurrentWeekOnVacation.
+  ///
+  /// In en, this message translates to:
+  /// **'No teaching week is available during vacation. Schedule unchanged.'**
+  String get autoFetchCurrentWeekOnVacation;
 
   /// No description provided for @fetchingCurrentWeek.
   ///
@@ -1309,6 +1405,18 @@ abstract class AppLocalizations {
   /// **'Remove Background Image'**
   String get removeBackgroundImage;
 
+  /// No description provided for @editBackgroundArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust Visible Area'**
+  String get editBackgroundArea;
+
+  /// No description provided for @cropEditorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to reposition, pinch or scroll to zoom.'**
+  String get cropEditorHint;
+
   /// No description provided for @backgroundImageOpacity.
   ///
   /// In en, this message translates to:
@@ -1332,6 +1440,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show Location'**
   String get showLocation;
+
+  /// No description provided for @showCourseWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Course Weeks'**
+  String get showCourseWeeks;
 
   /// No description provided for @showWeekend.
   ///
@@ -1374,12 +1488,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Next'**
   String get next;
-
-  /// No description provided for @delete.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete'**
-  String get delete;
 
   /// No description provided for @customColor.
   ///
@@ -1489,11 +1597,11 @@ abstract class AppLocalizations {
   /// **'Schedule imported successfully'**
   String get importSuccess;
 
-  /// No description provided for @importFailed.
+  /// No description provided for @importFailedTip.
   ///
   /// In en, this message translates to:
-  /// **'Import failed'**
-  String get importFailed;
+  /// **'Import failed, please check data format or log back in.'**
+  String get importFailedTip;
 
   /// No description provided for @importedScheduleDefaultName.
   ///
@@ -1615,6 +1723,12 @@ abstract class AppLocalizations {
   /// **'Import failed'**
   String get exportScheduleAddToCalendarFailed;
 
+  /// No description provided for @exportScheduleAddToCalendarEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No courses to import'**
+  String get exportScheduleAddToCalendarEmpty;
+
   /// No description provided for @exportScheduleSelectCalendar.
   ///
   /// In en, this message translates to:
@@ -1632,6 +1746,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **' (Copy)'**
   String get copySuffix;
+
+  /// No description provided for @copyCourseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Copy'**
+  String get copyCourseTitle;
+
+  /// No description provided for @copyCourseSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Copy'**
+  String get copyCourseSave;
 
   /// No description provided for @notThisWeek.
   ///
@@ -1795,6 +1921,12 @@ abstract class AppLocalizations {
   /// **'Student ID'**
   String get studentId;
 
+  /// No description provided for @studentIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your student ID'**
+  String get studentIdHint;
+
   /// No description provided for @studentIdRequired.
   ///
   /// In en, this message translates to:
@@ -1807,6 +1939,12 @@ abstract class AppLocalizations {
   /// **'Password'**
   String get password;
 
+  /// No description provided for @passwordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your password'**
+  String get passwordHint;
+
   /// No description provided for @passwordRequired.
   ///
   /// In en, this message translates to:
@@ -1818,6 +1956,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Captcha'**
   String get captcha;
+
+  /// No description provided for @captchaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Captcha'**
+  String get captchaHint;
 
   /// No description provided for @captchaRequired.
   ///
@@ -1849,23 +1993,137 @@ abstract class AppLocalizations {
   /// **'Login'**
   String get loginButton;
 
-  /// No description provided for @captchaLoadFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed to load captcha'**
-  String get captchaLoadFailed;
-
   /// No description provided for @captchaNotLoaded.
   ///
   /// In en, this message translates to:
   /// **'Please load the captcha first'**
   String get captchaNotLoaded;
 
-  /// No description provided for @networkError.
+  /// No description provided for @resetPassword.
   ///
   /// In en, this message translates to:
-  /// **'Network error'**
-  String get networkError;
+  /// **'Reset Password'**
+  String get resetPassword;
+
+  /// No description provided for @resetPasswordStepAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get resetPasswordStepAccount;
+
+  /// No description provided for @resetPasswordStepVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification'**
+  String get resetPasswordStepVerify;
+
+  /// No description provided for @resetPasswordStepReset.
+  ///
+  /// In en, this message translates to:
+  /// **'New Password'**
+  String get resetPasswordStepReset;
+
+  /// No description provided for @resetPasswordNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get resetPasswordNext;
+
+  /// No description provided for @resetPasswordChooseMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'You are resetting your login password. Choose a verification method:'**
+  String get resetPasswordChooseMethod;
+
+  /// No description provided for @resetPasswordViaSms.
+  ///
+  /// In en, this message translates to:
+  /// **'Via SMS'**
+  String get resetPasswordViaSms;
+
+  /// No description provided for @resetPasswordSmsTip.
+  ///
+  /// In en, this message translates to:
+  /// **'A verification code will be sent via SMS to your phone {phone}'**
+  String resetPasswordSmsTip(String phone);
+
+  /// No description provided for @resetPasswordViaEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Via Email'**
+  String get resetPasswordViaEmail;
+
+  /// No description provided for @resetPasswordEmailTip.
+  ///
+  /// In en, this message translates to:
+  /// **'A verification code will be sent via email to {email}'**
+  String resetPasswordEmailTip(String email);
+
+  /// No description provided for @resetPasswordSendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Code'**
+  String get resetPasswordSendCode;
+
+  /// No description provided for @resetPasswordResendAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend in {seconds}s'**
+  String resetPasswordResendAfter(int seconds);
+
+  /// No description provided for @resetPasswordCodeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter the 6-digit verification code'**
+  String get resetPasswordCodeRequired;
+
+  /// No description provided for @resetPasswordNewPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New Password'**
+  String get resetPasswordNewPasswordLabel;
+
+  /// No description provided for @resetPasswordConfirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get resetPasswordConfirmPasswordLabel;
+
+  /// No description provided for @resetPasswordPasswordMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get resetPasswordPasswordMismatch;
+
+  /// No description provided for @resetPasswordPolicyTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 8 characters and contain upper/lower case letters, digits and special characters'**
+  String get resetPasswordPolicyTip;
+
+  /// No description provided for @resetPasswordPolicyInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Password does not meet the requirements'**
+  String get resetPasswordPolicyInvalid;
+
+  /// No description provided for @resetPasswordSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get resetPasswordSubmit;
+
+  /// No description provided for @resetPasswordSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset successfully. Please log in with your new password.'**
+  String get resetPasswordSuccess;
+
+  /// No description provided for @resetPasswordBackToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Login'**
+  String get resetPasswordBackToLogin;
 
   /// No description provided for @gradesStats.
   ///
@@ -2347,6 +2605,12 @@ abstract class AppLocalizations {
   /// **'Courses'**
   String get planCompletionCourses;
 
+  /// No description provided for @planCompletionPlanFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Training Program'**
+  String get planCompletionPlanFallback;
+
   /// No description provided for @planCompletionRateLimited.
   ///
   /// In en, this message translates to:
@@ -2809,11 +3073,161 @@ abstract class AppLocalizations {
   /// **'Operation successful'**
   String get networkDeviceOperationSuccess;
 
-  /// No description provided for @loginFailed.
+  /// No description provided for @passpointTitle.
   ///
   /// In en, this message translates to:
-  /// **'Login failed'**
-  String get loginFailed;
+  /// **'Passive Authentication'**
+  String get passpointTitle;
+
+  /// No description provided for @passpointDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Bind device MAC to auto authenticate on campus network'**
+  String get passpointDesc;
+
+  /// No description provided for @passpointAddDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Device'**
+  String get passpointAddDevice;
+
+  /// No description provided for @passpointUserInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'User Information'**
+  String get passpointUserInfo;
+
+  /// No description provided for @passpointUserGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'User Group'**
+  String get passpointUserGroup;
+
+  /// No description provided for @passpointAccountState.
+  ///
+  /// In en, this message translates to:
+  /// **'Account State'**
+  String get passpointAccountState;
+
+  /// No description provided for @passpointOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get passpointOnline;
+
+  /// No description provided for @passpointOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get passpointOffline;
+
+  /// No description provided for @passpointMyDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'My Devices'**
+  String get passpointMyDevices;
+
+  /// No description provided for @passpointExpireTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Expire Time'**
+  String get passpointExpireTime;
+
+  /// No description provided for @passpointExpireLongest.
+  ///
+  /// In en, this message translates to:
+  /// **'Max 6 years'**
+  String get passpointExpireLongest;
+
+  /// No description provided for @passpointExit.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Exit'**
+  String get passpointExit;
+
+  /// No description provided for @passpointMac.
+  ///
+  /// In en, this message translates to:
+  /// **'MAC Address'**
+  String get passpointMac;
+
+  /// No description provided for @passpointCancelAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Passive Auth'**
+  String get passpointCancelAuth;
+
+  /// No description provided for @passpointCancelAuthConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to cancel passive authentication for this device?'**
+  String get passpointCancelAuthConfirm;
+
+  /// No description provided for @passpointOperationSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Operation successful'**
+  String get passpointOperationSuccess;
+
+  /// No description provided for @operationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Operation failed'**
+  String get operationFailed;
+
+  /// No description provided for @passpointMacRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter MAC'**
+  String get passpointMacRequired;
+
+  /// No description provided for @passpointMacInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid MAC format, need 12 hex digits'**
+  String get passpointMacInvalid;
+
+  /// No description provided for @passpointExpireRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter binding validity'**
+  String get passpointExpireRequired;
+
+  /// No description provided for @passpointExpireInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Validity must be between 0 and 365'**
+  String get passpointExpireInvalid;
+
+  /// No description provided for @passpointExpireHint.
+  ///
+  /// In en, this message translates to:
+  /// **'0-365 days, 0 means max 6 years'**
+  String get passpointExpireHint;
+
+  /// No description provided for @passpointAddWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Note: once passive authentication is enabled, the device will auto join the campus network and dormitory traffic will be billed. Please use with caution!'**
+  String get passpointAddWarning;
+
+  /// No description provided for @captchaLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load captcha'**
+  String get captchaLoadFailed;
+
+  /// No description provided for @networkError.
+  ///
+  /// In en, this message translates to:
+  /// **'Network error'**
+  String get networkError;
+
+  /// No description provided for @calendarRefreshSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar updated'**
+  String get calendarRefreshSuccess;
 
   /// No description provided for @invalidCaptcha.
   ///
@@ -2826,6 +3240,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Login failed, {count} more attempt(s) will lock your account'**
   String loginFailedWillLock(int count);
+
+  /// No description provided for @loginSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged in successfully'**
+  String get loginSuccess;
 
   /// No description provided for @ccylBindFailed.
   ///
@@ -2844,6 +3264,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to offline device'**
   String get networkOfflineFailed;
+
+  /// No description provided for @importFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed'**
+  String get importFailed;
 
   /// No description provided for @balanceQuery.
   ///
@@ -3175,6 +3601,12 @@ abstract class AppLocalizations {
   /// **'We do not collect any personal information'**
   String get scuLoginDisclaimerPrivacy;
 
+  /// No description provided for @scuLoginPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is the unified identity authentication password, not the academic affairs password'**
+  String get scuLoginPasswordHint;
+
   /// No description provided for @openSourceLicenseDesc.
   ///
   /// In en, this message translates to:
@@ -3402,6 +3834,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Network'**
   String get dockLabelNetworkDevice;
+
+  /// No description provided for @dockLabelPasspoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Passive'**
+  String get dockLabelPasspoint;
 
   /// No description provided for @dockLabelBalanceQuery.
   ///
@@ -3727,6 +4165,36 @@ abstract class AppLocalizations {
   /// **'Widget pinning is not supported on this device'**
   String get pinWidgetNotSupported;
 
+  /// No description provided for @pinWidgetRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin request sent — confirm in the system dialog to add the widget'**
+  String get pinWidgetRequested;
+
+  /// No description provided for @pinWidgetFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Widget Not Added'**
+  String get pinWidgetFailedTitle;
+
+  /// No description provided for @pinWidgetFailedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'No system confirmation dialog appeared. The request may have been blocked by a system permission (some systems require the \"Create desktop shortcuts\" permission). Please grant it in Settings and try again, or long-press an empty area of the home screen to add the widget manually.'**
+  String get pinWidgetFailedDesc;
+
+  /// No description provided for @pinWidgetOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get pinWidgetOpenSettings;
+
+  /// No description provided for @pinWidgetDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Got It'**
+  String get pinWidgetDismiss;
+
   /// No description provided for @pinWidgetHint.
   ///
   /// In en, this message translates to:
@@ -3840,6 +4308,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open'**
   String get open;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
 
   /// No description provided for @noDownloadedAttachments.
   ///
@@ -4099,6 +4573,90 @@ abstract class AppLocalizations {
   /// **'Load More'**
   String get classScheduleInquiryLoadMore;
 
+  /// No description provided for @dockLabelCourseCurriculum.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Table'**
+  String get dockLabelCourseCurriculum;
+
+  /// No description provided for @courseCurriculum.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Curriculum'**
+  String get courseCurriculum;
+
+  /// No description provided for @courseCurriculumDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'View schedules for each course section'**
+  String get courseCurriculumDesc;
+
+  /// No description provided for @courseCurriculumNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No course data'**
+  String get courseCurriculumNoData;
+
+  /// No description provided for @courseCurriculumNoSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'No schedule data'**
+  String get courseCurriculumNoSchedule;
+
+  /// No description provided for @courseCurriculumFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get courseCurriculumFilter;
+
+  /// No description provided for @courseCurriculumSemester.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester'**
+  String get courseCurriculumSemester;
+
+  /// No description provided for @courseCurriculumDepartment.
+  ///
+  /// In en, this message translates to:
+  /// **'Department'**
+  String get courseCurriculumDepartment;
+
+  /// No description provided for @courseCurriculumCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Category'**
+  String get courseCurriculumCategory;
+
+  /// No description provided for @courseCurriculumCourseName.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Name'**
+  String get courseCurriculumCourseName;
+
+  /// No description provided for @courseCurriculumCourseCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Code'**
+  String get courseCurriculumCourseCode;
+
+  /// No description provided for @courseCurriculumCourseSeq.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Seq'**
+  String get courseCurriculumCourseSeq;
+
+  /// No description provided for @courseCurriculumSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get courseCurriculumSearch;
+
+  /// No description provided for @courseCurriculumLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load More'**
+  String get courseCurriculumLoadMore;
+
   /// Shows total holiday days, e.g. '3-day holiday'
   ///
   /// In en, this message translates to:
@@ -4140,6 +4698,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use grid layout for campus page'**
   String get campusGridViewDesc;
+
+  /// No description provided for @campusSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search features'**
+  String get campusSearchHint;
+
+  /// No description provided for @campusSearchResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Results'**
+  String get campusSearchResults;
+
+  /// No description provided for @campusNoSearchResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching features'**
+  String get campusNoSearchResults;
 
   /// No description provided for @viewChangelog.
   ///
@@ -4351,17 +4927,983 @@ abstract class AppLocalizations {
   /// **'Dynamic icon switching is not supported on this platform'**
   String get iconSwitchNotSupported;
 
+  /// No description provided for @featureNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This feature is not supported on this platform'**
+  String get featureNotSupported;
+
   /// No description provided for @newIconSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'不高山上 New Icon'**
+  /// **'Bugaoshan New Icon'**
   String get newIconSubtitle;
 
   /// No description provided for @oldIconSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'不高山上 Classic Icon'**
+  /// **'Bugaoshan Classic Icon'**
   String get oldIconSubtitle;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @onVacation.
+  ///
+  /// In en, this message translates to:
+  /// **'On Vacation'**
+  String get onVacation;
+
+  /// No description provided for @vacationBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Vacation'**
+  String get vacationBadge;
+
+  /// No description provided for @daysUntilVacation.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days until vacation'**
+  String daysUntilVacation(int days);
+
+  /// No description provided for @daysUntilNextSemester.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days until next semester classes'**
+  String daysUntilNextSemester(int days);
+
+  /// No description provided for @nextSemester.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Semester'**
+  String get nextSemester;
+
+  /// No description provided for @registrationDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration: {start} - {end}'**
+  String registrationDates(String start, String end);
+
+  /// No description provided for @enjoyVacation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enjoy your vacation~'**
+  String get enjoyVacation;
+
+  /// No description provided for @viewNextSemesterSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'View Next Semester Schedule'**
+  String get viewNextSemesterSchedule;
+
+  /// No description provided for @noNextSemesterSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Next semester schedule not imported'**
+  String get noNextSemesterSchedule;
+
+  /// No description provided for @promptSwitchSemester.
+  ///
+  /// In en, this message translates to:
+  /// **'The next semester is about to begin. Switch to next semester schedule?'**
+  String get promptSwitchSemester;
+
+  /// No description provided for @promptSwitchSemesterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch Schedule'**
+  String get promptSwitchSemesterTitle;
+
+  /// No description provided for @switchSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get switchSchedule;
+
+  /// No description provided for @teamIntroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'About the Team'**
+  String get teamIntroTitle;
+
+  /// No description provided for @teamIntroDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The-Brotherhood-of-SCU is an unofficial open-source organization of Sichuan University, maintained by a group of SCU students who are passionate about technology and campus life. Our goal is to build practical campus tools for SCU students through open-source collaboration.'**
+  String get teamIntroDesc;
+
+  /// No description provided for @teamJoinUsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join Us'**
+  String get teamJoinUsTitle;
+
+  /// No description provided for @teamContributeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'We welcome all forms of contributions, including submitting Issues, providing feedback, initiating Pull Requests, or improving documentation.'**
+  String get teamContributeDesc;
+
+  /// No description provided for @teamContributeClosing.
+  ///
+  /// In en, this message translates to:
+  /// **'The growth of the project depends on every contributor. We look forward to your participation.'**
+  String get teamContributeClosing;
+
+  /// Section title for quick preset time slot settings
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Setting'**
+  String get quickSetting;
+
+  /// Preset name for SCU Jiang'an campus time slots
+  ///
+  /// In en, this message translates to:
+  /// **'Jiang\'an Campus (SCU)'**
+  String get presetJiangAn;
+
+  /// Preset name for SCU Wangjiang/Huaxi campus time slots
+  ///
+  /// In en, this message translates to:
+  /// **'Wangjiang/Huaxi Campus (SCU)'**
+  String get presetWangJiangHuaXi;
+
+  /// Hint for SCU preset time slot configuration
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-set 4-5-3 sections with corresponding times'**
+  String get presetScuHint;
+
+  /// Snackbar message when a time slot preset is applied
+  ///
+  /// In en, this message translates to:
+  /// **'Applied {campus} time slot preset'**
+  String appliedPreset(String campus);
+
+  /// Label for preset time slot configuration
+  ///
+  /// In en, this message translates to:
+  /// **'Preset'**
+  String get presetLabel;
+
+  /// Number of classrooms found, e.g. '12 rooms'
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =1{1 room} other{{count} rooms}}'**
+  String roomCount(int count);
+
+  /// Total hours label for CCYL credit list, e.g. 'Total Hours: 120'
+  ///
+  /// In en, this message translates to:
+  /// **'Total Hours: {hours}'**
+  String totalHours(String hours);
+
+  /// Label for sort mode selector
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by'**
+  String get sortBy;
+
+  /// Reset button label
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get reset;
+
+  /// Label for file type filter
+  ///
+  /// In en, this message translates to:
+  /// **'File type'**
+  String get fileType;
+
+  /// Label for 'All' option in filters
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get all;
+
+  /// Tooltip for manage/selection mode toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get manage;
+
+  /// Tooltip for filter button
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filter;
+
+  /// Course attribute: required course
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get courseAttrRequired;
+
+  /// Course attribute: elective course
+  ///
+  /// In en, this message translates to:
+  /// **'Elective'**
+  String get courseAttrElective;
+
+  /// Course attribute: optional course
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get courseAttrOptional;
+
+  /// Generic label for person name
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get nameLabel;
+
+  /// Generic label for sex/gender
+  ///
+  /// In en, this message translates to:
+  /// **'Sex'**
+  String get sexLabel;
+
+  /// Generic label for student ID number
+  ///
+  /// In en, this message translates to:
+  /// **'Student ID'**
+  String get studentIdLabel;
+
+  /// Generic label for identity/role
+  ///
+  /// In en, this message translates to:
+  /// **'Identity'**
+  String get identityLabel;
+
+  /// Generic label for email address
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get emailLabel;
+
+  /// Generic label for phone number
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get phoneLabel;
+
+  /// Generic label for college/department
+  ///
+  /// In en, this message translates to:
+  /// **'College'**
+  String get collegeLabel;
+
+  /// Refresh button tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refresh;
+
+  /// Grade suffix format, e.g. 'Grade 2024'
+  ///
+  /// In en, this message translates to:
+  /// **'Grade {grade}'**
+  String gradeSuffix(String grade);
+
+  /// Campus name suffix, e.g. 'Jiang'an Campus'
+  ///
+  /// In en, this message translates to:
+  /// **'{campusName} Campus'**
+  String campusSuffix(String campusName);
+
+  /// Label indicating an exam has already ended
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get examEnded;
+
+  /// Price per unit with unit, e.g. '0.50 CNY/kWh'
+  ///
+  /// In en, this message translates to:
+  /// **'{price} CNY/kWh'**
+  String pricePerUnitValue(String price);
+
+  /// Error message when room binding verification fails
+  ///
+  /// In en, this message translates to:
+  /// **'Verification failed, please check your information'**
+  String get verifyFailedCheckInfo;
+
+  /// Error message when CCYL OAuth authorization code retrieval fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to get authorization code'**
+  String get getAuthCodeFailed;
+
+  /// Hint for adding widget on iOS home screen
+  ///
+  /// In en, this message translates to:
+  /// **'Long press on the iOS home screen, select the Bugaoshan course widget to add'**
+  String get addWidgetIosHint;
+
+  /// Hint for adding widget on macOS Notification Center
+  ///
+  /// In en, this message translates to:
+  /// **'Click \'Edit Widgets\' in macOS Notification Center, add the Bugaoshan course widget'**
+  String get addWidgetMacHint;
+
+  /// SnackBar message when week start date is auto-adjusted to Sunday
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically adjusted to Sunday of that week'**
+  String get autoAdjustedToSunday;
+
+  /// Tooltip for webview forward navigation button
+  ///
+  /// In en, this message translates to:
+  /// **'Forward'**
+  String get goForward;
+
+  /// Tooltip for webview back navigation button
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get goBack;
+
+  /// Tooltip to open current page in external browser
+  ///
+  /// In en, this message translates to:
+  /// **'Open in browser'**
+  String get openInBrowser;
+
+  /// SnackBar message when a file download is complete
+  ///
+  /// In en, this message translates to:
+  /// **'Download complete'**
+  String get downloadComplete;
+
+  /// Default name for imported schedule from JWXT
+  ///
+  /// In en, this message translates to:
+  /// **'JWXT Import {month}-{day}'**
+  String importedScheduleName(int month, int day);
+
+  /// Generic error title
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get error;
+
+  /// Short dock label for the service hall entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Service Hall'**
+  String get dockLabelLeave;
+
+  /// Short dock label for the online repair entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair'**
+  String get dockLabelRepair;
+
+  /// Title of the online repair page.
+  ///
+  /// In en, this message translates to:
+  /// **'Online Repair'**
+  String get repairTitle;
+
+  /// Description of the online repair feature on the campus entry card.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit dorm/classroom facility repairs and track progress'**
+  String get repairDesc;
+
+  /// Tab label of the repair submission form.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get repairTabSubmit;
+
+  /// Tab label of the my repairs list.
+  ///
+  /// In en, this message translates to:
+  /// **'My Repairs'**
+  String get repairTabMyTickets;
+
+  /// Field title of the fault address in the repair form.
+  ///
+  /// In en, this message translates to:
+  /// **'Fault Address'**
+  String get repairAddress;
+
+  /// Hint when no fault address is selected.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a fault address'**
+  String get repairSelectAddress;
+
+  /// Field title of the repair item in the form.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair Item'**
+  String get repairProject;
+
+  /// Hint when no repair item is selected.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a repair item'**
+  String get repairSelectProject;
+
+  /// Hint of the repair category dropdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a category first'**
+  String get repairSelectCategory;
+
+  /// Shown when a category has no available repair items.
+  ///
+  /// In en, this message translates to:
+  /// **'No repair items in this category'**
+  String get repairNoProjectInCategory;
+
+  /// Hint shown before repair items load.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a fault address first to load repair items'**
+  String get repairSelectProjectHint;
+
+  /// Field title of the fault description in the form.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get repairContent;
+
+  /// Placeholder of the description input.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the fault in detail to help the technician bring tools'**
+  String get repairContentHint;
+
+  /// Hint when the description is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Please fill in the description'**
+  String get repairContentRequired;
+
+  /// Field title of the photo upload in the form.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos / Videos'**
+  String get repairPhotos;
+
+  /// Button label shown while images are being uploaded on submit.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading image…'**
+  String get repairImageUploading;
+
+  /// Field title of the expected repair time in the form.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected Repair Time'**
+  String get repairSchedule;
+
+  /// Switch for allowing the technician to repair unattended.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow repair when no one is home'**
+  String get repairAllowNoOne;
+
+  /// Expected repair date picker item.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Date'**
+  String get repairBookDate;
+
+  /// Expected repair time slot picker item.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Time Slot'**
+  String get repairBookTime;
+
+  /// Placeholder when no date/time is selected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not selected'**
+  String get repairNotSelected;
+
+  /// Hint when there are no available booking dates.
+  ///
+  /// In en, this message translates to:
+  /// **'No available booking dates'**
+  String get repairNoBookDate;
+
+  /// Hint when there are no available time slots.
+  ///
+  /// In en, this message translates to:
+  /// **'No available time slots for this date'**
+  String get repairNoBookTime;
+
+  /// Submit button label of the repair form.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Repair'**
+  String get repairSubmit;
+
+  /// Toast after a successful repair submission.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair submitted successfully'**
+  String get repairSubmitSuccess;
+
+  /// Toast after a failed repair submission.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to submit repair, please try again'**
+  String get repairSubmitFailed;
+
+  /// Generic name of a repair ticket.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair Ticket'**
+  String get repairTicket;
+
+  /// Fault location label in a repair ticket.
+  ///
+  /// In en, this message translates to:
+  /// **'Fault Location'**
+  String get repairArea;
+
+  /// Button to add a repair address.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Address'**
+  String get repairAddAddress;
+
+  /// Hint to select an area when adding an address.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Area'**
+  String get repairSelectArea;
+
+  /// Detailed address field in the add-address form.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed Address'**
+  String get repairAddressDetail;
+
+  /// Hint when the detailed address is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Please fill in the detailed address'**
+  String get repairAddressDetailRequired;
+
+  /// Hint when the phone number is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Please fill in the phone number'**
+  String get repairPhoneRequired;
+
+  /// Hint when the phone number format is invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid phone number format'**
+  String get repairPhoneInvalid;
+
+  /// Toast after saving a new address.
+  ///
+  /// In en, this message translates to:
+  /// **'Address saved'**
+  String get repairAddressSaved;
+
+  /// Toast when the selected image format is not supported.
+  ///
+  /// In en, this message translates to:
+  /// **'Only JPG/PNG/HEIC images are supported'**
+  String get repairImageTypeInvalid;
+
+  /// Toast when the selected image exceeds the size limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Image must be smaller than 10MB'**
+  String get repairImageTooLarge;
+
+  /// Title of the repair ticket detail page.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair Detail'**
+  String get repairDetail;
+
+  /// Label of the service unit field in a repair ticket.
+  ///
+  /// In en, this message translates to:
+  /// **'Service Unit'**
+  String get repairServiceUnit;
+
+  /// Label of the charge type field in a repair ticket.
+  ///
+  /// In en, this message translates to:
+  /// **'Charge Type'**
+  String get repairPayType;
+
+  /// Title of the repair progress timeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair Progress'**
+  String get repairProgress;
+
+  /// Button text to withdraw a repair ticket.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw Repair'**
+  String get repairWithdraw;
+
+  /// Confirmation prompt before withdrawing a repair ticket.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw this repair ticket?'**
+  String get repairWithdrawConfirm;
+
+  /// Toast after a repair ticket is withdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair withdrawn'**
+  String get repairWithdrawSuccess;
+
+  /// Toast when withdrawing a repair ticket fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw failed, please try again later'**
+  String get repairWithdrawFailed;
+
+  /// Button text to evaluate a repair ticket.
+  ///
+  /// In en, this message translates to:
+  /// **'Evaluate Repair'**
+  String get repairEvaluate;
+
+  /// Placeholder of the evaluation content input.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your review (optional)'**
+  String get repairEvaluateHint;
+
+  /// Toast after a repair evaluation is submitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Evaluation submitted'**
+  String get repairEvaluateSuccess;
+
+  /// Status text when a repair ticket has been evaluated.
+  ///
+  /// In en, this message translates to:
+  /// **'Evaluated'**
+  String get repairEvaluated;
+
+  /// Status text when a repair ticket has been withdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawn'**
+  String get repairWithdrawn;
+
+  /// Toast when submitting a repair evaluation fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Evaluation failed, please try again later'**
+  String get repairEvaluateFailed;
+
+  /// Title for the service hall sub-page listing available matters.
+  ///
+  /// In en, this message translates to:
+  /// **'Service Hall'**
+  String get serviceHallTitle;
+
+  /// Name of the leave matter in the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Request'**
+  String get serviceHallLeaveTitle;
+
+  /// Description of the leave matter in the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit a leave request'**
+  String get serviceHallLeaveDesc;
+
+  /// Name of the my-applications matter in the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'My Applications'**
+  String get serviceHallMyAppsTitle;
+
+  /// Description of the my-applications matter in the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'View leave and check-in requests'**
+  String get serviceHallMyAppsDesc;
+
+  /// Name of the return-to-school report matter in the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'Return-to-School Report'**
+  String get serviceHallReturnTitle;
+
+  /// Description of the return-to-school report matter in the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'Report your return-to-school trip in advance'**
+  String get serviceHallReturnDesc;
+
+  /// Name of the summer leave report matter in the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'Summer Leave Report'**
+  String get serviceHallSummerLeaveTitle;
+
+  /// Description of the summer leave report matter in the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'Report leaving school for the summer vacation'**
+  String get serviceHallSummerLeaveDesc;
+
+  /// Name of the stay-on-campus registration matter in the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay-on-Campus Registration'**
+  String get serviceHallStayRegisterTitle;
+
+  /// Description of the stay-on-campus registration matter in the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'Register to stay on campus during the vacation'**
+  String get serviceHallStayRegisterDesc;
+
+  /// Validation message when a required service-hall form field is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Please fill in {label}'**
+  String serviceFormRequired(String label);
+
+  /// Error shown when a service-hall form definition cannot be loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load the form. Please retry later.'**
+  String get serviceFormSchemaFailed;
+
+  /// Hint text for dropdown fields in service-hall forms.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select'**
+  String get serviceFormSelectHint;
+
+  /// Suffix marking optional fields in service-hall forms.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get serviceFormOptional;
+
+  /// Page title for leave application.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Application'**
+  String get leaveTitle;
+
+  /// Description shown on the campus entry card for the service hall.
+  ///
+  /// In en, this message translates to:
+  /// **'Handle leave requests, check-ins and more in the service hall'**
+  String get leaveDesc;
+
+  /// Tab label for the leave application form.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get leaveApply;
+
+  /// Tab label for viewing my submitted leave requests.
+  ///
+  /// In en, this message translates to:
+  /// **'My Requests'**
+  String get leaveMyApplications;
+
+  /// Button to submit the leave application.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get leaveSubmit;
+
+  /// No description provided for @leaveReasonRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter the leave reason'**
+  String get leaveReasonRequired;
+
+  /// No description provided for @leaveEndAfterStart.
+  ///
+  /// In en, this message translates to:
+  /// **'End time must be after start time'**
+  String get leaveEndAfterStart;
+
+  /// No description provided for @leaveSubmitSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave request submitted'**
+  String get leaveSubmitSuccess;
+
+  /// No description provided for @leaveSubmitFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to submit. Please try again.'**
+  String get leaveSubmitFailed;
+
+  /// No description provided for @leaveInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Student Info'**
+  String get leaveInfo;
+
+  /// No description provided for @leaveTutor.
+  ///
+  /// In en, this message translates to:
+  /// **'Tutor'**
+  String get leaveTutor;
+
+  /// No description provided for @leaveCampusRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select the campus you are leaving'**
+  String get leaveCampusRequired;
+
+  /// No description provided for @leaveDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Other Reason'**
+  String get leaveDetail;
+
+  /// No description provided for @leaveDetailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please specify the reason'**
+  String get leaveDetailHint;
+
+  /// No description provided for @leaveAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload Proof'**
+  String get leaveAttachment;
+
+  /// No description provided for @leaveAttachmentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional: upload 1-3 images as proof'**
+  String get leaveAttachmentHint;
+
+  /// No description provided for @leaveAttachmentAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Image'**
+  String get leaveAttachmentAdd;
+
+  /// No description provided for @leaveDepartReturn.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave & Return'**
+  String get leaveDepartReturn;
+
+  /// No description provided for @leaveDepartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Depart Time'**
+  String get leaveDepartTime;
+
+  /// No description provided for @leaveReturnTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Return Time'**
+  String get leaveReturnTime;
+
+  /// No description provided for @leaveRegionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select your destination address'**
+  String get leaveRegionRequired;
+
+  /// No description provided for @regionProvince.
+  ///
+  /// In en, this message translates to:
+  /// **'Province'**
+  String get regionProvince;
+
+  /// No description provided for @regionCity.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get regionCity;
+
+  /// No description provided for @regionArea.
+  ///
+  /// In en, this message translates to:
+  /// **'District'**
+  String get regionArea;
+
+  /// No description provided for @regionSelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get regionSelectHint;
+
+  /// No description provided for @regionDetailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed address (street, building no.)'**
+  String get regionDetailHint;
+
+  /// No description provided for @regionPickProvince.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Province'**
+  String get regionPickProvince;
+
+  /// No description provided for @regionPickCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Select City'**
+  String get regionPickCity;
+
+  /// No description provided for @regionPickArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Select District'**
+  String get regionPickArea;
+
+  /// Empty state for the my-applications tab.
+  ///
+  /// In en, this message translates to:
+  /// **'No leave requests yet'**
+  String get leaveNoApplications;
+
+  /// No description provided for @leaveSubmitTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get leaveSubmitTime;
+
+  /// No description provided for @leaveStatusProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing'**
+  String get leaveStatusProcessing;
+
+  /// No description provided for @leaveStatusDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get leaveStatusDraft;
+
+  /// No description provided for @leaveStatusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get leaveStatusDone;
 }
 
 class _AppLocalizationsDelegate

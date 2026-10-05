@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:bugaoshan/pages/campus/models/class_schedule_inquiry_model.dart';
 import 'package:bugaoshan/pages/campus/models/classroom_model.dart';
+import 'package:bugaoshan/pages/campus/models/course_curriculum_model.dart';
 import 'package:bugaoshan/pages/campus/plan_completion/models/plan_completion.dart';
 import 'package:bugaoshan/pages/campus/exam_plan/models/exam_info.dart';
 import 'package:bugaoshan/pages/campus/train_program/models/train_program.dart';
@@ -14,6 +15,8 @@ import 'package:bugaoshan/services/auth/scu_auth.dart' show kZhjwBase;
 import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/utils/json_utils.dart';
 
+part 'zhjw_html_parsers.dart';
+
 /// 教务系统 API Service（第1层）
 ///
 /// zhjw.scu.edu.cn 的所有业务 API：课表、成绩、教室、培养方案、计划完成度。
@@ -21,6 +24,10 @@ import 'package:bugaoshan/utils/json_utils.dart';
 class ZhjwApiService {
   final ZhjwAuth _auth;
   ZhjwApiService(this._auth);
+
+  /// 多方案详情页请求之间的间隔，避免一次打开页面连续请求
+  /// 多个 getPyfaIndex 详情页被教务系统限流（"请勿频繁刷新"）。
+  static Duration planDetailRequestGap = const Duration(milliseconds: 600);
 
   Future<T> _request<T>(Future<T> Function(CookieClient client) fn) {
     return retryOnUnauthenticated(
@@ -34,6 +41,9 @@ class ZhjwApiService {
   ///
   /// zhjw 在 session 过期时返回 302、空 body 或 HTML 登录页。
   /// 检测到时抛 [UnauthenticatedException]，由 [_request] 捕获重试。
+  /// 登录页用 [looksLikeLoginPage] 的强特征组合判断，不做裸 login 子串
+  /// 匹配——正常业务页（如选课页含 loginStatus/clientLogin）不能误伤
+  /// （issue #282）。
   void _checkSessionExpiry(String body, int statusCode) {
     if (statusCode == 302) {
       throw const UnauthenticatedException();
@@ -41,7 +51,7 @@ class ZhjwApiService {
     if (body.trim().isEmpty) {
       throw const UnauthenticatedException();
     }
-    if (body.startsWith('<') && body.contains('login')) {
+    if (looksLikeLoginPage(body)) {
       throw const UnauthenticatedException();
     }
   }
@@ -50,8 +60,11 @@ class ZhjwApiService {
   //  课表
   // ═══════════════════════════════════════════════════════════════════
 
-  /// 从教务系统首页获取当前教学周数
-  Future<int> fetchCurrentWeek() {
+  /// 从教务系统首页获取当前教学周数。
+  ///
+  /// 假期首页没有“第 N 周”字段，而是显示“当前处于假期时间”，此时返回
+  /// `null`，由调用方给出明确的假期提示，而不是把正常假期当成系统异常。
+  Future<int?> fetchCurrentWeek() {
     return _request((client) async {
       final resp = await client.get(
         Uri.parse('$kZhjwBase/'),
@@ -64,10 +77,9 @@ class ZhjwApiService {
       final body = resp.body.trim();
       _checkSessionExpiry(body, resp.statusCode);
       final match = RegExp(r'第(\d+)周').firstMatch(body);
-      if (match == null) {
-        throw const ServiceException('无法获取当前周数，请检查教务系统状态');
-      }
-      return int.parse(match.group(1)!);
+      if (match != null) return int.parse(match.group(1)!);
+      if (body.contains('当前处于假期时间')) return null;
+      throw const ServiceException('无法获取当前周数，请检查教务系统状态');
     });
   }
 
@@ -152,7 +164,7 @@ class ZhjwApiService {
         r'var\s+url\s*=\s*"(/student/integratedQuery/scoreQuery/[^/]+/allPassingScores/callback)"',
       ).firstMatch(indexBody);
       if (urlMatch == null) {
-        if (indexBody.contains('login') || indexBody.contains('Login')) {
+        if (looksLikeLoginPage(indexBody)) {
           throw const UnauthenticatedException();
         }
         throw const ServiceException('无法从页面提取 allPassingScores callback URL');
@@ -198,7 +210,7 @@ class ZhjwApiService {
         r'var\s+url\s*=\s*"(/student/integratedQuery/scoreQuery/[^/]+/schemeScores/callback)"',
       ).firstMatch(indexBody);
       if (urlMatch == null) {
-        if (indexBody.contains('login') || indexBody.contains('Login')) {
+        if (looksLikeLoginPage(indexBody)) {
           throw const UnauthenticatedException();
         }
         throw const ServiceException('无法从页面提取 schemeScores callback URL');
@@ -461,10 +473,23 @@ class ZhjwApiService {
   //  计划完成度（从 PlanCompletionProvider 迁移 HTTP + 解析逻辑）
   // ═══════════════════════════════════════════════════════════════════
 
-  /// 获取计划完成度数据
+  /// 获取计划完成度数据，返回多份培养方案（每份含树节点列表）。
   ///
-  /// 返回解析后的节点列表。如果遇到频率限制，抛出 [RateLimitedException]。
-  Future<List<PlanCompletionNode>> fetchPlanCompletion() async {
+  /// 教务系统行为：
+  /// - 单方案用户：`/planCompletion/index` 直接返回含 zNodes 的数据页；
+  /// - 多方案用户（主修+辅修等）：`/index` 是方案选择页，不含数据，
+  ///   真正的树数据在 `/getPyfaIndex/<方案ID>` 详情页。
+  ///
+  /// 解析策略：
+  /// 1. 请求 `/index`；若页面含非空 zNodes（有根节点）→ 单方案，直接解析；
+  /// 2. 否则从页面提取 `getPyfaIndex/<ID>` 链接逐个请求详情页；
+  /// 3. 两者皆无且 zNodes 明确为空数组 → 代表"账号无方案"，返回空列表；
+  /// 4. 页面结构异常（无法匹配 zNodes 也无链接）→ 按会话过期处理，
+  ///    解析失败（正则不匹配/JSON 损坏）→ 抛 [ServiceException] 可诊断，
+  ///    不再静默返回空数组。
+  ///
+  /// 如果遇到频率限制，抛出 [RateLimitedException]。
+  Future<List<PlanCompletionPlan>> fetchPlanCompletion() async {
     return _request((client) async {
       final resp = await client.get(
         Uri.parse('$kZhjwBase/student/integratedQuery/planCompletion/index'),
@@ -481,12 +506,73 @@ class ZhjwApiService {
         throw const RateLimitedException();
       }
 
-      // Session 过期检测（正常响应也是 HTML，需要区分）
-      if (body.startsWith('<') && !body.contains('zNodes')) {
-        throw const UnauthenticatedException();
+      // 会话过期检测（302 / 空 body / HTML 登录页），与详情页一致：
+      // 过期时抛 UnauthenticatedException 交给 retryOnUnauthenticated 重认证，
+      // 而不是落入下方分支 4 抛 ServiceException（用户会看到"格式异常"
+      // 而非触发重新登录）。
+      _checkSessionExpiry(body, resp.statusCode);
+
+      // 1) 尝试直接解析 zNodes（单方案场景）。
+      //    仅当正则匹配到 zNodes 时才解析；匹配不上返回 null，不抛错，
+      //    以便继续走链接提取分支（多方案选择页可能不含 zNodes）。
+      final directNodes = _tryParseZNodes(body);
+      if (directNodes != null && directNodes.isNotEmpty) {
+        return [
+          PlanCompletionPlan(
+            id: '',
+            name: _extractPlanName(body),
+            nodes: directNodes,
+          ),
+        ];
       }
 
-      return _parseZNodes(body);
+      // 2) 多方案场景：从入口页提取 getPyfaIndex 链接，逐个请求详情页。
+      final planLinks = _extractPlanLinks(body);
+      if (planLinks.isNotEmpty) {
+        final plans = <PlanCompletionPlan>[];
+        for (final link in planLinks) {
+          // 教务系统对连续请求有限流（"请勿频繁刷新"），详情页之间
+          // 加短暂间隔，避免打开页面时一次触发 N+1 个请求被限流。
+          if (plans.isNotEmpty) {
+            await Future<void>.delayed(planDetailRequestGap);
+          }
+          final detailResp = await client.get(
+            Uri.parse('$kZhjwBase${link.path}'),
+            headers: {
+              'Accept': 'text/html,*/*',
+              'Referer':
+                  '$kZhjwBase/student/integratedQuery/planCompletion/index',
+              'User-Agent': kDefaultUserAgent,
+            },
+          );
+          final detailBody = detailResp.body;
+          // 详情页可能返回登录页（会话过期）或限流提示
+          _checkSessionExpiry(detailBody, detailResp.statusCode);
+          if (detailBody.contains('请勿频繁刷新')) {
+            throw const RateLimitedException();
+          }
+          // 详情页必须包含数据；解析失败/结构异常在此抛错，不再静默返回空。
+          final nodes = _parseZNodes(detailBody);
+          plans.add(
+            PlanCompletionPlan(id: link.id, name: link.name, nodes: nodes),
+          );
+        }
+        return plans;
+      }
+
+      // 3) 无数据也无链接：zNodes 明确存在但为空数组 → 账号无方案。
+      if (directNodes != null) {
+        return const [];
+      }
+
+      // 4) 页面结构异常（既无 zNodes 也无 getPyfaIndex 链接）：
+      //    - 页面是登录页/会话过期页 → 抛 UnauthenticatedException 走重认证；
+      //    - 其它无法识别的 HTML（如错误页）→ 抛 ServiceException，
+      //      避免触发重认证风暴（每次都会重新 SSO，进一步触发限流）。
+      if (looksLikeLoginPage(body)) {
+        throw const UnauthenticatedException();
+      }
+      throw const ServiceException('方案修读数据格式异常：页面无法解析');
     });
   }
 
@@ -510,60 +596,6 @@ class ZhjwApiService {
       _checkSessionExpiry(body, resp.statusCode);
       return _parseExamCards(body);
     });
-  }
-
-  /// 用正则从考表 HTML 中提取考试卡片信息。
-  List<ExamInfo> _parseExamCards(String html) {
-    final cards = <ExamInfo>[];
-    final blocks = RegExp(
-      r'<div class="widget-box widget-color-\w+(?: collapsed)?">(.*?)'
-      r'</div>\s*</div>\s*</div>\s*</div>',
-      dotAll: true,
-    ).allMatches(html);
-
-    for (final block in blocks) {
-      final blockText = block.group(1)!;
-
-      String? firstMatch(RegExp re) {
-        final m = re.firstMatch(blockText);
-        return m?.group(1)?.trim();
-      }
-
-      final courseName =
-          (firstMatch(
-            RegExp(
-              r'<h5 class="widget-title smaller">\s*(.*?)\s*</h5>',
-              dotAll: true,
-            ),
-          )?.replaceAll(RegExp(r'\s*（已结束）'), '').trim()) ??
-          '未知';
-      final weekNum = firstMatch(RegExp(r'(\d+)周')) ?? '';
-      final date = firstMatch(RegExp(r'(\d{4}-\d{2}-\d{2})\s*&nbsp;')) ?? '未知';
-      final weekday = firstMatch(RegExp(r'(星期[一二三四五六日])')) ?? '未知';
-      final timeRange =
-          firstMatch(RegExp(r'&nbsp;(\d{2}:\d{2}-\d{2}:\d{2})')) ?? '未知';
-      final locationRaw = firstMatch(RegExp(r'地点:&nbsp;(.+?)</br>')) ?? '未知';
-      final location = locationRaw.replaceAll('&nbsp;', ' ');
-      final seatNumber = firstMatch(RegExp(r'座位号:&nbsp;(\d+)')) ?? '未知';
-      final ticketNumber = firstMatch(RegExp(r'准考证号:&nbsp;(.*?)</br>')) ?? '';
-      final tip = firstMatch(RegExp(r'考试提示信息：&nbsp;(.*?)</span>')) ?? '无';
-
-      cards.add(
-        ExamInfo(
-          courseName: courseName,
-          week: weekNum.isNotEmpty ? '第 $weekNum 周' : '未知',
-          date: date,
-          weekday: weekday,
-          timeRange: timeRange,
-          location: location,
-          seatNumber: seatNumber,
-          ticketNumber: ticketNumber,
-          tip: tip,
-        ),
-      );
-    }
-
-    return cards;
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -755,6 +787,156 @@ class ZhjwApiService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  //  课程课表
+  // ═══════════════════════════════════════════════════════════════════
+
+  /// 获取课程课表首页的筛选选项（学年学期 / 开课院系 / 课程类别）
+  Future<
+    ({
+      List<SemesterOption> semesters,
+      List<DepartmentOption> departments,
+      List<CourseCategoryOption> categories,
+    })
+  >
+  fetchCourseCurriculumIndex() {
+    return _request((client) async {
+      final resp = await client.get(
+        Uri.parse(
+          '$kZhjwBase/student/teachingResources/courseCurriculum/index',
+        ),
+        headers: {
+          'Accept': 'text/html,*/*',
+          'Referer': '$kZhjwBase/',
+          'User-Agent': kDefaultUserAgent,
+        },
+      );
+      final body = resp.body.trim();
+      _checkSessionExpiry(body, resp.statusCode);
+
+      final semesterOptions = _parseSelectOptions(body, 'zxjxjhh');
+      final semesters = semesterOptions
+          .where((o) => o.value.isNotEmpty)
+          .map((o) => SemesterOption(value: o.value, label: o.label))
+          .toList();
+
+      final deptOptions = _parseSelectOptions(body, 'kkxsh');
+      final departments = deptOptions
+          .where((o) => o.value.isNotEmpty)
+          .map((o) => DepartmentOption(value: o.value, name: o.label))
+          .toList();
+
+      final categoryOptions = _parseSelectOptions(body, 'kclb');
+      final categories = categoryOptions
+          .where((o) => o.value.isNotEmpty)
+          .map((o) => CourseCategoryOption(code: o.value, name: o.label))
+          .toList();
+
+      return (
+        semesters: semesters,
+        departments: departments,
+        categories: categories,
+      );
+    });
+  }
+
+  /// 搜索课程列表（支持学期 / 院系 / 课程名 / 课程号 / 课序号 / 课程类别筛选）
+  Future<({List<CourseSectionInfo> courses, int totalCount})> fetchCourseList({
+    int pageNum = 1,
+    int pageSize = 30,
+    String semester = '',
+    String department = '',
+    String courseName = '',
+    String courseCode = '',
+    String courseSeq = '',
+    String category = '',
+  }) {
+    return _request((client) async {
+      final resp = await client.post(
+        Uri.parse(
+          '$kZhjwBase/student/teachingResources/courseCurriculum/search',
+        ),
+        headers: {
+          'Accept': 'application/json, text/javascript, */*; q=0.01',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'Referer':
+              '$kZhjwBase/student/teachingResources/courseCurriculum/index',
+          'User-Agent': kDefaultUserAgent,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body:
+            'zxjxjhh=${Uri.encodeComponent(semester)}'
+            '&kkxsh=${Uri.encodeComponent(department)}'
+            '&kcm=${Uri.encodeComponent(courseName)}'
+            '&kch=${Uri.encodeComponent(courseCode)}'
+            '&kxh=${Uri.encodeComponent(courseSeq)}'
+            '&kclb=${Uri.encodeComponent(category)}'
+            '&pageNum=$pageNum&pageSize=$pageSize',
+      );
+      final body = resp.body.trim();
+      _checkSessionExpiry(body, resp.statusCode);
+      // 网关异常时可能返回非 JSON 文本（如 502 页面），解析失败抛
+      // ServiceException 而不是让 FormatException 裸奔。
+      final json = parseJson(
+        body,
+        'jwxt/courseCurriculum/search',
+        (msg) => ServiceException('课程列表数据格式异常：$msg'),
+      );
+      final records = (json['records'] as List<dynamic>?) ?? [];
+      final totalCount =
+          (json['pageContext']?['totalCount'] as num?)?.toInt() ?? 0;
+      final courses = records
+          .map((e) => CourseSectionInfo.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return (courses: courses, totalCount: totalCount);
+    });
+  }
+
+  /// 获取指定课程（教学班）的课表，返回结构与班级课表一致
+  Future<List<ClassScheduleInquiryItem>> fetchCourseSchedule({
+    required String planCode,
+    required String courseCode,
+    required String courseSequenceCode,
+  }) {
+    return _request((client) async {
+      final resp = await client.get(
+        Uri.parse(
+          '$kZhjwBase/student/teachingResources/courseCurriculum'
+          '/searchCurriculum/callback'
+          '?planCode=${Uri.encodeComponent(planCode)}'
+          '&courseCode=${Uri.encodeComponent(courseCode)}'
+          '&courseSequenceCode=${Uri.encodeComponent(courseSequenceCode)}',
+        ),
+        headers: {
+          'Accept': 'application/json, text/javascript, */*; q=0.01',
+          'Referer':
+              '$kZhjwBase/student/teachingResources/courseCurriculum/index',
+          'User-Agent': kDefaultUserAgent,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      );
+      final body = resp.body.trim();
+      _checkSessionExpiry(body, resp.statusCode);
+      // 响应结构为 [[item, item, ...]]：外层数组只有一个元素，内层才是课表项。
+      // 解析失败或外层元素不是数组都按格式异常处理，不再裸强转。
+      final json = parseJsonList(
+        body,
+        'jwxt/courseCurriculum/searchCurriculum',
+        (msg) => ServiceException('课程课表数据格式异常：$msg'),
+      );
+      if (json.isEmpty) return const <ClassScheduleInquiryItem>[];
+      final list = json.first;
+      if (list is! List<dynamic>) {
+        throw const ServiceException('课程课表数据格式异常：外层元素不是数组');
+      }
+      return list
+          .map(
+            (e) => ClassScheduleInquiryItem.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   //  HTML 解析工具
   // ═══════════════════════════════════════════════════════════════════
 
@@ -826,23 +1008,5 @@ class ZhjwApiService {
           ),
         )
         .toList();
-  }
-
-  List<PlanCompletionNode> _parseZNodes(String html) {
-    final match = RegExp(
-      r'var\s+zNodes\s*=\s*(\[.*?\]);',
-      dotAll: true,
-    ).firstMatch(html);
-    if (match == null) return [];
-
-    final jsonStr = match.group(1)!;
-    try {
-      final List<dynamic> list = jsonDecode(jsonStr);
-      return list
-          .map((e) => PlanCompletionNode.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
-      return [];
-    }
   }
 }

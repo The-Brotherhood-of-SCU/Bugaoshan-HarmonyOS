@@ -1,19 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/pages/campus/classroom/classroom_detail_page.dart';
 import 'package:bugaoshan/pages/campus/models/classroom_model.dart';
+import 'package:bugaoshan/providers/classroom_provider.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/api/zhjw_api_service.dart';
-import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 
 enum _ViewMode { campus, building, room }
 
@@ -25,19 +24,13 @@ class ClassroomPage extends StatefulWidget {
 }
 
 class _ClassroomPageState extends State<ClassroomPage> {
-  late final ZhjwApiService _zhjwApi;
+  late final ClassroomProvider _provider;
   Timer? _clockTimer;
 
-  List<ClassroomCampus> _campuses = [];
-  List<ClassroomBuilding> _allBuildings = [];
-  ClassroomQueryResult? _queryResult;
   ClassroomCampus? _selectedCampus;
   ClassroomBuilding? _selectedBuilding;
 
   _ViewMode _viewMode = _ViewMode.campus;
-  bool _isLoading = false;
-  bool _isInitialLoad = true;
-  LoadErrorType? _error;
   DateTime _selectedDate = DateTime.now();
   int? _filterPeriodStart; // 筛选起始节次 1-12, null=不过滤
   int? _filterPeriodEnd; // 筛选结束节次 1-12, null=不过滤
@@ -45,10 +38,12 @@ class _ClassroomPageState extends State<ClassroomPage> {
   @override
   void initState() {
     super.initState();
-    _zhjwApi = getIt<ZhjwApiService>();
+    _provider = getIt<ClassroomProvider>();
     getIt<ScuAuthProvider>().addListener(_onAuthChanged);
     _startClockTimer();
-    _loadIndex();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _onAuthChanged();
+    });
   }
 
   void _startClockTimer() {
@@ -67,108 +62,27 @@ class _ClassroomPageState extends State<ClassroomPage> {
 
   void _onAuthChanged() {
     final auth = getIt<ScuAuthProvider>();
-    if (auth.isLoggedIn && mounted) {
-      _loadIndex();
-    } else if (mounted) {
-      setState(() {});
-    }
-  }
-
-  Future<void> _loadIndex() async {
-    final auth = getIt<ScuAuthProvider>();
-    if (!auth.isLoggedIn) {
-      if (auth.isAutoLoggingIn) return;
-      if (!mounted) return;
-      setState(() {
-        _error = LoadErrorType.notLoggedIn;
-        _isLoading = false;
-        _isInitialLoad = false;
-      });
-      return;
-    }
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    try {
-      final result = await _zhjwApi.fetchClassroomIndex();
-      if (!mounted) return;
-      setState(() {
-        _campuses = result.campuses;
-        _allBuildings = result.buildings;
-        _isLoading = false;
-        _isInitialLoad = false;
-      });
-    } on UnauthenticatedException catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _error = LoadErrorType.sessionExpired;
-        _isLoading = false;
-        _isInitialLoad = false;
-      });
-    } catch (e) {
-      debugPrint('Classroom index load error: $e');
-      if (!mounted) return;
-      setState(() {
-        _error = campusNetworkErrorType(LoadErrorType.loadFailed);
-        _isLoading = false;
-        _isInitialLoad = false;
-      });
-    }
+    if (auth.isLoggedIn) _provider.ensureIndex();
   }
 
   Future<void> _queryBuilding(ClassroomBuilding building) async {
-    final auth = getIt<ScuAuthProvider>();
-    if (!auth.isLoggedIn) {
-      if (!mounted) return;
-      setState(() {
-        _error = LoadErrorType.notLoggedIn;
-        _isLoading = false;
-      });
-      return;
-    }
-    if (!mounted) return;
     setState(() {
-      _isLoading = true;
       _selectedBuilding = building;
       _viewMode = _ViewMode.room;
-      _error = null;
     });
-    try {
-      final dateStr =
-          '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
-      _queryResult = await _zhjwApi.fetchClassroomAvailability(
-        campusNumber: building.campusNumber,
-        buildingNumber: building.teachingBuildingNumber,
-        searchDate: dateStr,
-      );
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    } on UnauthenticatedException catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _error = LoadErrorType.sessionExpired;
-        _isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('Classroom query error: $e');
-      if (!mounted) return;
-      setState(() {
-        _error = campusNetworkErrorType(LoadErrorType.loadFailed);
-        _isLoading = false;
-      });
-    }
+    await _provider.queryAvailability(
+      building: building,
+      searchDate: _apiDate(_selectedDate),
+    );
   }
 
   List<ClassroomBuilding> get _filteredBuildings {
     if (_selectedCampus == null) return [];
-    return _allBuildings
-        .where((b) => b.campusNumber == _selectedCampus!.campusNumber)
-        .toList();
+    return _provider.buildingsForCampus(_selectedCampus!.campusNumber);
   }
+
+  String _apiDate(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
   String _formatDate(DateTime date) {
     return '${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -193,7 +107,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
         _selectedDate = picked;
       });
       if (_selectedBuilding != null) {
-        _queryBuilding(_selectedBuilding!);
+        unawaited(_queryBuilding(_selectedBuilding!));
       }
     }
   }
@@ -215,7 +129,9 @@ class _ClassroomPageState extends State<ClassroomPage> {
         ? ScheduleConfig.timeSlotsForCampusName(campusName)
         : null;
     final timeSlots =
-        campusSlots ?? getIt<CourseProvider>().scheduleConfig.value.timeSlots;
+        campusSlots ??
+        getIt<CourseProvider>().scheduleConfig.value?.timeSlots ??
+        const [];
     if (timeSlots.isEmpty) return null;
 
     final now = DateTime.now();
@@ -250,7 +166,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
   }
 
   List<ClassroomInfo> _visibleRooms() {
-    final result = _queryResult;
+    final result = _provider.queryResult;
     if (result == null) return [];
 
     final start = _filterPeriodStart;
@@ -277,13 +193,11 @@ class _ClassroomPageState extends State<ClassroomPage> {
         case _ViewMode.room:
           _viewMode = _ViewMode.building;
           _selectedBuilding = null;
-          _queryResult = null;
-          _error = null;
+          _provider.clearCurrentQuery();
           break;
         case _ViewMode.building:
           _viewMode = _ViewMode.campus;
           _selectedCampus = null;
-          _error = null;
           break;
         case _ViewMode.campus:
           break;
@@ -312,18 +226,31 @@ class _ClassroomPageState extends State<ClassroomPage> {
                 )
               : null,
         ),
-        body: _buildContent(l10n),
+        body: ListenableBuilder(
+          listenable: Listenable.merge([_provider, getIt<ScuAuthProvider>()]),
+          builder: (context, _) => _buildContent(l10n),
+        ),
       ),
     );
   }
 
   Widget _buildContent(AppLocalizations l10n) {
-    if (_isInitialLoad && _isLoading) {
+    final auth = getIt<ScuAuthProvider>();
+    if (!auth.isLoggedIn) {
+      return auth.isAutoLoggingIn
+          ? const AutoLoginLoadingWidget()
+          : const LoginRequiredWidget();
+    }
+    if (_provider.indexState == ClassroomLoadState.loading &&
+        _provider.campuses.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null && _campuses.isEmpty) {
-      return _buildErrorWidget(l10n, _loadIndex);
+    if (_provider.indexError != null && _provider.campuses.isEmpty) {
+      return _buildErrorWidget(
+        _provider.indexError!,
+        () => _provider.loadIndex(forceRefresh: true),
+      );
     }
 
     switch (_viewMode) {
@@ -352,14 +279,14 @@ class _ClassroomPageState extends State<ClassroomPage> {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            itemCount: _campuses.length,
+            itemCount: _provider.campuses.length,
             itemBuilder: (context, index) {
-              final campus = _campuses[index];
-              return Card(
+              final campus = _provider.campuses[index];
+              return StyledCard(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: const Icon(Icons.location_city_outlined),
-                  title: Text('${campus.campusName}校区'),
+                  title: Text(l10n.campusSuffix(campus.campusName)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     setState(() {
@@ -408,7 +335,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
             itemCount: buildings.length,
             itemBuilder: (context, index) {
               final building = buildings[index];
-              return Card(
+              return StyledCard(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: const Icon(Icons.apartment_outlined),
@@ -425,15 +352,23 @@ class _ClassroomPageState extends State<ClassroomPage> {
   }
 
   Widget _buildRoomView(AppLocalizations l10n) {
-    if (_isLoading) {
+    if (_provider.queryState == ClassroomLoadState.loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
-      return _buildErrorWidget(l10n, () => _queryBuilding(_selectedBuilding!));
+    if (_provider.queryError != null) {
+      return _buildErrorWidget(
+        _provider.queryError!,
+        () => _provider.queryAvailability(
+          building: _selectedBuilding!,
+          searchDate: _apiDate(_selectedDate),
+          forceRefresh: true,
+        ),
+      );
     }
 
-    if (_queryResult == null) return const SizedBox.shrink();
+    final queryResult = _provider.queryResult;
+    if (queryResult == null) return const SizedBox.shrink();
 
     final currentPeriod = _currentPeriod();
     final hasFilter = _filterPeriodStart != null;
@@ -453,9 +388,9 @@ class _ClassroomPageState extends State<ClassroomPage> {
                       _selectedBuilding!.teachingBuildingName,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    if (_queryResult!.jxzc > 0 && _isToday)
+                    if (queryResult.jxzc > 0 && _isToday)
                       Text(
-                        l10n.classroomTeachingWeek(_queryResult!.jxzc),
+                        l10n.classroomTeachingWeek(queryResult.jxzc),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -464,7 +399,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
                 ),
               ),
               Text(
-                '${rooms.length} ${l10n.seats == "座" ? "间教室" : "rooms"}',
+                l10n.roomCount(rooms.length),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -559,95 +494,90 @@ class _ClassroomPageState extends State<ClassroomPage> {
   }
 
   Widget _buildRoomCard(ClassroomInfo room, AppLocalizations l10n) {
-    final statusMap = _queryResult!.periodStatusMap(room.classroomNumber);
+    final queryResult = _provider.queryResult!;
+    final statusMap = queryResult.periodStatusMap(room.classroomNumber);
 
-    return Card(
+    return StyledCard(
       margin: const EdgeInsets.only(bottom: 6),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ClassroomDetailPage(
-                campus: _selectedCampus!,
-                building: _selectedBuilding!,
-                room: room,
-                timeSlots: _queryResult!.slotsFor(room.classroomNumber),
-                queryDate: _queryResult!.date,
-                teachingWeek: _queryResult!.jxzc,
-              ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ClassroomDetailPage(
+              campus: _selectedCampus!,
+              building: _selectedBuilding!,
+              room: room,
+              timeSlots: queryResult.slotsFor(room.classroomNumber),
+              queryDate: queryResult.date,
+              teachingWeek: queryResult.jxzc,
             ),
-          );
-        },
-        borderRadius: BorderRadius.circular(AppShapes.medium),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          room.classroomName,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${room.placeNum} ${l10n.seats}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: List.generate(12, (i) {
-                    final period = i + 1;
-                    final status =
-                        statusMap[period] ?? ClassroomPeriodStatus.free;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 1.5),
-                      child: Tooltip(
-                        message: _periodTooltip(period, status, l10n),
-                        child: Icon(
-                          _getPeriodIcon(status),
-                          color: _getPeriodColor(status),
-                          size: 18,
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        room.classroomName,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${room.placeNum} ${l10n.seats}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                    );
-                  }),
+                    ],
+                  ),
                 ),
+                const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: List.generate(12, (i) {
+                  final period = i + 1;
+                  final status =
+                      statusMap[period] ?? ClassroomPeriodStatus.free;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1.5),
+                    child: Tooltip(
+                      message: _periodTooltip(period, status, l10n),
+                      child: Icon(
+                        _getPeriodIcon(status),
+                        color: _getPeriodColor(status),
+                        size: 18,
+                      ),
+                    ),
+                  );
+                }),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildErrorWidget(AppLocalizations l10n, VoidCallback onRetry) {
-    if (_error == LoadErrorType.notLoggedIn) {
+  Widget _buildErrorWidget(LoadErrorType error, VoidCallback onRetry) {
+    if (error == LoadErrorType.notLoggedIn) {
       if (getIt<ScuAuthProvider>().isAutoLoggingIn) {
         return const AutoLoginLoadingWidget();
       }
       return const LoginRequiredWidget();
     }
-    return RetryableErrorWidget(errorType: _error!, onRetry: onRetry);
+    return RetryableErrorWidget(errorType: error, onRetry: onRetry);
   }
 
   String _periodTooltip(
@@ -742,6 +672,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
                     Text('${dialogL10n.periodStart}: '),
                     DropdownButton<int>(
                       value: start,
+                      focusColor: Colors.transparent,
                       items: List.generate(
                         12,
                         (i) => DropdownMenuItem(
@@ -764,6 +695,7 @@ class _ClassroomPageState extends State<ClassroomPage> {
                     Text('${dialogL10n.periodEnd}: '),
                     DropdownButton<int>(
                       value: end,
+                      focusColor: Colors.transparent,
                       items: List.generate(
                         12,
                         (i) => DropdownMenuItem(

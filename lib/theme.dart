@@ -1,26 +1,74 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'utils/app_shapes.dart';
+import 'theme_shape.dart';
 
-const pageTransitionsTheme = PageTransitionsTheme(
-  builders: {
-    TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
-    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-    //desktop use FadeForwardsPageTransitionsBuilder
-    TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
-    TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
-    TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(),
-  },
-);
+/// 页面转场时长跟随「设置 → 动画时长」滑杆（进页与退出同值）；转场形态
+/// 维持 Material 规格不变。不直接用规格默认值的原因：Flutter 3.44 起
+/// MaterialPageRoute 的时长改由 PageTransitionsBuilder 决定且退出默认等于
+/// 进页时长（450-500ms），返回期间退出页占据整屏、下层页面要等动画结束才
+/// 能跟手滚动，窗口偏长。
+///
+/// 注意：「动画时长」页里的「页面切换动画」开关只控制 Dock 栏页面切换动画
+/// （见 home_page.dart → AuthScopedIndexedStack），不影响这里的全局转场。
+class _AppFadeForwardsBuilder extends FadeForwardsPageTransitionsBuilder {
+  const _AppFadeForwardsBuilder(this.duration);
 
-const appBarTheme = AppBarTheme(
-  toolbarHeight: 48,
+  final Duration duration;
+
+  @override
+  Duration get transitionDuration => duration;
+
+  @override
+  Duration get reverseTransitionDuration => duration;
+}
+
+class _AppPredictiveBackBuilder extends PredictiveBackPageTransitionsBuilder {
+  const _AppPredictiveBackBuilder(this.duration);
+
+  final Duration duration;
+
+  @override
+  Duration get transitionDuration => duration;
+
+  @override
+  Duration get reverseTransitionDuration => duration;
+}
+
+class _AppCupertinoBuilder extends CupertinoPageTransitionsBuilder {
+  const _AppCupertinoBuilder(this.duration);
+
+  final Duration duration;
+
+  @override
+  Duration get transitionDuration => duration;
+
+  @override
+  Duration get reverseTransitionDuration => duration;
+}
+
+PageTransitionsTheme _pageTransitionsTheme(Duration duration) {
+  return PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: _AppPredictiveBackBuilder(duration),
+      TargetPlatform.iOS: _AppCupertinoBuilder(duration),
+      //desktop use FadeForwardsPageTransitionsBuilder
+      TargetPlatform.windows: _AppFadeForwardsBuilder(duration),
+      TargetPlatform.linux: _AppFadeForwardsBuilder(duration),
+      TargetPlatform.macOS: _AppFadeForwardsBuilder(duration),
+    },
+  );
+}
+
+AppBarTheme appBarTheme({double textScale = 1.0}) => AppBarTheme(
+  toolbarHeight: 48 * textScale,
   centerTitle: false,
   scrolledUnderElevation: 0,
 );
 
-const navigationBarTheme = NavigationBarThemeData(height: 64);
+NavigationBarThemeData navigationBarTheme({double textScale = 1.0}) =>
+    NavigationBarThemeData(height: 64 * textScale);
 
 /// MD3 Expressive 组件形状覆盖
 const cardTheme = CardThemeData(
@@ -75,15 +123,17 @@ ThemeData buildTheme({
   required Brightness brightness,
   required Color seedColor,
   bool useGoogleFonts = false,
+  double textScale = 1.0,
+  Duration pageTransitionDuration = const Duration(milliseconds: 300),
 }) {
   final baseTheme = ThemeData(
     colorScheme: ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: brightness,
     ),
-    pageTransitionsTheme: pageTransitionsTheme,
-    appBarTheme: appBarTheme,
-    navigationBarTheme: navigationBarTheme,
+    pageTransitionsTheme: _pageTransitionsTheme(pageTransitionDuration),
+    appBarTheme: appBarTheme(textScale: textScale),
+    navigationBarTheme: navigationBarTheme(textScale: textScale),
     // MD3 Expressive 组件形状覆盖
     cardTheme: cardTheme,
     dialogTheme: dialogTheme,

@@ -1,10 +1,12 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/update_provider.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/services/update_service.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 
 /// 下载进度状态
 class UpdateProgressState extends ChangeNotifier {
@@ -103,9 +105,13 @@ class DownloadProgressDialogView extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       spacing: 8,
       children: [
-        Text(
-          progressState.status,
-          style: Theme.of(context).textTheme.titleMedium,
+        Flexible(
+          child: Text(
+            progressState.status,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
         ),
         Text(
           '${progressState.percent}%',
@@ -205,7 +211,7 @@ Future<bool> showDownloadProgressDialog({
   downloadUrl = proxyDownloadUrl(downloadUrl);
 
   // Android:仅执行下载,通知栏负责所有 UI 反馈
-  if (kIsWeb || AppPlatform.isAndroid) {
+  if (kIsWeb || Platform.isAndroid) {
     try {
       await updateProvider.downloadAndInstall(
         version: version,
@@ -230,22 +236,24 @@ Future<bool> showDownloadProgressDialog({
   final progressState = updateProvider.progressState;
   var visible = true;
 
-  showDialog(
-    context: context,
-    useRootNavigator: true,
-    barrierDismissible: false,
-    builder: (dialogContext) => DownloadProgressDialogView(
-      progressState: progressState,
-      l10n: l10n,
-      filename: filename,
-      onDownloadInBackground: () {
-        visible = false;
-        Navigator.of(dialogContext).pop();
-      },
-      onCancel: () {
-        updateProvider.cancelDownload();
-        Navigator.of(dialogContext).pop();
-      },
+  unawaited(
+    showDialog(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: false,
+      builder: (dialogContext) => DownloadProgressDialogView(
+        progressState: progressState,
+        l10n: l10n,
+        filename: filename,
+        onDownloadInBackground: () {
+          visible = false;
+          Navigator.of(dialogContext).pop();
+        },
+        onCancel: () {
+          updateProvider.cancelDownload();
+          Navigator.of(dialogContext).pop();
+        },
+      ),
     ),
   );
 
@@ -260,7 +268,7 @@ Future<bool> showDownloadProgressDialog({
     return false;
   } catch (e) {
     if (context.mounted && visible) {
-      Navigator.of(context, rootNavigator: true).maybePop();
+      unawaited(Navigator.of(context, rootNavigator: true).maybePop());
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('${l10n.updateFailed}: $e')));
@@ -269,7 +277,7 @@ Future<bool> showDownloadProgressDialog({
   }
 
   if (context.mounted && visible) {
-    Navigator.of(context, rootNavigator: true).maybePop();
+    unawaited(Navigator.of(context, rootNavigator: true).maybePop());
   }
   return true;
 }

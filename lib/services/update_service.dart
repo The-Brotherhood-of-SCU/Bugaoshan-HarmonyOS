@@ -5,11 +5,12 @@ import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/app_info_provider.dart';
 import 'package:bugaoshan/services/update_asset_selector.dart';
 import 'package:bugaoshan/services/update_checker.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:crypto/crypto.dart' as crypto;
+import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/utils/constants.dart';
 
 import 'package:bugaoshan/models/release_info.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:archive/archive.dart';
@@ -65,27 +66,26 @@ class UpdateCheckResult {
 }
 
 class UpdateService {
-  static const _repo = 'The-Brotherhood-of-SCU/Bugaoshan';
-  static const _channel = MethodChannel('bugaoshan/update');
+  static const _channel = kUpdateMethodChannel;
 
   final SharedPreferences _prefs;
   final String _currentVersion;
 
   UpdateService(this._prefs, this._currentVersion);
 
-  bool get supportsInAppUpdate {
-    if (AppPlatform.isHarmony) return false;
-    return (AppPlatform.isLinux &&
-            !Platform.environment.containsKey('FLATPAK_ID')) ||
-        AppPlatform.isAndroid ||
-        AppPlatform.isWindows;
-  }
+  bool get supportsInAppUpdate =>
+      // F-Droid 渠道安装的包由 F-Droid 负责更新，应用内自更新对其隐藏。
+      // 用运行时安装来源判断而非构建时开关，以保持 F-Droid 可复制构建
+      // 与 CI 产物逐字节一致。
+      !getIt<AppInfoProvider>().isFdroidInstall &&
+      ((Platform.isLinux && !Platform.environment.containsKey('FLATPAK_ID')) ||
+          Platform.isAndroid ||
+          Platform.isWindows);
 
   UpdateAssetPlatform? get _assetPlatform {
-    if (AppPlatform.isHarmony) return null;
-    if (AppPlatform.isAndroid) return UpdateAssetPlatform.android;
-    if (AppPlatform.isWindows) return UpdateAssetPlatform.windows;
-    if (AppPlatform.isLinux) return UpdateAssetPlatform.linux;
+    if (Platform.isAndroid) return UpdateAssetPlatform.android;
+    if (Platform.isWindows) return UpdateAssetPlatform.windows;
+    if (Platform.isLinux) return UpdateAssetPlatform.linux;
     return null;
   }
 
@@ -110,9 +110,8 @@ class UpdateService {
   }
 
   Future<ReleaseInfo?> getLatestReleaseFromGitHub() async {
-    if (AppPlatform.isHarmony) return null;
     final response = await http.get(
-      Uri.parse('https://api.github.com/repos/$_repo/releases/latest'),
+      Uri.parse('https://api.github.com/repos/$kGithubRepo/releases/latest'),
       headers: {'Accept': 'application/vnd.github+json'},
     );
     if (response.statusCode != 200) {
@@ -133,26 +132,28 @@ class UpdateService {
   }
 
   Future<ReleaseInfo> getLatestPrereleaseFromGitHub() async {
-    if (AppPlatform.isHarmony) return const ReleaseInfo();
     final response = await http.get(
-      Uri.parse('https://api.github.com/repos/$_repo/releases'),
+      Uri.parse('https://api.github.com/repos/$kGithubRepo/releases'),
       headers: {'Accept': 'application/vnd.github+json'},
     );
     if (response.statusCode == 200) {
       if (response.body.isEmpty) return const ReleaseInfo();
       final List<dynamic> releases = jsonDecode(response.body);
-      if (releases.isNotEmpty && releases[0]['tag_name'] != null) {
-        final tagName = releases[0]['tag_name'] as String;
-        final isPrerelease = releases[0]['prerelease'] == true;
-        final assets = releases[0]['assets'] as List<dynamic>;
+      // /releases 按创建时间倒序返回，需找到第一个真正的 prerelease，
+      // 而不是直接取 releases[0]（它可能是后发布的正式版）。
+      for (final release in releases) {
+        if (release['prerelease'] != true || release['tag_name'] == null) {
+          continue;
+        }
+        final assets = release['assets'] as List<dynamic>;
         final asset = await _selectAsset(assets);
         return ReleaseInfo(
-          tagName: tagName,
+          tagName: release['tag_name'] as String,
           downloadUrl: asset?['browser_download_url'] as String?,
           filename: asset?['name'] as String?,
           checksumSha256: asset == null ? null : _parseDigest(asset),
-          isPrerelease: isPrerelease,
-          body: releases[0]['body'] as String?,
+          isPrerelease: true,
+          body: release['body'] as String?,
         );
       }
       return const ReleaseInfo();
@@ -162,9 +163,8 @@ class UpdateService {
 
   Future<(ReleaseInfo? latestStable, ReleaseInfo? latestPreview)>
   getAllLatestReleases() async {
-    if (AppPlatform.isHarmony) return (null, null);
     final response = await http.get(
-      Uri.parse('https://api.github.com/repos/$_repo/releases'),
+      Uri.parse('https://api.github.com/repos/$kGithubRepo/releases'),
       headers: {'Accept': 'application/vnd.github+json'},
     );
     if (response.statusCode != 200) {
@@ -212,7 +212,7 @@ class UpdateService {
 
   /// 清理临时目录中旧版本的安装包，仅在版本变化时执行一次。
   Future<void> cleanupOldPackages() async {
-    if (AppPlatform.isHarmony || !AppPlatform.isAndroid) return;
+    if (!Platform.isAndroid) return;
     final lastVersion = _prefs.getString(_keyLastInstalledVersion);
     if (lastVersion == _currentVersion) return;
     try {
@@ -227,17 +227,20 @@ class UpdateService {
                     name.startsWith('bugaoshan_update'))) {
               try {
                 await ent.delete();
-              } catch (_) {}
+              } catch (e) {
+                AppLog.w('UpdateService', 'Cleanup delete error: $e');
+              }
             }
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLog.w('UpdateService', 'CleanupOldPackages error: $e');
+    }
     await _prefs.setString(_keyLastInstalledVersion, _currentVersion);
   }
 
   Future<UpdateCheckResult> checkStableUpdate(String currentVersion) async {
-    if (AppPlatform.isHarmony) return UpdateCheckResult.noUpdate();
     try {
       final latest = await getLatestReleaseFromGitHub();
       if (latest != null &&
@@ -255,14 +258,11 @@ class UpdateService {
     String currentVersion,
     String gitTag,
   ) async {
-    if (AppPlatform.isHarmony) return UpdateCheckResult.noUpdate();
     try {
       final release = await getLatestPrereleaseFromGitHub();
-      if (release.tagName == gitTag) {
-        //if tag equal to gitTag, no update
-        return UpdateCheckResult.noUpdate();
-      }
-      if (release.tagName != null && release.downloadUrl != null) {
+      if (release.tagName != null &&
+          release.downloadUrl != null &&
+          isNewerPrerelease(release.tagName, currentVersion, gitTag)) {
         return UpdateCheckResult.hasUpdate(release);
       }
       return UpdateCheckResult.noUpdate();
@@ -287,18 +287,28 @@ class UpdateService {
 
   /// Unified update check used by production callers (home / about pages).
   ///
-  /// When [includePreview] is true, the latest prerelease is checked; otherwise
-  /// the latest stable release. Pass [gitTag] only when [includePreview] is true
-  /// (used to suppress the "current build is itself the latest preview" case).
+  /// When [includePreview] is true, the latest prerelease is checked first;
+  /// if there is no newer prerelease (e.g. the current build is already the
+  /// latest preview, or its stable release has shipped), it falls back to the
+  /// stable channel so preview users still receive stable update notifications.
+  /// Pass [gitTag] only when [includePreview] is true (used to suppress the
+  /// "current build is itself the latest preview" case).
   Future<UpdateCheckResult> _checkForUpdate({
     required bool includePreview,
     required String currentVersion,
     String? gitTag,
-  }) {
-    if (includePreview) {
-      return checkPreviewUpdate(currentVersion, gitTag ?? '');
+  }) async {
+    if (!includePreview) {
+      return checkStableUpdate(currentVersion);
     }
-    return checkStableUpdate(currentVersion);
+    final previewResult = await checkPreviewUpdate(
+      currentVersion,
+      gitTag ?? '',
+    );
+    if (previewResult.hasUpdate) return previewResult;
+    if (previewResult.noUpdate) return checkStableUpdate(currentVersion);
+    // 预览检查出错时保留错误状态，避免把错误误报为"无更新"。
+    return previewResult;
   }
 
   Future<void> downloadAndInstall(
@@ -309,9 +319,6 @@ class UpdateService {
     void Function(String status)? onStatus,
     void Function(int received, int total)? onProgress,
   }) async {
-    if (AppPlatform.isHarmony) {
-      throw UnsupportedError('In-app updates are not supported on HarmonyOS');
-    }
     if (!supportsInAppUpdate) {
       throw UnsupportedError('Updates are managed by Flatpak');
     }
@@ -357,7 +364,7 @@ class UpdateService {
       }
     }
 
-    if (AppPlatform.isAndroid) {
+    if (Platform.isAndroid) {
       onStatus?.call('Installing...');
       await _installAndroid(chunks, version);
       return;
@@ -393,9 +400,9 @@ class UpdateService {
     final currentExe = Platform.resolvedExecutable;
     final currentExeDir = File(currentExe).parent.path;
 
-    if (AppPlatform.isWindows) {
+    if (Platform.isWindows) {
       await _installWindows(extractDir, currentExeDir, currentExe);
-    } else if (AppPlatform.isLinux) {
+    } else if (Platform.isLinux) {
       await _installLinux(extractDir, currentExeDir, currentExe);
     } else {
       throw UnsupportedError('Unsupported platform');
@@ -478,7 +485,4 @@ class UpdateService {
       exeDir,
     ], mode: ProcessStartMode.detached);
   }
-
-  static const releasesUrl =
-      'https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases';
 }

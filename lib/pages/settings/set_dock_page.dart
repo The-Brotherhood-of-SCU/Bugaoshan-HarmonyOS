@@ -4,8 +4,9 @@ import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/campus_item_config.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/utils/constants.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 
 class SetDockPage extends StatefulWidget {
   const SetDockPage({super.key});
@@ -84,7 +85,7 @@ class _SetDockPageState extends State<SetDockPage> {
           ),
           const SizedBox(height: 12),
           Container(
-            height: 64,
+            height: 64 * MediaQuery.textScalerOf(context).scale(1.0),
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
@@ -98,9 +99,13 @@ class _SetDockPageState extends State<SetDockPage> {
                       children: [
                         Icon(item.icon, size: 24),
                         const SizedBox(height: 4),
-                        Text(
-                          item.dockLabel(l10n),
-                          style: theme.textTheme.labelSmall,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            item.dockLabel(l10n),
+                            maxLines: 1,
+                            style: theme.textTheme.labelSmall,
+                          ),
                         ),
                       ],
                     ),
@@ -116,37 +121,31 @@ class _SetDockPageState extends State<SetDockPage> {
       physics: const NeverScrollableScrollPhysics(),
       buildDefaultDragHandles: false,
       itemCount: _visibleIds.length,
-      onReorder: _onReorderItem,
+      onReorderItem: _onReorderItem,
       proxyDecorator: (child, index, animation) {
         return AnimatedBuilder(
           animation: animation,
           builder: (context, child) {
             final t = Curves.easeInOut.transform(animation.value);
-            return Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppShapes.medium),
-                color: theme.colorScheme.surface,
-                boxShadow: t > 0
-                    ? [
-                        BoxShadow(
-                          color: theme.colorScheme.shadow.withValues(
-                            alpha: 0.3 * t,
-                          ),
-                          blurRadius: 8.0 * t,
-                          offset: Offset(0, 2 * t),
-                        ),
-                      ]
-                    : null,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Theme(
-                data: theme.copyWith(
-                  cardTheme: CardThemeData(
-                    margin: EdgeInsets.zero,
-                    elevation: 0,
-                  ),
+            if (t <= 0.0) return child!;
+
+            // 拖动时只添加柔和阴影和轻微上移，
+            // 不施加额外的 borderRadius / Clip，避免裁剪掉 StyledCard 自身的圆角。
+            return Transform.translate(
+              offset: Offset(0, -4 * t),
+              child: Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.shadow.withValues(
+                        alpha: 0.25 * t,
+                      ),
+                      blurRadius: 14 * t,
+                      offset: Offset(0, 5 * t),
+                    ),
+                  ],
                 ),
-                child: child!,
+                child: child,
               ),
             );
           },
@@ -158,12 +157,16 @@ class _SetDockPageState extends State<SetDockPage> {
         final item = campusItemConfigById(id);
         final isProfile = item.id == dockIdProfile;
 
-        return Card(
+        return StyledCard(
           key: ValueKey(item.id),
           margin: const EdgeInsets.symmetric(vertical: 4),
           child: ListTile(
             leading: Icon(item.icon, color: theme.colorScheme.primary),
-            title: Text(item.dockFullLabel(l10n)),
+            title: Text(
+              item.dockFullLabel(l10n),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             subtitle: null,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -193,7 +196,7 @@ class _SetDockPageState extends State<SetDockPage> {
       ...allCampusItems
           .where((item) => !_isVisible(item.id))
           .map(
-            (item) => Card(
+            (item) => StyledCard(
               key: ValueKey(item.id),
               margin: const EdgeInsets.symmetric(vertical: 4),
               child: ListTile(
@@ -201,7 +204,11 @@ class _SetDockPageState extends State<SetDockPage> {
                   item.icon,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
-                title: Text(item.dockFullLabel(l10n)),
+                title: Text(
+                  item.dockFullLabel(l10n),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 trailing: Switch(
                   value: false,
                   onChanged: (_) => _toggleVisibility(item.id),

@@ -1,22 +1,26 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_async/fake_async.dart';
+import 'package:bugaoshan/models/widget_appearance.dart';
 import 'package:bugaoshan/services/widget_update_service.dart';
+import 'package:bugaoshan/utils/constants.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   tearDown(() {
+    debugDefaultTargetPlatformOverride = null;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(MethodChannel('bugaoshan/update'), null);
+        .setMockMethodCallHandler(kUpdateMethodChannel, null);
   });
 
   test('debounce collapses repeated calls', () {
     fakeAsync((fa) {
       int calls = 0;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(MethodChannel('bugaoshan/update'), (
+          .setMockMethodCallHandler(kUpdateMethodChannel, (
             MethodCall call,
           ) async {
             calls++;
@@ -42,7 +46,7 @@ void main() {
   test('force triggers immediate run', () async {
     int calls = 0;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(MethodChannel('bugaoshan/update'), (
+        .setMockMethodCallHandler(kUpdateMethodChannel, (
           MethodCall call,
         ) async {
           calls++;
@@ -62,7 +66,7 @@ void main() {
     final started = Completer<void>();
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(MethodChannel('bugaoshan/update'), (
+        .setMockMethodCallHandler(kUpdateMethodChannel, (
           MethodCall call,
         ) async {
           calls++;
@@ -81,7 +85,7 @@ void main() {
     await started.future;
 
     // Request another update while in-flight (force immediate path sets _needsRunAgain)
-    service.updateWidgetData(force: true);
+    unawaited(service.updateWidgetData(force: true));
 
     // Unblock the first native call
     block.complete();
@@ -98,7 +102,7 @@ void main() {
 
   test('errors complete waiting callers', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(MethodChannel('bugaoshan/update'), (
+        .setMockMethodCallHandler(kUpdateMethodChannel, (
           MethodCall call,
         ) async {
           throw PlatformException(code: 'ERR', message: 'failed');
@@ -118,7 +122,7 @@ void main() {
   test('dispose completes pending futures with StateError', () async {
     final block = Completer<void>();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(MethodChannel('bugaoshan/update'), (
+        .setMockMethodCallHandler(kUpdateMethodChannel, (
           MethodCall call,
         ) async {
           // never completes to simulate long-running native call
@@ -142,5 +146,49 @@ void main() {
     } catch (e) {
       expect(e, isA<StateError>());
     }
+  });
+
+  test('onWidgetPinned forwards native callback events', () async {
+    final service = WidgetUpdateService(platformChecker: () => true);
+    final events = <String>[];
+    final sub = service.onWidgetPinned.listen(events.add);
+
+    // 模拟原生侧通过 channel 推送 pin 成功事件
+    await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .handlePlatformMessage(
+          kUpdateMethodChannel.name,
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall('onWidgetPinned', {'size': 'small'}),
+          ),
+          (data) {},
+        );
+    await pumpEventQueue();
+
+    expect(events, ['small']);
+    await sub.cancel();
+    service.dispose();
+  });
+
+  test('syncWidgetAppearance forwards both iOS style settings', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    MethodCall? receivedCall;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(kUpdateMethodChannel, (call) async {
+          receivedCall = call;
+          return null;
+        });
+
+    final service = WidgetUpdateService(platformChecker: () => true);
+    await service.syncWidgetAppearance(
+      colorStyle: WidgetColorStyle.monochrome,
+      density: WidgetDensity.compact,
+    );
+
+    expect(receivedCall?.method, 'syncWidgetAppearance');
+    expect(receivedCall?.arguments, {
+      'colorStyle': WidgetColorStyle.monochrome.index,
+      'density': WidgetDensity.compact.index,
+    });
+    service.dispose();
   });
 }

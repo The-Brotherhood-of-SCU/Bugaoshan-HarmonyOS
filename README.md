@@ -4,10 +4,10 @@
 
 # 🏔️ 不高山上 · Bugaoshan
 
-[![Flutter](https://img.shields.io/badge/CPF_Flutter-3.41.9-02569B?logo=flutter&logoColor=white)](https://gitcode.com/CPF-Flutter/flutter_flutter)
-[![Dart](https://img.shields.io/badge/Dart-3.11-0175C2?logo=dart&logoColor=white)](https://dart.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-3.44-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.10-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![License](https://img.shields.io/badge/License-AGPL3.0-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-HarmonyOS%20%7C%20Linux%20%7C%20Android%20%7C%20Windows-blue)](https://flutter.dev)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Android%20%7C%20Windows%20%7C%20macOS-blue)](https://flutter.dev)
 
 > 川大学生专属校园助手
 
@@ -25,21 +25,25 @@
 
 ## ✨ 主要功能
 
-- **课表管理** — 导入并查看个人课程表，清晰掌握每日课程安排，Android 端还有课表小组件方便查看
-- **成绩统计** — 查看个人成绩，直观了解学业情况
-- **方案修读情况查询** — 查询个人修读的方案，了解学习进度
+- **课表管理** — 从教务处等多来源导入课表，清晰掌握每日课程安排，支持多课表一键快捷切换，还有课表小组件方便查看
+- **课表导出** — 导出课表为 ICS 日历文件，一键导入到系统日历，也可复制到剪切板
+- **成绩统计** — 查看个人成绩，支持自定义统计与通过率分析，直观了解学业情况
+- **方案修读情况查询** — 查询个人修读的方案，了解学习进度，支持多份方案（主修/辅修/微专业）切换查看
 - **培养方案** — 查询各年级学院的培养方案详情
+- **在线报修** — 在 App 内提交宿舍报修工单（选地址/维修项目、上传照片、预约时间），随时查看处理进度，支持撤回与评价工单
+- **校园网无感认证** — 绑定设备 MAC 地址后接入校园网自动认证，告别手动登录
 - **第二课堂** — 查看、参与和预约第二课堂活动
 - **考表查询** — 查询个人考试信息，了解考试安排
 - **体测查询** — 查询个人体测记录，了解体测结果
 - **空闲教室查询** — 实时查询校园内各楼栋的空闲教室情况，方便自习选座
 - **校园网设备查询** — 查看和下线当前账号在线的校园网设备
-- **校园卡、网费查询** — 查询个人校园卡和网费余额
-- **寝室电费&空调余额查询** — 查询寝室的电费和空调余额
+- **余额查询** — 查询校园卡、网费、寝室电费及空调余额，支持历史趋势分析
 - **校历查询** — 查询校园的校历，了解放假安排
-- **班级课表查询** — 查询各个年级和班级的课表，方便查看班级课程安排
-- **通知公告、附件下载** — 查看教务处、党委学工部、青春川大通知公告以及下载附件（HarmonyOS 暂不提供）
+- **班级/课程课表查询** — 查询各个年级和班级的课表以及课程课表，方便查看课程安排
+- **通知公告、附件下载** — 查看教务处、党委学工部、青春川大通知公告以及下载附件
 - **志愿四川** — 志愿四川查询和报名
+- **请假报备** — 请假、寒暑假留校/离校报备
+- **个性化设置** — 主题颜色、课程表样式、字体、应用图标、动画时长等自定义选项
 - **更多便捷功能** — 持续迭代中，更多校园实用工具即将上线
 
 <div align="center">
@@ -53,17 +57,15 @@
 
 ## 📥 下载
 
-上游 [Release 页面](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/latest) 提供 Android APK、Windows 压缩包和 Linux 压缩包。
+**前往 [Release 页面](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/latest) 下载最新版本**
 
-HarmonyOS HAP 不进入上游通用 Release，需要单独构建、签名和分发。请勿在 HarmonyOS 设备上安装 Release 中的 Android APK；HarmonyOS 的构建与签名方式见 [HarmonyOS 开发指南](docs/HARMONYOS.md)。
+> 📱 **iOS 与鸿蒙版本正在邀测中**，欢迎加入官方QQ群（1102483776）参与测试
 
 ---
 
 ## 🛠️ 开发
 
-如需参与开发或自行编译，请参阅 [CONTRIBUTING.md](CONTRIBUTING.md) 了解环境配置、构建命令等详细指引。
-
-HarmonyOS 使用 API 24 Release SDK，环境、构建、签名与平台能力边界见 [HarmonyOS 开发指南](docs/HARMONYOS.md)。当前 HarmonyOS 暂不提供校园通知公告、Android 桌面小组件、图片查看器中的保存与分享、系统强调色、部分文件选择/打开操作和应用内更新。课表背景图仍可正常从系统图库选择。
+如需参与开发或自行编译，请参阅 [CONTRIBUTING.md](CONTRIBUTING.md) 了解环境配置、构建命令等详细指引；当前架构与设计决策见 [工程文档](docs/README.md)。
 
 ---
 

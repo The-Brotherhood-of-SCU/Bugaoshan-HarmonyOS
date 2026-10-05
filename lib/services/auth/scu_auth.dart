@@ -15,14 +15,37 @@ import 'package:bugaoshan/utils/auth_logger.dart';
 import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/utils/json_utils.dart';
 import 'package:bugaoshan/utils/sm2_crypto.dart';
+import 'package:bugaoshan/utils/storage_keys.dart';
 
 /// 教务系统 base URL（该服务器不支持 HTTPS）
 const kZhjwBase = 'http://zhjw.scu.edu.cn';
-
-const _keyAccessToken = 'scu_access_token';
-const _keyPrincipalBinding = 'scu_principal_binding_v1';
-const _keyLoginTimestamp = 'scu_login_timestamp';
 const _sessionDurationSeconds = 3600;
+
+/// 从 rest_token 失败响应体中提取具体错误信息；无法解析或没有错误字段时返回 null。
+/// 兼容业务格式（success/message/msg）与 OAuth 格式（error/error_description）。
+///
+/// [visibleForTesting]：纯解析函数，供单元测试覆盖各类响应格式。
+@visibleForTesting
+String? extractTokenErrorMessage(String body) {
+  try {
+    final decoded = jsonDecode(body);
+    if (decoded is Map<String, dynamic>) {
+      for (final key in const [
+        'message',
+        'msg',
+        'error_description',
+        'description',
+        'error',
+      ]) {
+        final value = decoded[key];
+        if (value is String && value.isNotEmpty) return value;
+      }
+    }
+  } catch (_) {
+    // 非 JSON 响应（网关错误页等），回退到 HTTP 状态码
+  }
+  return null;
+}
 
 /// SCU 统一身份认证（第3层）
 ///
@@ -61,6 +84,10 @@ class ScuAuth extends ChangeNotifier {
 
   /// 刷新互斥锁，防止多个并发请求同时触发刷新。
   Completer<bool>? _refreshCompleter;
+
+  /// 登出代次：logout() 时自增，使仍在飞行中的刷新放弃写回结果，
+  /// 避免「登出后 autoLogin 把新 token 写回、静默撤销登出」。
+  int _authEpoch = 0;
 
   /// 当 session 过期且自动刷新失败时调用。
   /// 用于在 UI 层显示提示（如 snackbar），由 SessionExpiredListener 注册。
@@ -101,19 +128,23 @@ class ScuAuth extends ChangeNotifier {
 
   /// 从安全存储恢复 token（应用启动时调用）。
   Future<void> init() async {
-    _accessToken = await SecureStorageProvider.instance.read(
-      key: _keyAccessToken,
-    );
-    _principal = await _restorePrincipal(_accessToken);
-    _loginTimestamp = _prefs.getInt(_keyLoginTimestamp);
+    try {
+      _accessToken = await SecureStorageProvider.instance.read(
+        key: kScuAccessToken,
+      ).catchError((_) => null);
+      _principal = await _restorePrincipal(_accessToken);
+      _loginTimestamp = _prefs.getInt(kScuLoginTimestamp);
 
-    if (_accessToken != null && !isExpired) {
-      _log.i('ScuAuth', 'init: token restored, ts=$_loginTimestamp');
-      state = AuthState.ready;
-    } else if (_accessToken != null) {
-      _log.w('ScuAuth', 'init: token restored but expired');
-    } else {
-      _log.d('ScuAuth', 'init: no saved token');
+      if (_accessToken != null && !isExpired) {
+        _log.i('ScuAuth', 'init: token restored, ts=$_loginTimestamp');
+        state = AuthState.ready;
+      } else if (_accessToken != null) {
+        _log.w('ScuAuth', 'init: token restored but expired');
+      } else {
+        _log.d('ScuAuth', 'init: no saved token');
+      }
+    } catch (e) {
+      _log.w('ScuAuth', 'init: failed to restore session: $e');
     }
   }
 
@@ -128,15 +159,18 @@ class ScuAuth extends ChangeNotifier {
     );
     final resp = await http.get(uri, headers: _headers).timeout(kHttpTimeout);
 
-    final json = parseJson(
-      resp.body,
-      'captcha',
-      (msg) => ScuLoginException(msg),
-    );
+    Map<String, dynamic> json;
+    try {
+      json = parseJson(resp.body, 'captcha', (msg) => ScuLoginException(msg));
+    } on ScuLoginException {
+      // 网关 5xx/维护页等非 JSON 响应，抛简洁错误并附状态码
+      _log.w('ScuAuth', 'fetchCaptcha: HTTP ${resp.statusCode}, 非 JSON 响应');
+      throw ScuLoginException('验证码接口请求失败(HTTP ${resp.statusCode})');
+    }
     final data = json['data'];
     if (data == null) {
       _log.w('ScuAuth', 'fetchCaptcha: missing data field');
-      throw ScuLoginException('验证码接口返回异常: ${resp.body}');
+      throw ScuLoginException('验证码接口返回异常，缺少 data 字段');
     }
     final dataMap = data as Map<String, dynamic>;
 
@@ -150,7 +184,7 @@ class ScuAuth extends ChangeNotifier {
 
     if (captchaImg == null || code == null) {
       _log.w('ScuAuth', 'fetchCaptcha: missing captcha/code fields');
-      throw ScuLoginException('验证码字段解析失败，实际响应: ${resp.body}');
+      throw ScuLoginException('验证码字段解析失败');
     }
     _log.d('ScuAuth', 'fetchCaptcha: ok (${captchaImg.length}B)');
     return CaptchaResult(code: code, captchaBase64: captchaImg);
@@ -166,26 +200,29 @@ class ScuAuth extends ChangeNotifier {
     _log.i('ScuAuth', 'login: start');
     // 1. 获取 SM2 公钥（服务端偶发 500，加重试）
     Map<String, dynamic>? sm2Data;
-    String? lastSm2Body;
     for (int attempt = 0; attempt < 3; attempt++) {
-      final sm2Resp = await http
-          .post(
-            Uri.parse('$_base/api/public/bff/v1.2/sm2_key'),
-            headers: _headers,
-            body: '{}',
-          )
-          .timeout(kHttpTimeout);
-      lastSm2Body = sm2Resp.body;
-      final sm2Json = parseJson(
-        sm2Resp.body,
-        'sm2_key',
-        (msg) => ScuLoginException(msg),
-      );
-      sm2Data = sm2Json['data'] as Map<String, dynamic>?;
-      if (sm2Data != null &&
-          sm2Data['publicKey'] != null &&
-          sm2Data['code'] != null) {
-        break;
+      try {
+        final sm2Resp = await http
+            .post(
+              Uri.parse('$_base/api/public/bff/v1.2/sm2_key'),
+              headers: _headers,
+              body: '{}',
+            )
+            .timeout(kHttpTimeout);
+        final sm2Json = parseJson(
+          sm2Resp.body,
+          'sm2_key',
+          (msg) => ScuLoginException(msg),
+        );
+        sm2Data = sm2Json['data'] as Map<String, dynamic>?;
+        if (sm2Data != null &&
+            sm2Data['publicKey'] != null &&
+            sm2Data['code'] != null) {
+          break;
+        }
+      } catch (e) {
+        // 偶发 500 返回的是非 JSON 错误页，解析/超时异常视为一次失败继续重试
+        _log.w('ScuAuth', 'login: sm2_key attempt ${attempt + 1} failed: $e');
       }
       if (attempt < 2) {
         await Future.delayed(const Duration(milliseconds: 500));
@@ -193,13 +230,13 @@ class ScuAuth extends ChangeNotifier {
     }
     if (sm2Data == null) {
       _log.w('ScuAuth', 'login: sm2_key failed after 3 attempts');
-      throw ScuLoginException('SM2 公钥接口返回异常: $lastSm2Body');
+      throw ScuLoginException('SM2 公钥接口返回异常');
     }
     final publicKey = sm2Data['publicKey']?.toString();
     final sm2Code = sm2Data['code']?.toString();
     if (publicKey == null || sm2Code == null) {
       _log.w('ScuAuth', 'login: sm2_key missing publicKey/code fields');
-      throw ScuLoginException('SM2 公钥字段缺失: $lastSm2Body');
+      throw ScuLoginException('SM2 公钥字段缺失');
     }
     _log.d('ScuAuth', 'login: sm2 key acquired');
 
@@ -230,6 +267,21 @@ class ScuAuth extends ChangeNotifier {
         )
         .timeout(kHttpTimeout);
 
+    if (tokenResp.statusCode < 200 || tokenResp.statusCode >= 300) {
+      // 密码错误等服务端以非 2xx（如 400）返回，且 body 里带有具体原因；
+      // 先尝试提取，避免只显示笼统的 HTTP 状态码。
+      final detail = extractTokenErrorMessage(tokenResp.body);
+      if (detail != null) {
+        _log.w(
+          'ScuAuth',
+          'login: rest_token HTTP ${tokenResp.statusCode}: $detail',
+        );
+        throw ScuLoginException(detail);
+      }
+      _log.w('ScuAuth', 'login: rest_token HTTP ${tokenResp.statusCode}');
+      throw ScuLoginException('登录请求失败(HTTP ${tokenResp.statusCode})');
+    }
+
     final result = parseJson(
       tokenResp.body,
       'rest_token',
@@ -246,7 +298,7 @@ class ScuAuth extends ChangeNotifier {
     final token = tokenData?['access_token']?.toString();
     if (token == null) {
       _log.w('ScuAuth', 'login: missing access_token in response');
-      throw ScuLoginException('Token 字段缺失: ${tokenResp.body}');
+      throw ScuLoginException('Token 字段缺失');
     }
 
     // 登录成功
@@ -256,15 +308,15 @@ class ScuAuth extends ChangeNotifier {
     _bindSessionFuture = null;
     _loginTimestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final secure = SecureStorageProvider.instance;
-    await secure.write(key: _keyAccessToken, value: _accessToken!);
+    await secure.write(key: kScuAccessToken, value: _accessToken!);
     await secure.write(
-      key: _keyPrincipalBinding,
+      key: kScuPrincipalBinding,
       value: jsonEncode({
         'principal': _principal,
         'tokenFingerprint': _tokenFingerprint(_accessToken!),
       }),
     );
-    await _prefs.setInt(_keyLoginTimestamp, _loginTimestamp!);
+    await _prefs.setInt(kScuLoginTimestamp, _loginTimestamp!);
     _log.i('ScuAuth', 'login: ok, token len=${token.length}');
     state = AuthState.ready;
   }
@@ -311,10 +363,20 @@ class ScuAuth extends ChangeNotifier {
       );
       throw const UnauthenticatedException('统一认证 token 已失效');
     }
+    if (sessionResp.statusCode < 200 || sessionResp.statusCode >= 300) {
+      _log.w(
+        'ScuAuth',
+        'bindSession: session/save HTTP ${sessionResp.statusCode}',
+      );
+      throw ServiceException(
+        'session/save 请求失败',
+        statusCode: sessionResp.statusCode,
+      );
+    }
     final sessionResult = parseJson(
       sessionResp.body,
       'session/save',
-      (msg) => ScuLoginException(msg),
+      (msg) => ServiceException(msg),
     );
     if (sessionResult['error']?.toString().toLowerCase() == 'invalid_token') {
       _log.w('ScuAuth', 'bindSession: invalid_token response');
@@ -322,7 +384,10 @@ class ScuAuth extends ChangeNotifier {
     }
     if (sessionResult['success'] != true) {
       _log.w('ScuAuth', 'bindSession: session/save rejected');
-      throw ScuLoginException('session/save 失败: ${sessionResp.body}');
+      throw ServiceException(
+        'session/save 失败: ${sessionResp.body}',
+        statusCode: sessionResp.statusCode,
+      );
     }
 
     client.reusable = true;
@@ -376,6 +441,16 @@ class ScuAuth extends ChangeNotifier {
         throw const UnauthenticatedException();
       }
       return await bindSession();
+    } on ServiceException {
+      // bindSession 非鉴权失败（如 session/save 服务端瞬时错误），触发一次刷新尝试自愈
+      _log.w('ScuAuth', 'getClient: bindSession service error, refreshing');
+      final refreshed = await _synchronizedRefresh();
+      if (!refreshed) {
+        _log.e('ScuAuth', 'getClient: refresh failed, session expired');
+        onSessionExpired?.call();
+        throw const UnauthenticatedException();
+      }
+      return await bindSession();
     }
   }
 
@@ -409,19 +484,22 @@ class ScuAuth extends ChangeNotifier {
       return _refreshCompleter!.future;
     }
     _log.i('ScuAuth', 'refresh: starting (single-flight)');
-    _refreshCompleter = Completer<bool>();
+    final completer = Completer<bool>();
+    _refreshCompleter = completer;
+    final epoch = _authEpoch;
     try {
       final result = await _doRefresh();
       _log.i('ScuAuth', 'refresh: ${result ? "ok" : "failed"}');
-      _refreshCompleter!.complete(result);
+      if (!completer.isCompleted) completer.complete(result);
       return result;
     } catch (e) {
-      state = AuthState.error;
+      // 已登出时不覆盖状态，避免登出被飞行中的刷新撤销
+      if (_authEpoch == epoch) state = AuthState.error;
       _log.e('ScuAuth', 'refresh: threw $e');
-      _refreshCompleter!.completeError(e);
+      if (!completer.isCompleted) completer.completeError(e);
       rethrow;
     } finally {
-      _refreshCompleter = null;
+      if (identical(_refreshCompleter, completer)) _refreshCompleter = null;
     }
   }
 
@@ -436,15 +514,23 @@ class ScuAuth extends ChangeNotifier {
       return false;
     }
 
+    final epoch = _authEpoch;
+
     // 1. 清除缓存，强制重新 SSO 握手
     invalidateCachedClient();
 
     // 2. 尝试用现有 token 重新绑定
     try {
       final client = await bindSession();
+      // 刷新期间如果用户已登出，放弃把结果写回
+      if (_authEpoch != epoch) {
+        client.close();
+        _log.w('ScuAuth', '_doRefresh: logged out during refresh');
+        return false;
+      }
       client.close();
       _loginTimestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      await _prefs.setInt(_keyLoginTimestamp, _loginTimestamp!);
+      await _prefs.setInt(kScuLoginTimestamp, _loginTimestamp!);
       state = AuthState.ready;
       return true;
     } catch (e) {
@@ -455,6 +541,10 @@ class ScuAuth extends ChangeNotifier {
     try {
       final success = await autoLogin();
       if (success) {
+        if (_authEpoch != epoch) {
+          _log.w('ScuAuth', '_doRefresh: logged out during autoLogin');
+          return false;
+        }
         state = AuthState.ready;
         return true;
       }
@@ -473,22 +563,30 @@ class ScuAuth extends ChangeNotifier {
 
   Future<void> logout() async {
     _log.i('ScuAuth', 'logout: clearing session');
+    // 使飞行中的刷新失效，并唤醒等待者，避免登出被撤销、并发调用者永久挂起
+    _authEpoch++;
+    final pending = _refreshCompleter;
+    _refreshCompleter = null;
+    if (pending != null && !pending.isCompleted) {
+      pending.complete(false);
+    }
+
+    _cachedClient?.closeForce();
     _accessToken = null;
     _principal = null;
     _cachedClient = null;
     _bindSessionFuture = null;
-    _refreshCompleter = null;
     _loginTimestamp = null;
-    await SecureStorageProvider.instance.delete(key: _keyAccessToken);
-    await SecureStorageProvider.instance.delete(key: _keyPrincipalBinding);
-    await _prefs.remove(_keyLoginTimestamp);
+    await SecureStorageProvider.instance.delete(key: kScuAccessToken);
+    await SecureStorageProvider.instance.delete(key: kScuPrincipalBinding);
+    await _prefs.remove(kScuLoginTimestamp);
     state = AuthState.unknown;
   }
 
   Future<String?> _restorePrincipal(String? token) async {
     if (token == null) return null;
     final secure = SecureStorageProvider.instance;
-    final raw = await secure.read(key: _keyPrincipalBinding);
+    final raw = await secure.read(key: kScuPrincipalBinding);
     if (raw == null) return null;
 
     try {
@@ -498,12 +596,12 @@ class ScuAuth extends ChangeNotifier {
       if (principal == null ||
           principal.isEmpty ||
           fingerprint != _tokenFingerprint(token)) {
-        await secure.delete(key: _keyPrincipalBinding);
+        await secure.delete(key: kScuPrincipalBinding);
         return null;
       }
       return principal;
     } catch (_) {
-      await secure.delete(key: _keyPrincipalBinding);
+      await secure.delete(key: kScuPrincipalBinding);
       return null;
     }
   }
@@ -514,23 +612,19 @@ class ScuAuth extends ChangeNotifier {
 
   // ─── 凭据管理（自动登录用）──────────────────────────────────
 
-  static const _keyRememberPassword = 'scu_remember_password';
-  static const _keySavedUsername = 'scu_saved_username';
-  static const _keySavedPassword = 'scu_saved_password';
-
   Future<void> saveCredentials(String username, String password) async {
     final storage = SecureStorageProvider.instance;
-    await storage.write(key: _keyRememberPassword, value: 'true');
-    await storage.write(key: _keySavedUsername, value: username);
-    await storage.write(key: _keySavedPassword, value: password);
+    await storage.write(key: kScuRememberPassword, value: 'true');
+    await storage.write(key: kScuSavedUsername, value: username);
+    await storage.write(key: kScuSavedPassword, value: password);
   }
 
   Future<Map<String, String>?> getSavedCredentials() async {
     final storage = SecureStorageProvider.instance;
-    final remember = await storage.read(key: _keyRememberPassword);
+    final remember = await storage.read(key: kScuRememberPassword);
     if (remember != 'true') return null;
-    final username = await storage.read(key: _keySavedUsername);
-    final password = await storage.read(key: _keySavedPassword);
+    final username = await storage.read(key: kScuSavedUsername);
+    final password = await storage.read(key: kScuSavedPassword);
     if (username != null && password != null) {
       return {'username': username, 'password': password};
     }
@@ -539,9 +633,9 @@ class ScuAuth extends ChangeNotifier {
 
   Future<void> clearCredentials() async {
     final storage = SecureStorageProvider.instance;
-    await storage.delete(key: _keyRememberPassword);
-    await storage.delete(key: _keySavedUsername);
-    await storage.delete(key: _keySavedPassword);
+    await storage.delete(key: kScuRememberPassword);
+    await storage.delete(key: kScuSavedUsername);
+    await storage.delete(key: kScuSavedPassword);
   }
 
   /// 自动登录（从安全存储恢复凭据 + OCR 验证码）。

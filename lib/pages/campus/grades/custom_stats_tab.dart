@@ -5,8 +5,9 @@ import 'package:bugaoshan/models/scheme_score.dart';
 import 'package:bugaoshan/providers/grades_provider.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/stat_item.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
-import 'scheme_scores_tab.dart' show ScoreCardWidget;
+import 'package:bugaoshan/widgets/common/styled_card.dart';
+import 'package:bugaoshan/theme_shape.dart';
+import 'scheme_scores_tab.dart' show SchemeScoreSelector, ScoreCardWidget;
 
 class CustomStatsTab extends StatefulWidget {
   const CustomStatsTab({super.key, this.searchQuery = ''});
@@ -131,7 +132,9 @@ class _CustomStatsTabState extends State<CustomStatsTab> {
     return CustomScrollView(
       slivers: [
         // 1. Quick-select chip bar
-        SliverToBoxAdapter(child: _buildChipBar(context, visibleKeys)),
+        SliverToBoxAdapter(
+          child: _buildChipBar(context, provider, visibleKeys),
+        ),
         // 2. Summary card (only when something is selected)
         if (selectedItems.isNotEmpty)
           SliverToBoxAdapter(
@@ -184,16 +187,28 @@ class _CustomStatsTabState extends State<CustomStatsTab> {
 
   // --- Chip bar ---
 
-  Widget _buildChipBar(BuildContext context, Set<String> visibleKeys) {
+  Widget _buildChipBar(
+    BuildContext context,
+    GradesProvider provider,
+    Set<String> visibleKeys,
+  ) {
     final l10n = AppLocalizations.of(context)!;
 
-    return Card(
+    return StyledCard(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (provider.schemes.length > 1) ...[
+              SchemeScoreSelector(
+                schemes: provider.schemes,
+                selectedScheme: provider.schemeScores!,
+                onChanged: (scheme) => _changeScheme(provider, scheme),
+              ),
+              const SizedBox(height: 12),
+            ],
             _buildAttrChips(context),
             const SizedBox(height: 8),
             Row(
@@ -222,22 +237,32 @@ class _CustomStatsTabState extends State<CustomStatsTab> {
     );
   }
 
+  void _changeScheme(GradesProvider provider, SchemeScoreSummary scheme) {
+    _selectedKeys.clear();
+    provider.selectScheme(scheme);
+  }
+
   Widget _buildAttrChips(BuildContext context) {
-    final attrs = ['必修', '选修', '任选'];
+    final l10n = AppLocalizations.of(context)!;
+    final attrLabels = {
+      '必修': l10n.courseAttrRequired,
+      '选修': l10n.courseAttrElective,
+      '任选': l10n.courseAttrOptional,
+    };
     return Wrap(
       spacing: 8,
       children: [
         ChoiceChip(
-          label: Text(AppLocalizations.of(context)!.trainProgramAll),
+          label: Text(l10n.trainProgramAll),
           selected: _attrFilter == null,
           onSelected: (_) => setState(() => _attrFilter = null),
         ),
-        for (final attr in attrs)
+        for (final entry in attrLabels.entries)
           ChoiceChip(
-            label: Text(attr),
-            selected: _attrFilter == attr,
+            label: Text(entry.value),
+            selected: _attrFilter == entry.key,
             onSelected: (selected) {
-              setState(() => _attrFilter = selected ? attr : null);
+              setState(() => _attrFilter = selected ? entry.key : null);
             },
           ),
       ],
@@ -283,7 +308,7 @@ class _CustomStatsTabState extends State<CustomStatsTab> {
 
   Widget _buildEmptySelectionHint(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Card(
+    return StyledCard(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -462,7 +487,7 @@ class _CustomSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Card(
+    return StyledCard(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Padding(
         padding: const EdgeInsets.all(16),

@@ -8,9 +8,8 @@ import 'package:bugaoshan/services/api/wfw_api_service.dart';
 import 'package:bugaoshan/services/auth/auth_state.dart';
 import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/services/auth/wfw_auth.dart';
-
-const _keyUserRealname = 'scu_user_realname';
-const _keyUserNumber = 'scu_user_number';
+import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/utils/storage_keys.dart';
 
 typedef _UserInfoResult = ({
   Map<String, dynamic>? profile,
@@ -25,14 +24,14 @@ Future<void> _persistUserInfoToPreferences(
 ) async {
   final prefs = getIt<SharedPreferences>();
   if (realname == null) {
-    await prefs.remove(_keyUserRealname);
+    await prefs.remove(kScuUserRealname);
   } else {
-    await prefs.setString(_keyUserRealname, realname);
+    await prefs.setString(kScuUserRealname, realname);
   }
   if (number == null) {
-    await prefs.remove(_keyUserNumber);
+    await prefs.remove(kScuUserNumber);
   } else {
-    await prefs.setString(_keyUserNumber, number);
+    await prefs.setString(kScuUserNumber, number);
   }
 }
 
@@ -47,6 +46,7 @@ class UserInfoProvider extends ChangeNotifier {
   final UserInfoPersistence _persistUserInfo;
   int _requestGeneration = 0;
   Future<void> _persistenceTail = Future<void>.value();
+  AuthState _lastAuthState = AuthState.unknown;
 
   UserInfoProvider(
     this._wfwAuth,
@@ -56,12 +56,14 @@ class UserInfoProvider extends ChangeNotifier {
     _wfwAuth.addListener(_onAuthChanged);
     // ScuAuth.init() 在 DI 阶段完成，此时本 Provider 还没创建，
     // init() 的 notifyListeners 没人接收。构造后主动检查一次。
+    _lastAuthState = _wfwAuth.state;
     if (_wfwAuth.isReady) {
       _scheduleFetch(Duration.zero);
     }
   }
 
   List<Map<String, dynamic>>? _labels;
+  Map<String, dynamic>? _profile;
   bool _loading = false;
   bool _error = false;
 
@@ -69,6 +71,12 @@ class UserInfoProvider extends ChangeNotifier {
   String? _userNumber;
 
   List<Map<String, dynamic>>? get labels => _labels;
+
+  /// 完整的微服务个人资料，供需要院系、联系方式等字段的功能复用。
+  ///
+  /// 返回不可变的深拷贝，调用方不能修改 Provider 内存缓存。
+  Map<String, dynamic>? get profile =>
+      _profile == null ? null : _freezeMap(_profile!);
   bool get loading => _loading;
   bool get error => _error;
   bool get hasData => _labels != null;
@@ -76,13 +84,22 @@ class UserInfoProvider extends ChangeNotifier {
   String? get userNumber => _userNumber;
 
   void _onAuthChanged() {
-    if (_wfwAuth.state == AuthState.ready) {
-      // SSO session 刚通过 session/save 建立，CookieClient 的 jar 里仅有
-      // id.scu.edu.cn 域 cookie。立即访问 wfw.scu.edu.cn 会触发重定向链，
-      // 重定向期间的并发请求可能被服务端限流或产生 session 竞态导致失败。
-      // 给一个短延迟让重定向链完成，同时 _fetchAll 内部有一次自动重试兜底。
+    final current = _wfwAuth.state;
+    // 只在 unknown→ready 边沿触发取数。会话失效后的自动重试路径
+    // （invalidate → 预热 → ready）会再次 notify ready，若按电平触发，
+    // 每次重试预热都会重新调度取数；一旦 wfw session 始终无法建立，
+    // 「ready → 取数失败 → invalidate → 预热误报 ready → 再取数」
+    // 就会无限循环。
+    final becameReady =
+        current == AuthState.ready && _lastAuthState != AuthState.ready;
+    _lastAuthState = current;
+    if (becameReady) {
+      // ready 通知时 WfwAuth 的 SSO 登录链已完成、wfw session 已绑定
+      // 用户；但 warmUpAll 中 payapp 等模块可能还在共享同一 CookieClient
+      // 跑各自的 SSO 链，短延迟避让并发窗口，同时 _fetchAll 内部有一次
+      // 自动重试兜底。
       _scheduleFetch(const Duration(milliseconds: 300));
-    } else if (_wfwAuth.state == AuthState.unknown) {
+    } else if (current == AuthState.unknown) {
       clear();
     }
   }
@@ -96,28 +113,31 @@ class UserInfoProvider extends ChangeNotifier {
     }
   }
 
-  bool _isCurrent(int generation) =>
-      generation == _requestGeneration && _wfwAuth.isReady;
+  bool _isCurrent(int generation) => generation == _requestGeneration;
 
   /// 同时获取用户信息和标签
   Future<void> _fetchAll(int generation) async {
-    if (!_isCurrent(generation)) return;
+    if (generation != _requestGeneration) return;
     _loading = true;
     _error = false;
     notifyListeners();
 
-    final result = await _doFetch(generation);
-    if (!_isCurrent(generation)) return;
-
-    if (result == null) {
-      _error = true;
-    } else {
-      await _applyResult(result);
-      if (!_isCurrent(generation)) return;
+    try {
+      final result = await _doFetch(generation);
+      // 只有被更新的 generation 取代时才无声退出；
+      // 同 generation 下即便 wfw 掉线 isReady 变 false，也必须复位 loading。
+      if (generation != _requestGeneration) return;
+      if (result == null) {
+        _error = true;
+      } else {
+        await _applyResult(result);
+      }
+    } finally {
+      if (generation == _requestGeneration) {
+        _loading = false;
+        notifyListeners();
+      }
     }
-
-    _loading = false;
-    notifyListeners();
   }
 
   Future<_UserInfoResult?> _doFetch(int generation) async {
@@ -153,16 +173,15 @@ class UserInfoProvider extends ChangeNotifier {
     _labels = result.labels;
     _error = false;
 
-    // 更新用户基本信息
-    final profile = result.profile;
-    if (profile != null) {
-      _userRealname = profile['realname']?.toString();
-      final role = profile['role'] as Map<String, dynamic>?;
-      _userNumber = role?['number']?.toString();
-      // 同步到 ScuAuthProvider（向后兼容）
-      getIt<ScuAuthProvider>().setUserInfo(_userRealname, _userNumber);
-      await _enqueuePersistence(_userRealname, _userNumber);
-    }
+    // 更新用户基本信息。profile 为 null 时同样清空旧值，避免换账号或服务
+    // 端返回空资料后页面继续展示上一个账号的个人数据。
+    _profile = result.profile;
+    _userRealname = _profile?['realname']?.toString();
+    final role = _profile?['role'];
+    _userNumber = role is Map ? role['number']?.toString() : null;
+    // 同步到 ScuAuthProvider（向后兼容）
+    getIt<ScuAuthProvider>().setUserInfo(_userRealname, _userNumber);
+    await _enqueuePersistence(_userRealname, _userNumber);
   }
 
   Future<void> _enqueuePersistence(String? realname, String? number) {
@@ -172,7 +191,7 @@ class UserInfoProvider extends ChangeNotifier {
     _persistenceTail = operation.then<void>(
       (_) {},
       onError: (Object error, StackTrace stackTrace) {
-        debugPrint('User info persistence error: $error');
+        AppLog.e('UserInfoProvider', 'Persistence error: $error');
       },
     );
     return operation;
@@ -206,12 +225,32 @@ class UserInfoProvider extends ChangeNotifier {
 
   void retry() {
     _error = false;
-    if (_wfwAuth.isReady) _scheduleFetch(Duration.zero);
+    if (_wfwAuth.isReady) {
+      _scheduleFetch(Duration.zero);
+    } else {
+      // wfw 会话已失效：先刷新 UI 清除过期 error 帧，再主动预热恢复 ready。
+      notifyListeners();
+      unawaited(
+        _wfwAuth
+            .ensureAuthenticated()
+            .then((_) {
+              // 会话可能是「无声失效后重建」（invalidate 不发通知，
+              // _lastAuthState 仍停留在 ready）：此时 ready 重通知不构成
+              // 状态边沿，_onAuthChanged 不会再调度，这里显式兜底。
+              // 正常边沿路径下通知已调度过一次，generation 会去重。
+              if (_wfwAuth.isReady) {
+                _scheduleFetch(const Duration(milliseconds: 300));
+              }
+            })
+            .catchError((Object _) {}),
+      );
+    }
   }
 
   void clear() {
     _requestGeneration++;
     _labels = null;
+    _profile = null;
     _error = false;
     _loading = false;
     _userRealname = null;
@@ -226,4 +265,24 @@ class UserInfoProvider extends ChangeNotifier {
     _wfwAuth.removeListener(_onAuthChanged);
     super.dispose();
   }
+}
+
+Map<String, dynamic> _freezeMap(Map<String, dynamic> source) =>
+    Map<String, dynamic>.unmodifiable(
+      source.map((key, value) => MapEntry(key, _freezeValue(value))),
+    );
+
+Object? _freezeValue(Object? value) {
+  if (value is Map<String, dynamic>) {
+    return _freezeMap(value);
+  }
+  if (value is Map) {
+    return Map<Object?, Object?>.unmodifiable(
+      value.map((key, nestedValue) => MapEntry(key, _freezeValue(nestedValue))),
+    );
+  }
+  if (value is List) {
+    return List<Object?>.unmodifiable(value.map(_freezeValue));
+  }
+  return value;
 }

@@ -1,12 +1,11 @@
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/set_theme_color_provider.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
-import 'package:bugaoshan/utils/theme_utils.dart';
+import 'package:system_theme/system_theme.dart';
 
 class SetThemeColorPage extends StatefulWidget {
   const SetThemeColorPage({super.key});
@@ -26,12 +25,9 @@ class _SetThemeColorPageState extends State<SetThemeColorPage> {
   @override
   void initState() {
     super.initState();
-    final savedMode = appConfigService.themeColorMode.value;
-    _selectedMode = AppPlatform.isHarmony && savedMode == ThemeColorMode.system
-        ? ThemeColorMode.custom
-        : savedMode;
+    _selectedMode = appConfigService.themeColorMode.value;
     if (_selectedMode == ThemeColorMode.system) {
-      pickerColor = currentSystemAccentColor();
+      pickerColor = SystemTheme.accentColor.accent;
     } else {
       pickerColor = appConfigService.themeColor.value;
     }
@@ -53,10 +49,7 @@ class _SetThemeColorPageState extends State<SetThemeColorPage> {
   }
 
   void _onModeChanged(ThemeColorMode? mode) async {
-    if (mode == null ||
-        (AppPlatform.isHarmony && mode == ThemeColorMode.system)) {
-      return;
-    }
+    if (mode == null) return;
     setState(() {
       _selectedMode = mode;
     });
@@ -79,7 +72,6 @@ class _SetThemeColorPageState extends State<SetThemeColorPage> {
   }
 
   Future<void> _handleSystemMode() async {
-    if (AppPlatform.isHarmony) return;
     final result = await themeColorProvider.previewSystemColor();
     if (!mounted) return;
     setState(() {
@@ -155,26 +147,28 @@ class _SetThemeColorPageState extends State<SetThemeColorPage> {
               ],
             ),
             body: SingleChildScrollView(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
               child: Column(
                 children: [
-                  commonCard(
-                    context: context,
-                    child: Text(l10n.customizedColorHint),
+                  CardWithTitle(
                     title: l10n.tips,
                     icon: const Icon(Icons.warning_amber),
+                    backgroundColor: colorScheme?.secondaryContainer,
+                    child: Text(l10n.customizedColorHint),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
                     child: SegmentedButton<ThemeColorMode>(
                       segments: [
-                        if (!AppPlatform.isHarmony)
-                          ButtonSegment<ThemeColorMode>(
-                            value: ThemeColorMode.system,
-                            label: Text(l10n.themeColorModeSystem),
-                            icon: const Icon(Icons.settings_suggest),
-                          ),
+                        ButtonSegment<ThemeColorMode>(
+                          value: ThemeColorMode.system,
+                          label: Text(l10n.themeColorModeSystem),
+                          icon: const Icon(Icons.settings_suggest),
+                        ),
                         ButtonSegment<ThemeColorMode>(
                           value: ThemeColorMode.backgroundImage,
                           label: Text(l10n.themeColorModeBackgroundImage),
@@ -249,93 +243,4 @@ class _MultiColorPickerState extends State<MultiColorPicker>
       ),
     );
   }
-}
-
-class BasicCard extends StatelessWidget {
-  final void Function(BuildContext context)? onTap;
-  final Widget? child;
-
-  const BasicCard({super.key, required this.child, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    Widget? realChild;
-    if (onTap == null) {
-      realChild = child;
-    } else {
-      realChild = InkWell(
-        highlightColor: Colors.transparent,
-        splashColor: Colors.transparent,
-        focusColor: Colors.transparent,
-        onTap: () {
-          onTap!(context);
-        },
-        child: SizedBox(width: double.infinity, child: child),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Container(
-        alignment: Alignment.topLeft,
-        decoration: ShapeDecoration(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadiusDirectional.circular(
-              AppShapes.largeIncreased,
-            ),
-          ),
-          color: Theme.of(context).colorScheme.secondaryContainer,
-          shadows: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              spreadRadius: 0.1,
-              blurRadius: 10,
-            ),
-          ],
-        ),
-        width: double.infinity,
-        child: realChild,
-      ),
-    );
-  }
-}
-
-Widget commonCard({
-  required BuildContext context,
-  required String title,
-  required Widget? child,
-  Widget? icon,
-  void Function(BuildContext context)? onTap,
-}) {
-  return BasicCard(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [titleText(title), icon ?? Container()],
-          ),
-          child ?? Container(),
-        ],
-      ),
-    ),
-  );
-}
-
-Widget titleText(String text) {
-  return Builder(
-    builder: (context) => Padding(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
-      child: Text(
-        text,
-        textScaler: const TextScaler.linear(1.3),
-        style: Theme.of(
-          context,
-        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-      ),
-    ),
-  );
 }

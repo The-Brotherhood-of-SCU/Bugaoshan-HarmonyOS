@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
-import 'package:bugaoshan/utils/theme_utils.dart';
+import 'package:system_theme/system_theme.dart';
 
 enum ExtractColorResult { noBackgroundImage, success, failure }
 
@@ -28,7 +28,8 @@ class SetThemeColorProvider {
   Color? get extractedColor => _extractedColor;
 
   Future<Color> getSystemAccentColor() async {
-    return loadSystemAccentColor();
+    await SystemTheme.accentColor.load();
+    return SystemTheme.accentColor.accent;
   }
 
   Future<ThemeColorPreviewResult> previewSystemColor() async {

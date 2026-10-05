@@ -1,6 +1,7 @@
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
-
-import 'package:bugaoshan/utils/platform_utils.dart';
+import 'package:bugaoshan/utils/constants.dart';
 
 /// Service for switching app icons at runtime.
 ///
@@ -12,26 +13,48 @@ import 'package:bugaoshan/utils/platform_utils.dart';
 /// applicationId mismatch (debug builds add a .debug suffix to applicationId
 /// but component class names resolve from the Gradle namespace).
 class DynamicIconService {
-  static const MethodChannel _channel = MethodChannel('bugaoshan/dynamic_icon');
+  static const MethodChannel _channel = kDynamicIconMethodChannel;
+
+  /// The native channel is only implemented on Android; other platforms
+  /// fall back to safe defaults instead of throwing [MissingPluginException].
+  ///
+  /// Uses [defaultTargetPlatform] instead of `Platform.isAndroid` so tests can
+  /// override the platform via [debugDefaultTargetPlatformOverride].
+  static bool get _isSupported =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   /// Returns the list of available alternate icon names.
   static Future<List<String>> getAvailableIcons() async {
-    if (!AppPlatform.isAndroid) return const [];
-    final list = await _channel.invokeMethod<List<dynamic>>(
-      'getAvailableIcons',
-    );
-    return list?.cast<String>() ?? [];
+    if (!_isSupported) return [];
+    try {
+      final list = await _channel.invokeMethod<List<dynamic>>(
+        'getAvailableIcons',
+      );
+      return list?.cast<String>() ?? [];
+    } on MissingPluginException {
+      return [];
+    }
   }
 
   /// Returns the currently active alternate icon name, or `null` for the default icon.
   static Future<String?> getCurrentIconName() async {
-    if (!AppPlatform.isAndroid) return null;
-    return await _channel.invokeMethod<String?>('getCurrentIconName');
+    if (!_isSupported) return null;
+    try {
+      return await _channel.invokeMethod<String?>('getCurrentIconName');
+    } on MissingPluginException {
+      return null;
+    }
   }
 
   /// Switch to the given [iconName], or restore the default icon if `null`.
   static Future<void> setAlternateIconName(String? iconName) async {
-    if (!AppPlatform.isAndroid) return;
-    await _channel.invokeMethod('setAlternateIconName', {'iconName': iconName});
+    if (!_isSupported) return;
+    try {
+      await _channel.invokeMethod('setAlternateIconName', {
+        'iconName': iconName,
+      });
+    } on MissingPluginException {
+      // Ignore: no native implementation on this platform.
+    }
   }
 }

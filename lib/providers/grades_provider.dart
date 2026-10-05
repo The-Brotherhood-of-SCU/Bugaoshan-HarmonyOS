@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bugaoshan/models/scheme_score.dart';
 import 'package:bugaoshan/services/api/zhjw_api_service.dart';
 import 'package:bugaoshan/services/auth/scu_exceptions.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 const _keySchemeScores = 'grades_scheme_scores';
@@ -37,7 +38,8 @@ class GradesProvider extends ChangeNotifier {
       '${baseKey}_$userIdentity';
 
   void _restoreCache() {
-    _schemeScores = null;
+    _schemes = null;
+    _selectedSchemeName = null;
     _schemeState = GradesLoadState.idle;
     _schemeError = null;
     _passingScores = null;
@@ -52,11 +54,13 @@ class GradesProvider extends ChangeNotifier {
     );
     if (cachedScheme != null) {
       try {
-        _schemeScores = SchemeScoreSummary.fromJson(
+        _schemes = SchemeScoreSummary.listFromJson(
           jsonDecode(cachedScheme) as Map<String, dynamic>,
         );
         _schemeState = GradesLoadState.loaded;
-      } catch (_) {}
+      } catch (e) {
+        AppLog.w('GradesProvider', 'Scheme cache decode error: $e');
+      }
     }
     final cachedPassing = _prefs.getString(
       _userCacheKey(_keyPassingScores, userIdentity),
@@ -67,7 +71,9 @@ class GradesProvider extends ChangeNotifier {
           jsonDecode(cachedPassing) as Map<String, dynamic>,
         );
         _passingState = GradesLoadState.loaded;
-      } catch (_) {}
+      } catch (e) {
+        AppLog.w('GradesProvider', 'Passing cache decode error: $e');
+      }
     }
   }
 
@@ -82,11 +88,27 @@ class GradesProvider extends ChangeNotifier {
   }
 
   // --- 方案成绩 ---
-  SchemeScoreSummary? _schemeScores;
+  List<SchemeScoreSummary>? _schemes;
+  String? _selectedSchemeName;
   GradesLoadState _schemeState = GradesLoadState.idle;
   LoadErrorType? _schemeError;
 
-  SchemeScoreSummary? get schemeScores => _schemeScores;
+  List<SchemeScoreSummary> get schemes => _schemes ?? const [];
+  SchemeScoreSummary? get schemeScores {
+    if (_schemes == null) return null;
+    for (final scheme in schemes) {
+      if (scheme.cjlx == _selectedSchemeName) return scheme;
+    }
+    return SchemeScoreSummary.defaultScheme(schemes) ??
+        SchemeScoreSummary.fromJson(const {});
+  }
+
+  void selectScheme(SchemeScoreSummary scheme) {
+    if (!schemes.contains(scheme) || scheme.cjlx == _selectedSchemeName) return;
+    _selectedSchemeName = scheme.cjlx;
+    notifyListeners();
+  }
+
   GradesLoadState get schemeState => _schemeState;
   LoadErrorType? get schemeError => _schemeError;
 
@@ -100,7 +122,7 @@ class GradesProvider extends ChangeNotifier {
     try {
       final data = await _zhjwApi.fetchSchemeScores();
       if (generation != _identityGeneration) return;
-      _schemeScores = SchemeScoreSummary.fromJson(data);
+      _schemes = SchemeScoreSummary.listFromJson(data);
       _schemeState = GradesLoadState.loaded;
       if (userIdentity != null) {
         await _prefs.setString(
@@ -111,7 +133,7 @@ class GradesProvider extends ChangeNotifier {
       }
     } on UnauthenticatedException {
       if (generation != _identityGeneration) return;
-      if (_schemeScores != null) {
+      if (_schemes != null) {
         _schemeState = GradesLoadState.loaded;
         _schemeError = LoadErrorType.sessionExpired;
       } else {
@@ -120,8 +142,8 @@ class GradesProvider extends ChangeNotifier {
       }
     } catch (e) {
       if (generation != _identityGeneration) return;
-      debugPrint('Scheme scores load error: $e');
-      if (_schemeScores != null) {
+      AppLog.e('GradesProvider', 'Scheme scores load error: $e');
+      if (_schemes != null) {
         _schemeState = GradesLoadState.loaded;
         _schemeError = campusNetworkErrorType(LoadErrorType.loadFailed);
       } else {
@@ -175,7 +197,7 @@ class GradesProvider extends ChangeNotifier {
       }
     } catch (e) {
       if (generation != _identityGeneration) return;
-      debugPrint('Passing scores load error: $e');
+      AppLog.e('GradesProvider', 'Passing scores load error: $e');
       if (_passingScores != null) {
         _passingState = GradesLoadState.loaded;
         _passingError = campusNetworkErrorType(LoadErrorType.loadFailed);

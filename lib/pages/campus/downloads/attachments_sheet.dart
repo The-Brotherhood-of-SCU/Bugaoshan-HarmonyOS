@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:open_filex/open_filex.dart';
+import 'package:bugaoshan/utils/open_file.dart';
 
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
@@ -160,7 +160,7 @@ class _SheetAttachmentTile extends StatelessWidget {
     return Icons.insert_drive_file;
   }
 
-  void _open(String path) => OpenFilex.open(path);
+  void _open(String path) => openFile(path);
   void _share(BuildContext context, String path) =>
       shareSingleFile(path, context: context);
 
@@ -253,42 +253,17 @@ class _SheetAttachmentTile extends StatelessWidget {
   }
 
   Widget _buildDefaultTile(BuildContext context, DownloadManager manager) {
+    final l10n = AppLocalizations.of(context)!;
     return ListTile(
       leading: Icon(_fileIcon(), color: Theme.of(context).colorScheme.primary),
       title: Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis),
-      trailing: FutureBuilder<String?>(
-        future: checkDownloadedFile(dirName, item.name, url: item.url),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            );
-          }
-          if (snapshot.data != null) {
-            // Already on disk — register in manager.
-            final task = manager.enqueue(
-              item.url,
-              dirName,
-              item.name,
-              headers: downloadHeaders,
-            );
-            if (task.status == DownloadStatus.pending) {
-              manager.updateTask(
-                task,
-                status: DownloadStatus.done,
-                downloadedPath: snapshot.data,
-              );
-            }
-            return _doneTrailing(context, snapshot.data!);
-          }
-          return IconButton(
-            icon: const Icon(Icons.download),
-            tooltip: '下载',
-            onPressed: () => _startDownload(manager),
-          );
-        },
+      // showAttachmentsSheet 打开时会异步检查本地文件并更新 DownloadManager。
+      // 这里仅根据其状态渲染，不能在 FutureBuilder 的 build
+      // 回调中反向写入 Manager，否则会同步触发正在构建的 ListenableBuilder。
+      trailing: IconButton(
+        icon: const Icon(Icons.download),
+        tooltip: l10n.download,
+        onPressed: () => _startDownload(manager),
       ),
     );
   }
@@ -302,17 +277,18 @@ class _SheetAttachmentTile extends StatelessWidget {
   }
 
   Widget _doneTrailing(BuildContext context, String path) {
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           icon: const Icon(Icons.share),
-          tooltip: '分享',
+          tooltip: l10n.share,
           onPressed: () => _share(context, path),
         ),
         IconButton(
           icon: const Icon(Icons.check_circle, color: Colors.green),
-          tooltip: '打开',
+          tooltip: l10n.open,
           onPressed: () => _open(path),
         ),
       ],

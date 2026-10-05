@@ -9,6 +9,7 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/services/auth/cookie_client.dart';
 import 'package:bugaoshan/services/auth/scu_auth.dart';
 import 'package:bugaoshan/utils/auth_logger.dart';
+import 'package:bugaoshan/utils/storage_keys.dart';
 
 void main() {
   late SharedPreferences prefs;
@@ -18,11 +19,9 @@ void main() {
     await getIt.reset();
     logger = AuthLogger();
     getIt.registerSingleton<AuthLogger>(logger);
-    FlutterSecureStorage.setMockInitialValues({
-      'scu_access_token': 'stale-token',
-    });
+    FlutterSecureStorage.setMockInitialValues({kScuAccessToken: 'stale-token'});
     SharedPreferences.setMockInitialValues({
-      'scu_login_timestamp': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      kScuLoginTimestamp: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     });
     prefs = await SharedPreferences.getInstance();
   });
@@ -95,6 +94,56 @@ void main() {
 
     expect(auth.autoLoginCalls, 1);
     expect(sessionSaveCalls, 3);
+  });
+
+  group('extractTokenErrorMessage', () {
+    test('extracts message from business format', () {
+      expect(
+        extractTokenErrorMessage('{"success":false,"message":"密码错误"}'),
+        '密码错误',
+      );
+    });
+
+    test('extracts msg field', () {
+      expect(extractTokenErrorMessage('{"msg":"账号或密码错误"}'), '账号或密码错误');
+    });
+
+    test('prefers message over OAuth error code', () {
+      expect(
+        extractTokenErrorMessage('{"message":"密码错误","error":"invalid_grant"}'),
+        '密码错误',
+      );
+    });
+
+    test('extracts OAuth error_description', () {
+      expect(
+        extractTokenErrorMessage(
+          '{"error":"invalid_grant","error_description":"用户名或密码错误"}',
+        ),
+        '用户名或密码错误',
+      );
+    });
+
+    test('falls back to OAuth error code', () {
+      expect(
+        extractTokenErrorMessage('{"error":"invalid_grant"}'),
+        'invalid_grant',
+      );
+    });
+
+    test('returns null for non-JSON body', () {
+      expect(extractTokenErrorMessage('<html>gateway error</html>'), isNull);
+    });
+
+    test('returns null for empty or missing error fields', () {
+      expect(extractTokenErrorMessage('{}'), isNull);
+      expect(extractTokenErrorMessage('{"success":false}'), isNull);
+      expect(extractTokenErrorMessage('{"message":""}'), isNull);
+    });
+
+    test('returns null for non-map JSON', () {
+      expect(extractTokenErrorMessage('[1,2,3]'), isNull);
+    });
   });
 }
 

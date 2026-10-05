@@ -1,6 +1,10 @@
 <manifest 
+    
     xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
@@ -16,7 +20,6 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -65,7 +68,7 @@
         </provider>
         <!-- Home Screen Widgets (Glance) -->
         <receiver
-            android:name="io.github.the_brotherhood_of_scu.bugaoshan.widget.CourseWidgetReceiverSmall"
+            android:name=".CourseWidgetReceiverSmall"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -76,7 +79,7 @@
                 android:resource="@xml/widget_small_info" />
         </receiver>
         <receiver
-            android:name="io.github.the_brotherhood_of_scu.bugaoshan.widget.CourseWidgetReceiverMedium"
+            android:name=".CourseWidgetReceiverMedium"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -86,7 +89,7 @@
                 android:resource="@xml/widget_medium_info" />
         </receiver>
         <receiver
-            android:name="io.github.the_brotherhood_of_scu.bugaoshan.widget.CourseWidgetReceiverLarge"
+            android:name=".CourseWidgetReceiverLarge"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

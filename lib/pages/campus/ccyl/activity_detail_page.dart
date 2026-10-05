@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/ccyl_provider.dart';
 import 'package:bugaoshan/pages/campus/ccyl/models/ccyl_models.dart';
+import 'package:bugaoshan/widgets/common/icon_info_row.dart';
 import 'package:bugaoshan/widgets/common/image_viewer.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 
 class ActivityDetailPage extends StatefulWidget {
   final String activityId;
@@ -50,7 +53,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
         _loading = false;
       });
     } catch (e) {
-      debugPrint('Activity detail load error: $e');
+      AppLog.e('CcylActivityDetail', 'Detail load error: $e');
       if (!mounted) return;
       setState(() {
         _error = LoadErrorType.ccylActivityLoadFailed;
@@ -101,7 +104,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
         selectedType.code ?? '',
       );
     } catch (e) {
-      debugPrint('Sign up error: $e');
+      AppLog.e('CcylActivityDetail', 'Sign up error: $e');
       if (!mounted) return;
       setState(() => _actionLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -131,7 +134,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
       final provider = getIt<CcylProvider>();
       await provider.service.cancelSignUp(widget.activityId);
     } catch (e) {
-      debugPrint('Cancel sign up error: $e');
+      AppLog.e('CcylActivityDetail', 'Cancel sign up error: $e');
       if (!mounted) return;
       setState(() => _actionLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -298,7 +301,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
 
   Widget _buildHeader(AppLocalizations l10n) {
     final activity = _activity!;
-    return Card(
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -349,10 +352,14 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  (_activityLib?.orgName.isNotEmpty == true)
-                      ? _activityLib!.orgName
-                      : activity.orgName,
+                Flexible(
+                  child: Text(
+                    (_activityLib?.orgName.isNotEmpty == true)
+                        ? _activityLib!.orgName
+                        : activity.orgName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -372,7 +379,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
   Widget _buildTimeSection(AppLocalizations l10n) {
     final activity = _activity!;
     final theme = Theme.of(context);
-    return Card(
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -407,7 +414,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
 
   Widget _buildLocationSection(AppLocalizations l10n) {
     final activity = _activity!;
-    return Card(
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -422,16 +429,16 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
             const SizedBox(height: 12),
             if (activity.activityAddress != null &&
                 activity.activityAddress!.isNotEmpty)
-              _buildInfoRow(
-                Icons.location_on,
-                l10n.ccylActivityAddress,
-                activity.activityAddress!,
+              IconInfoRow(
+                icon: Icons.location_on,
+                label: l10n.ccylActivityAddress,
+                value: activity.activityAddress!,
               ),
             if (activity.mobile != null && activity.mobile!.isNotEmpty)
-              _buildInfoRow(
-                Icons.phone,
-                l10n.ccylContactPhone,
-                activity.mobile!,
+              IconInfoRow(
+                icon: Icons.phone,
+                label: l10n.ccylContactPhone,
+                value: activity.mobile!,
               ),
           ],
         ),
@@ -441,7 +448,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
 
   Widget _buildInfoSection(AppLocalizations l10n) {
     final activity = _activity!;
-    return Card(
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -454,59 +461,40 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.people, l10n.ccylQuota, '${activity.quota}'),
-            _buildInfoRow(
-              Icons.flag,
-              l10n.ccylActivityTarget,
-              activity.activityTargetName ?? activity.activityTarget,
+            IconInfoRow(
+              icon: Icons.people,
+              label: l10n.ccylQuota,
+              value: '${activity.quota}',
             ),
-            _buildInfoRow(
-              Icons.schedule,
-              l10n.ccylHours,
-              '${activity.classHour}',
+            IconInfoRow(
+              icon: Icons.flag,
+              label: l10n.ccylActivityTarget,
+              value: activity.activityTargetName ?? activity.activityTarget,
             ),
-            Row(
+            IconInfoRow(
+              icon: Icons.schedule,
+              label: l10n.ccylHours,
+              value: '${activity.classHour}',
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.login,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${l10n.ccylSignIn}: ',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  activity.isSignIn == '1'
+                _buildSignRow(
+                  icon: Icons.login,
+                  label: l10n.ccylSignIn,
+                  value: activity.isSignIn == '1'
                       ? l10n.ccylEnabled
                       : l10n.ccylDisabled,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: activity.isSignIn == '1'
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.outline,
-                  ),
+                  isEnabled: activity.isSignIn == '1',
                 ),
-                const SizedBox(width: 16),
-                Text(
-                  '${l10n.ccylSignOut}: ',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  activity.isSignOut == '1'
+                const SizedBox(height: 4),
+                _buildSignRow(
+                  icon: Icons.logout,
+                  label: l10n.ccylSignOut,
+                  value: activity.isSignOut == '1'
                       ? l10n.ccylEnabled
                       : l10n.ccylDisabled,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: activity.isSignOut == '1'
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.outline,
-                  ),
+                  isEnabled: activity.isSignOut == '1',
                 ),
               ],
             ),
@@ -518,7 +506,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
 
   Widget _buildLibSection(AppLocalizations l10n) {
     final lib = _activityLib!;
-    return Card(
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -531,23 +519,65 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.collections, l10n.ccylSeriesName, lib.name),
-            _buildInfoRow(Icons.business, l10n.ccylOrganizer, lib.orgName),
+            IconInfoRow(
+              icon: Icons.collections,
+              label: l10n.ccylSeriesName,
+              value: lib.name,
+            ),
+            IconInfoRow(
+              icon: Icons.business,
+              label: l10n.ccylOrganizer,
+              value: lib.orgName,
+            ),
             if (lib.levelName != null)
-              _buildInfoRow(
-                Icons.star,
-                l10n.ccylStarLevel,
-                lib.starName ?? lib.star,
+              IconInfoRow(
+                icon: Icons.star,
+                label: l10n.ccylStarLevel,
+                value: lib.starName ?? lib.star,
               ),
             if (lib.qualityName != null)
-              _buildInfoRow(
-                Icons.emoji_events,
-                l10n.ccylQuality,
-                lib.qualityName!,
+              IconInfoRow(
+                icon: Icons.emoji_events,
+                label: l10n.ccylQuality,
+                value: lib.qualityName!,
               ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSignRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required bool isEnabled,
+  }) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: isEnabled
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outline,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -599,37 +629,6 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

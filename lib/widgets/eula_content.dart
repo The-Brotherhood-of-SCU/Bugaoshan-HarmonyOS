@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 
 /// EULA 版本号，需要与 eula.md 中的 version 保持一致
-const int currentEulaVersion = 2;
+const int currentEulaVersion = 1;
 
 /// EULA 内容展示组件，包含滚动检测和同意复选框
 class EulaContent extends StatefulWidget {

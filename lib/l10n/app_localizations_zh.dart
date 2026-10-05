@@ -85,6 +85,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get widgetShowTomorrowAfterEnd => '当天课程结束后显示第二天课程';
 
   @override
+  String get widgetAppearanceTitle => '小组件外观';
+
+  @override
+  String get widgetAppearanceDescription => '统一调整本设备上的所有不高山课表小组件。';
+
+  @override
+  String get widgetColorStyle => '配色';
+
+  @override
+  String get widgetColorful => '课程色彩';
+
+  @override
+  String get widgetMonochrome => '单色';
+
+  @override
+  String get widgetDensity => '信息密度';
+
+  @override
+  String get widgetDensityStandard => '标准';
+
+  @override
+  String get widgetDensityCompact => '紧凑';
+
+  @override
+  String get widgetSystemAppearanceHint =>
+      '在 iOS 26 及更高版本中，主屏幕的透明与着色外观会自动使用系统玻璃或着色效果。';
+
+  @override
   String get onboardingSkip => '跳过';
 
   @override
@@ -109,7 +137,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get classroomQueryDesc => '查询教室空闲、借用和上课信息';
 
   @override
-  String get utilitiesSection => '实用工具';
+  String get utilitiesSection => '实用功能';
 
   @override
   String get academicSection => '学业';
@@ -243,6 +271,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get animationDurationHint => '提示：调整滑块查看动画效果，点击确认后才会保存设置';
 
   @override
+  String get enablePageTransitionAnimation => 'Dock栏页面切换动画';
+
+  @override
+  String get enablePageTransitionAnimationHint => '切换Dock栏页面时启用滑动与淡入淡出动画';
+
+  @override
   String get themeColor => '主题颜色';
 
   @override
@@ -285,16 +319,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get about => '关于';
 
   @override
+  String get userManual => '用户手册';
+
+  @override
   String get developmentTeam => '开发团队';
-
-  @override
-  String get developerAndOperator => '开发者及运营者';
-
-  @override
-  String get openSourceMaintenanceTeam => '开源维护团队';
-
-  @override
-  String get openSourceProjectCopyright => '开源项目 © 2026 The-Brotherhood-of-SCU';
 
   @override
   String get projectInfo => '项目信息';
@@ -324,6 +352,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get projectRepository => '项目仓库';
+
+  @override
+  String get officialWebsite => '官方网站';
 
   @override
   String get checkForUpdates => '检查更新';
@@ -357,6 +388,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get usePreviewUpdateSourceHint => '仅影响首页和关于页面的自动检查；测试页面始终同时检查两个渠道。';
+
+  @override
+  String get forceCaptchaForDownload => '强制下载验证码';
+
+  @override
+  String get forceCaptchaForDownloadHint => '开启后点击附件下载将直接弹出验证码弹窗，用于测试验证码流程。';
+
+  @override
+  String get captchaDialogTitle => '请输入验证码';
+
+  @override
+  String get captchaCancelled => '验证码已取消';
 
   @override
   String get downloading => '正在下载';
@@ -502,6 +545,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get notStarted => '未开学';
+
+  @override
   String get thisWeek => '本周';
 
   @override
@@ -561,6 +607,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get autoFetchCurrentWeekHint => '从教务系统获取当前教学周';
+
+  @override
+  String get autoFetchCurrentWeekOnVacation => '假期中暂无教学周，未修改课表';
 
   @override
   String get fetchingCurrentWeek => '正在获取...';
@@ -638,6 +687,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get removeBackgroundImage => '移除背景图片';
 
   @override
+  String get editBackgroundArea => '调整显示区域';
+
+  @override
+  String get cropEditorHint => '拖动调整位置，双指或滚轮缩放';
+
+  @override
   String get backgroundImageOpacity => '背景图片不透明度';
 
   @override
@@ -648,6 +703,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get showLocation => '显示教室';
+
+  @override
+  String get showCourseWeeks => '显示课程周数';
 
   @override
   String get showWeekend => '显示周末';
@@ -669,9 +727,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get next => '下一步';
-
-  @override
-  String get delete => '删除';
 
   @override
   String get customColor => '自定义颜色';
@@ -730,7 +785,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importSuccess => '课表导入成功';
 
   @override
-  String get importFailed => '导入失败';
+  String get importFailedTip => '导入失败，请检查数据格式或重新登录';
 
   @override
   String get importedScheduleDefaultName => '导入的课表';
@@ -797,6 +852,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportScheduleAddToCalendarFailed => '导入失败';
 
   @override
+  String get exportScheduleAddToCalendarEmpty => '课表为空，无法导入到日历';
+
+  @override
   String get exportScheduleSelectCalendar => '选择目标日历';
 
   @override
@@ -804,6 +862,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get copySuffix => ' (副本)';
+
+  @override
+  String get copyCourseTitle => '新建副本';
+
+  @override
+  String get copyCourseSave => '保存副本';
 
   @override
   String get notThisWeek => '[非本周]';
@@ -895,16 +959,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studentId => '学号';
 
   @override
+  String get studentIdHint => '请输入学号';
+
+  @override
   String get studentIdRequired => '请输入学号';
 
   @override
   String get password => '密码';
 
   @override
+  String get passwordHint => '请输入密码';
+
+  @override
   String get passwordRequired => '请输入密码';
 
   @override
   String get captcha => '验证码';
+
+  @override
+  String get captchaHint => '验证码';
 
   @override
   String get captchaRequired => '请输入验证码';
@@ -922,13 +995,76 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loginButton => '登录';
 
   @override
-  String get captchaLoadFailed => '验证码加载失败';
-
-  @override
   String get captchaNotLoaded => '请先加载验证码';
 
   @override
-  String get networkError => '网络错误';
+  String get resetPassword => '重置密码';
+
+  @override
+  String get resetPasswordStepAccount => '确认账户';
+
+  @override
+  String get resetPasswordStepVerify => '安全验证';
+
+  @override
+  String get resetPasswordStepReset => '重置密码';
+
+  @override
+  String get resetPasswordNext => '下一步';
+
+  @override
+  String get resetPasswordChooseMethod => '您正在重置登录密码，请选择以下安全验证方式：';
+
+  @override
+  String get resetPasswordViaSms => '通过短信验证';
+
+  @override
+  String resetPasswordSmsTip(String phone) {
+    return '您的手机 $phone 将收到一条短信验证码';
+  }
+
+  @override
+  String get resetPasswordViaEmail => '通过邮件验证';
+
+  @override
+  String resetPasswordEmailTip(String email) {
+    return '您的邮箱 $email 将收到一条邮件验证码';
+  }
+
+  @override
+  String get resetPasswordSendCode => '发送验证码';
+
+  @override
+  String resetPasswordResendAfter(int seconds) {
+    return '${seconds}s后可重发';
+  }
+
+  @override
+  String get resetPasswordCodeRequired => '请输入6位数字验证码';
+
+  @override
+  String get resetPasswordNewPasswordLabel => '新密码';
+
+  @override
+  String get resetPasswordConfirmPasswordLabel => '确认新密码';
+
+  @override
+  String get resetPasswordPasswordMismatch => '两次输入的密码不一致';
+
+  @override
+  String get resetPasswordPolicyTip => '密码至少包含大小写字母+数字+特殊字符，长度至少 8 位';
+
+  @override
+  String get resetPasswordPolicyInvalid => '密码不符合要求';
+
+  @override
+  String get resetPasswordSubmit => '确定';
+
+  @override
+  String get resetPasswordSuccess => '密码重置成功，请使用新密码登录';
+
+  @override
+  String get resetPasswordBackToLogin => '返回登录';
 
   @override
   String get gradesStats => '成绩统计';
@@ -1177,6 +1313,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get planCompletionCourses => '课程';
 
   @override
+  String get planCompletionPlanFallback => '培养方案';
+
+  @override
   String get planCompletionRateLimited => '请勿频繁刷新，请稍后再试';
 
   @override
@@ -1408,7 +1547,83 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkDeviceOperationSuccess => '操作成功';
 
   @override
-  String get loginFailed => '登录失败';
+  String get passpointTitle => '无感认证';
+
+  @override
+  String get passpointDesc => '绑定设备 MAC，接入校园网自动认证';
+
+  @override
+  String get passpointAddDevice => '添加无感设备';
+
+  @override
+  String get passpointUserInfo => '用户信息';
+
+  @override
+  String get passpointUserGroup => '用户组';
+
+  @override
+  String get passpointAccountState => '账户状态';
+
+  @override
+  String get passpointOnline => '在线';
+
+  @override
+  String get passpointOffline => '离线';
+
+  @override
+  String get passpointMyDevices => '我的设备';
+
+  @override
+  String get passpointExpireTime => '到期时间';
+
+  @override
+  String get passpointExpireLongest => '最长有效期6年';
+
+  @override
+  String get passpointExit => '无感设备出口';
+
+  @override
+  String get passpointMac => 'MAC 地址';
+
+  @override
+  String get passpointCancelAuth => '取消无感认证';
+
+  @override
+  String get passpointCancelAuthConfirm => '确定要取消该设备的无感认证吗？';
+
+  @override
+  String get passpointOperationSuccess => '操作成功';
+
+  @override
+  String get operationFailed => '操作失败';
+
+  @override
+  String get passpointMacRequired => '请填写MAC';
+
+  @override
+  String get passpointMacInvalid => 'MAC 格式无效，需 12 位十六进制';
+
+  @override
+  String get passpointExpireRequired => '请填写绑定有效期';
+
+  @override
+  String get passpointExpireInvalid => '有效期需在 0-365 之间';
+
+  @override
+  String get passpointExpireHint => '0-365 天，0 表示最长有效期 6 年';
+
+  @override
+  String get passpointAddWarning =>
+      '特别提醒：自助开通无感知设备（MAC）后设备将自动接入校园网，学生宿舍区域将自动计时，请谨慎选择！';
+
+  @override
+  String get captchaLoadFailed => '验证码加载失败';
+
+  @override
+  String get networkError => '网络错误';
+
+  @override
+  String get calendarRefreshSuccess => '校历已更新';
 
   @override
   String get invalidCaptcha => '验证码错误，请重试';
@@ -1419,6 +1634,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get loginSuccess => '登录成功';
+
+  @override
   String get ccylBindFailed => '绑定失败，请稍后重试';
 
   @override
@@ -1426,6 +1644,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get networkOfflineFailed => '下线失败';
+
+  @override
+  String get importFailed => '导入失败';
 
   @override
   String get balanceQuery => '电费查询';
@@ -1594,7 +1815,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scuLoginDisclaimerPrivacy => '我们不会收集任何信息';
 
   @override
-  String get openSourceLicenseDesc => 'This app is open-sourced under AGPL-3.0';
+  String get scuLoginPasswordHint => '密码为统一身份认证密码，非教务处密码';
+
+  @override
+  String get openSourceLicenseDesc => '本应用基于 AGPL-3.0 开源许可协议发布';
 
   @override
   String get openSourceLicenses => '开源许可';
@@ -1721,6 +1945,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get dockLabelNetworkDevice => '校园网';
+
+  @override
+  String get dockLabelPasspoint => '无感';
 
   @override
   String get dockLabelBalanceQuery => '电费';
@@ -1887,6 +2114,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pinWidgetNotSupported => '此设备不支持固定小组件';
 
   @override
+  String get pinWidgetRequested => '已发送添加请求，请在系统弹窗中确认添加';
+
+  @override
+  String get pinWidgetFailedTitle => '小组件未添加成功';
+
+  @override
+  String get pinWidgetFailedDesc =>
+      '没有出现系统确认弹窗，添加请求可能被系统权限拦截（部分系统需要授予「创建桌面快捷方式」权限）。请前往设置开启后重试，或长按桌面空白处手动添加小组件。';
+
+  @override
+  String get pinWidgetOpenSettings => '去设置';
+
+  @override
+  String get pinWidgetDismiss => '知道了';
+
+  @override
   String get pinWidgetHint =>
       '提示：部分系统（如 ColorOS、MIUI 等）可能会忽略自动添加请求。如果小组件未出现在桌面，请长按桌面空白处，选择「小组件」手动添加。某些系统需要授予「创建桌面快捷方式」权限。';
 
@@ -1945,6 +2188,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get open => '打开';
+
+  @override
+  String get delete => '删除';
 
   @override
   String get noDownloadedAttachments => '暂无已下载附件';
@@ -2082,6 +2328,48 @@ class AppLocalizationsZh extends AppLocalizations {
   String get classScheduleInquiryLoadMore => '加载更多';
 
   @override
+  String get dockLabelCourseCurriculum => '课程课表';
+
+  @override
+  String get courseCurriculum => '课程课表';
+
+  @override
+  String get courseCurriculumDesc => '查询各课程教学班的课表信息';
+
+  @override
+  String get courseCurriculumNoData => '暂无课程数据';
+
+  @override
+  String get courseCurriculumNoSchedule => '暂无课表数据';
+
+  @override
+  String get courseCurriculumFilter => '查询条件';
+
+  @override
+  String get courseCurriculumSemester => '学年学期';
+
+  @override
+  String get courseCurriculumDepartment => '开课院系';
+
+  @override
+  String get courseCurriculumCategory => '课程类别';
+
+  @override
+  String get courseCurriculumCourseName => '课程名';
+
+  @override
+  String get courseCurriculumCourseCode => '课程号';
+
+  @override
+  String get courseCurriculumCourseSeq => '课序号';
+
+  @override
+  String get courseCurriculumSearch => '查询';
+
+  @override
+  String get courseCurriculumLoadMore => '加载更多';
+
+  @override
   String holidayTotalDays(int days) {
     return '共$days天假';
   }
@@ -2103,6 +2391,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get campusGridViewDesc => '校园页面使用网格布局';
+
+  @override
+  String get campusSearchHint => '搜索功能';
+
+  @override
+  String get campusSearchResults => '搜索结果';
+
+  @override
+  String get campusNoSearchResults => '未找到相关功能';
 
   @override
   String get viewChangelog => '版本更新日志';
@@ -2228,10 +2525,531 @@ class AppLocalizationsZh extends AppLocalizations {
   String get iconSwitchNotSupported => '当前平台不支持动态切换应用图标';
 
   @override
+  String get featureNotSupported => '当前平台不支持此功能';
+
+  @override
   String get newIconSubtitle => 'Bugaoshan 新图标';
 
   @override
   String get oldIconSubtitle => 'Bugaoshan 经典图标';
+
+  @override
+  String get close => '关闭';
+
+  @override
+  String get onVacation => '假期中';
+
+  @override
+  String get vacationBadge => '放假中';
+
+  @override
+  String daysUntilVacation(int days) {
+    return '距离放假还有 $days 天';
+  }
+
+  @override
+  String daysUntilNextSemester(int days) {
+    return '距离下学期上课还有 $days 天';
+  }
+
+  @override
+  String get nextSemester => '下学期';
+
+  @override
+  String registrationDates(String start, String end) {
+    return '$start - $end 报到';
+  }
+
+  @override
+  String get enjoyVacation => '享受假期～';
+
+  @override
+  String get viewNextSemesterSchedule => '查看下学期课表';
+
+  @override
+  String get noNextSemesterSchedule => '暂未导入下学期课表';
+
+  @override
+  String get promptSwitchSemester => '下学期即将开始，是否切换到下学期课表？';
+
+  @override
+  String get promptSwitchSemesterTitle => '切换课表';
+
+  @override
+  String get switchSchedule => '切换';
+
+  @override
+  String get teamIntroTitle => '团队介绍';
+
+  @override
+  String get teamIntroDesc =>
+      'The-Brotherhood-of-SCU 是一个非官方的四川大学开源组织，由一群热爱技术、关注校园生活的川大学生共同维护。我们的目标是通过开源协作，为川大同学打造实用的校园工具。';
+
+  @override
+  String get teamJoinUsTitle => '欢迎加入我们';
+
+  @override
+  String get teamContributeDesc =>
+      '我们欢迎任何形式的贡献，包括提交 Issue、反馈建议、发起 Pull Request 或改进文档。';
+
+  @override
+  String get teamContributeClosing => '项目的成长离不开每一位贡献者，期待你的参与。';
+
+  @override
+  String get quickSetting => '快速设置';
+
+  @override
+  String get presetJiangAn => '四川大学江安校区';
+
+  @override
+  String get presetWangJiangHuaXi => '四川大学望江/华西校区';
+
+  @override
+  String get presetScuHint => '自动设置 4-5-3 节数及对应时间点';
+
+  @override
+  String appliedPreset(String campus) {
+    return '已应用$campus时间表预设';
+  }
+
+  @override
+  String get presetLabel => '预设';
+
+  @override
+  String roomCount(int count) {
+    final intl.NumberFormat countNumberFormat = intl.NumberFormat.compact(
+      locale: localeName,
+    );
+    final String countString = countNumberFormat.format(count);
+
+    return '$countString 间教室';
+  }
+
+  @override
+  String totalHours(String hours) {
+    return '总学时: $hours';
+  }
+
+  @override
+  String get sortBy => '排序方式';
+
+  @override
+  String get reset => '重置';
+
+  @override
+  String get fileType => '文件类型';
+
+  @override
+  String get all => '全部';
+
+  @override
+  String get manage => '管理';
+
+  @override
+  String get filter => '筛选';
+
+  @override
+  String get courseAttrRequired => '必修';
+
+  @override
+  String get courseAttrElective => '选修';
+
+  @override
+  String get courseAttrOptional => '任选';
+
+  @override
+  String get nameLabel => '姓名';
+
+  @override
+  String get sexLabel => '性别';
+
+  @override
+  String get studentIdLabel => '学号';
+
+  @override
+  String get identityLabel => '身份';
+
+  @override
+  String get emailLabel => '邮箱';
+
+  @override
+  String get phoneLabel => '手机';
+
+  @override
+  String get collegeLabel => '学院';
+
+  @override
+  String get refresh => '刷新';
+
+  @override
+  String gradeSuffix(String grade) {
+    return '$grade级';
+  }
+
+  @override
+  String campusSuffix(String campusName) {
+    return '$campusName校区';
+  }
+
+  @override
+  String get examEnded => '已结束';
+
+  @override
+  String pricePerUnitValue(String price) {
+    return '$price 元/度';
+  }
+
+  @override
+  String get verifyFailedCheckInfo => '验证失败，请检查信息是否正确';
+
+  @override
+  String get getAuthCodeFailed => '获取授权码失败';
+
+  @override
+  String get addWidgetIosHint => '在 iOS 主屏幕长按，选择「不高山上」的课表组件添加';
+
+  @override
+  String get addWidgetMacHint => '在 macOS 通知中心点击「编辑小组件」，添加「不高山上」的课表组件';
+
+  @override
+  String get autoAdjustedToSunday => '已自动调整为该周周日';
+
+  @override
+  String get goForward => '前进';
+
+  @override
+  String get goBack => '后退';
+
+  @override
+  String get openInBrowser => '在浏览器中打开';
+
+  @override
+  String get downloadComplete => '下载完成';
+
+  @override
+  String importedScheduleName(int month, int day) {
+    final intl.NumberFormat monthNumberFormat = intl.NumberFormat.compact(
+      locale: localeName,
+    );
+    final String monthString = monthNumberFormat.format(month);
+    final intl.NumberFormat dayNumberFormat = intl.NumberFormat.compact(
+      locale: localeName,
+    );
+    final String dayString = dayNumberFormat.format(day);
+
+    return 'JWXT 导入 $monthString-$dayString';
+  }
+
+  @override
+  String get error => '错误';
+
+  @override
+  String get dockLabelLeave => '办事大厅';
+
+  @override
+  String get dockLabelRepair => '报修';
+
+  @override
+  String get repairTitle => '在线报修';
+
+  @override
+  String get repairDesc => '提交宿舍/教室设施报修并跟踪维修进度';
+
+  @override
+  String get repairTabSubmit => '我要报修';
+
+  @override
+  String get repairTabMyTickets => '我的报修';
+
+  @override
+  String get repairAddress => '故障地址';
+
+  @override
+  String get repairSelectAddress => '请选择故障地址';
+
+  @override
+  String get repairProject => '维修项目';
+
+  @override
+  String get repairSelectProject => '请选择维修项目';
+
+  @override
+  String get repairSelectCategory => '请先选择类别';
+
+  @override
+  String get repairNoProjectInCategory => '该类别下暂无维修项目';
+
+  @override
+  String get repairSelectProjectHint => '请先选择故障地址以加载维修项目';
+
+  @override
+  String get repairContent => '故障描述';
+
+  @override
+  String get repairContentHint => '请描述故障详细情况，便于维修师傅携带工具';
+
+  @override
+  String get repairContentRequired => '请填写故障描述';
+
+  @override
+  String get repairPhotos => '图片视频';
+
+  @override
+  String get repairImageUploading => '上传中…';
+
+  @override
+  String get repairSchedule => '期望维修时间';
+
+  @override
+  String get repairAllowNoOne => '允许无人时维修';
+
+  @override
+  String get repairBookDate => '选择日期';
+
+  @override
+  String get repairBookTime => '选择时间段';
+
+  @override
+  String get repairNotSelected => '未选择';
+
+  @override
+  String get repairNoBookDate => '暂无可用预约日期';
+
+  @override
+  String get repairNoBookTime => '该日期暂无可用时间段';
+
+  @override
+  String get repairSubmit => '提交报修';
+
+  @override
+  String get repairSubmitSuccess => '报修提交成功';
+
+  @override
+  String get repairSubmitFailed => '报修提交失败，请稍后重试';
+
+  @override
+  String get repairTicket => '报修工单';
+
+  @override
+  String get repairArea => '故障地点';
+
+  @override
+  String get repairAddAddress => '新增地址';
+
+  @override
+  String get repairSelectArea => '请选择区域';
+
+  @override
+  String get repairAddressDetail => '详细地址';
+
+  @override
+  String get repairAddressDetailRequired => '请填写详细地址';
+
+  @override
+  String get repairPhoneRequired => '请填写手机号';
+
+  @override
+  String get repairPhoneInvalid => '手机号格式不正确';
+
+  @override
+  String get repairAddressSaved => '地址已保存';
+
+  @override
+  String get repairImageTypeInvalid => '仅支持 JPG/PNG/HEIC 格式图片';
+
+  @override
+  String get repairImageTooLarge => '图片不能超过 10MB';
+
+  @override
+  String get repairDetail => '报修详情';
+
+  @override
+  String get repairServiceUnit => '服务单位';
+
+  @override
+  String get repairPayType => '收费类型';
+
+  @override
+  String get repairProgress => '工单进度';
+
+  @override
+  String get repairWithdraw => '撤回报修';
+
+  @override
+  String get repairWithdrawConfirm => '确定要撤回该报修工单吗？';
+
+  @override
+  String get repairWithdrawSuccess => '报修已撤回';
+
+  @override
+  String get repairWithdrawFailed => '撤回失败，请稍后重试';
+
+  @override
+  String get repairEvaluate => '评价工单';
+
+  @override
+  String get repairEvaluateHint => '请填写评价内容（可选）';
+
+  @override
+  String get repairEvaluateSuccess => '评价成功';
+
+  @override
+  String get repairEvaluated => '已评价';
+
+  @override
+  String get repairWithdrawn => '已撤回';
+
+  @override
+  String get repairEvaluateFailed => '评价失败，请稍后重试';
+
+  @override
+  String get serviceHallTitle => '办事大厅';
+
+  @override
+  String get serviceHallLeaveTitle => '离校请假';
+
+  @override
+  String get serviceHallLeaveDesc => '提交离校请假申请';
+
+  @override
+  String get serviceHallMyAppsTitle => '我的申请';
+
+  @override
+  String get serviceHallMyAppsDesc => '查看请假、报备等申请记录';
+
+  @override
+  String get serviceHallReturnTitle => '返校报备';
+
+  @override
+  String get serviceHallReturnDesc => '提前报备返校行程';
+
+  @override
+  String get serviceHallSummerLeaveTitle => '暑假离校';
+
+  @override
+  String get serviceHallSummerLeaveDesc => '报备暑假离校行程';
+
+  @override
+  String get serviceHallStayRegisterTitle => '留校登记';
+
+  @override
+  String get serviceHallStayRegisterDesc => '登记假期留校';
+
+  @override
+  String serviceFormRequired(String label) {
+    return '请填写$label';
+  }
+
+  @override
+  String get serviceFormSchemaFailed => '表单加载失败，请稍后重试';
+
+  @override
+  String get serviceFormSelectHint => '请选择';
+
+  @override
+  String get serviceFormOptional => '选填';
+
+  @override
+  String get leaveTitle => '请假申请';
+
+  @override
+  String get leaveDesc => '办事大厅内可在线办理请假、报备等事项';
+
+  @override
+  String get leaveApply => '请假申请';
+
+  @override
+  String get leaveMyApplications => '我的申请';
+
+  @override
+  String get leaveSubmit => '提交申请';
+
+  @override
+  String get leaveReasonRequired => '请填写请假事由';
+
+  @override
+  String get leaveEndAfterStart => '结束时间需晚于开始时间';
+
+  @override
+  String get leaveSubmitSuccess => '请假申请已提交';
+
+  @override
+  String get leaveSubmitFailed => '提交失败，请稍后重试';
+
+  @override
+  String get leaveInfo => '学生信息';
+
+  @override
+  String get leaveTutor => '辅导员';
+
+  @override
+  String get leaveCampusRequired => '请选择离开校区';
+
+  @override
+  String get leaveDetail => '其他事由';
+
+  @override
+  String get leaveDetailHint => '请填写具体事由';
+
+  @override
+  String get leaveAttachment => '上传证明';
+
+  @override
+  String get leaveAttachmentHint => '可上传 1-3 张图片作为请假证明（非必填）';
+
+  @override
+  String get leaveAttachmentAdd => '添加图片';
+
+  @override
+  String get leaveDepartReturn => '离校/返校时间';
+
+  @override
+  String get leaveDepartTime => '离校时间';
+
+  @override
+  String get leaveReturnTime => '返校时间';
+
+  @override
+  String get leaveRegionRequired => '请选择去往地址';
+
+  @override
+  String get regionProvince => '省';
+
+  @override
+  String get regionCity => '市';
+
+  @override
+  String get regionArea => '区县';
+
+  @override
+  String get regionSelectHint => '请选择';
+
+  @override
+  String get regionDetailHint => '详细地址（街道、门牌号等）';
+
+  @override
+  String get regionPickProvince => '选择省份';
+
+  @override
+  String get regionPickCity => '选择城市';
+
+  @override
+  String get regionPickArea => '选择区县';
+
+  @override
+  String get leaveNoApplications => '暂无请假记录';
+
+  @override
+  String get leaveSubmitTime => '提交时间';
+
+  @override
+  String get leaveStatusProcessing => '审批中';
+
+  @override
+  String get leaveStatusDraft => '草稿';
+
+  @override
+  String get leaveStatusDone => '已完成';
 }
 
 /// The translations for Chinese, as used in China, using the Han script (`zh_Hans_CN`).

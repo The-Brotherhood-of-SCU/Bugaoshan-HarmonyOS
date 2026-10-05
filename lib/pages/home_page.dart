@@ -1,18 +1,19 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/campus_item_config.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/app_info_provider.dart';
-import 'package:bugaoshan/providers/course_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/providers/update_provider.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/services/auth/auth_coordinator.dart';
 import 'package:bugaoshan/services/widget_update_service.dart';
 import 'package:bugaoshan/utils/constants.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:bugaoshan/widgets/common/auth_scoped_indexed_stack.dart';
 
 class HomePage extends StatefulWidget {
@@ -24,7 +25,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _currentIndex = 0;
-  final _courseProvider = getIt<CourseProvider>();
 
   @override
   void initState() {
@@ -44,12 +44,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       }
       await authProvider.autoLogin();
     } catch (e) {
-      debugPrint('Auto login attempt error: $e');
+      AppLog.w('HomePage', 'Auto login attempt error: $e');
     }
   }
 
   Future<void> _checkForUpdateInBackground() async {
-    if (AppPlatform.isHarmony) return;
     try {
       await Future.wait([
         getIt.isReady<AppInfoProvider>(),
@@ -62,7 +61,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       if (result.hasUpdate) {
         appConfig.hasUpdateNotification.value = true;
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLog.w('HomePage', 'CheckForUpdateInBackground error: $e');
+    }
   }
 
   @override
@@ -79,11 +80,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _updateWidget() async {
-    if (AppPlatform.supportsHomeWidget) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS)) {
       try {
         await getIt<WidgetUpdateService>().updateWidgetData();
       } catch (e) {
-        debugPrint('Widget update failed: $e');
+        AppLog.e('HomePage', 'Widget update failed: $e');
       }
     }
   }
@@ -94,7 +95,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildUpdateBadge({required Widget child, required bool showBadge}) {
-    if (AppPlatform.isHarmony || !showBadge) return child;
+    if (!showBadge) return child;
     return Badge(child: child);
   }
 
@@ -116,12 +117,24 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 final isWide = constraints.maxWidth >= 600;
                 final showRail = isWide && visibleIds.length >= 2;
                 final showBar = !isWide && visibleIds.length >= 2;
-                final pageContent = AuthScopedIndexedStack(
-                  authListenable: authProvider,
-                  isAuthenticated: () => authProvider.isLoggedIn,
-                  visibleIds: visibleIds,
-                  selectedIndex: _currentIndex,
-                  pageBuilder: (id) => campusItemConfigById(id).page(),
+                final pageContent = ListenableBuilder(
+                  listenable: Listenable.merge([
+                    appConfig.cardSizeAnimationDuration,
+                    appConfig.enablePageTransitionAnimation,
+                  ]),
+                  builder: (context, _) {
+                    return AuthScopedIndexedStack(
+                      authListenable: authProvider,
+                      isAuthenticated: () => authProvider.isLoggedIn,
+                      visibleIds: visibleIds,
+                      selectedIndex: _currentIndex,
+                      duration: appConfig.cardSizeAnimationDuration.value,
+                      enableAnimation:
+                          appConfig.enablePageTransitionAnimation.value,
+                      axis: showRail ? Axis.vertical : Axis.horizontal,
+                      pageBuilder: (id) => campusItemConfigById(id).page(),
+                    );
+                  },
                 );
                 return Scaffold(
                   body: Row(
@@ -133,7 +146,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           selectedIndex: _currentIndex,
                           onDestinationSelected: (index) {
                             setState(() => _currentIndex = index);
-                            _onTabSelected(visibleIds[index]);
                           },
                           labelType: NavigationRailLabelType.all,
                           destinations: visibleIds
@@ -157,7 +169,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           selectedIndex: _currentIndex,
                           onDestinationSelected: (index) {
                             setState(() => _currentIndex = index);
-                            _onTabSelected(visibleIds[index]);
                           },
                           destinations: visibleIds
                               .map(
@@ -225,13 +236,5 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       label: config.dockLabel(l10n),
       tooltip: '',
     );
-  }
-
-  void _onTabSelected(String id) {
-    if (id == dockIdCourse) {
-      _courseProvider.updateCurrentWeek(
-        _courseProvider.scheduleConfig.value.getCurrentWeek(),
-      );
-    }
   }
 }

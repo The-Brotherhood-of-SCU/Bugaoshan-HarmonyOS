@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 
 class StatusChip extends StatelessWidget {
   const StatusChip({
@@ -24,6 +24,8 @@ class StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: Theme.of(
           context,
         ).textTheme.labelSmall?.copyWith(color: textColor),

@@ -1,7 +1,6 @@
 import 'dart:io';
 
-import 'package:bugaoshan/utils/platform_utils.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:window_manager/window_manager.dart';
 
 class ExitService {
@@ -11,10 +10,9 @@ class ExitService {
   Future<void> exitApp() async {
     //make sure changes is saved
     await Future.delayed(Duration(milliseconds: 300));
-    if (AppPlatform.isDesktop) {
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       await windowManager.destroy();
-    } else if (AppPlatform.isHarmony) {
-      await SystemNavigator.pop();
     } else {
       exit(0);
     }

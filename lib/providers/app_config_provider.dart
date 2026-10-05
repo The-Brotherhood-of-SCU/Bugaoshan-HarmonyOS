@@ -2,11 +2,12 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Colors, Curve, Curves;
+import 'package:bugaoshan/models/background_crop.dart';
+import 'package:bugaoshan/models/widget_appearance.dart';
 import 'package:bugaoshan/utils/locale_utils.dart';
 import 'package:bugaoshan/models/campus_item_config.dart';
-import 'package:bugaoshan/utils/platform_utils.dart';
-import 'package:bugaoshan/utils/theme_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:system_theme/system_theme.dart';
 
 //define key
 const String _keyLocale = 'locale';
@@ -18,20 +19,27 @@ const String _keyShowCourseGrid = 'showCourseGrid';
 const String _keyCourseRowHeight = 'courseRowHeight';
 const String _keyBackgroundImageOpacity = 'backgroundImageOpacity';
 const String _keyBackgroundImagePath = 'backgroundImagePath';
+const String _keyBackgroundImageCrop = 'backgroundImageCrop';
 const String _keyFirstLaunchWizardCompleted = 'firstLaunchWizardCompleted';
 const String _keyHasUpdateNotification = 'hasUpdateNotification';
 const String _keyVisibleDockIds = 'visibleDockIds';
 const String _keyAcceptedEulaVersion = 'acceptedEulaVersion';
 const String _keyThemeColorMode = 'themeColorMode';
 const String _keyWidgetShowTomorrow = 'widget_show_tomorrow';
+const String _keyWidgetColorStyle = 'widget_color_style';
+const String _keyWidgetDensity = 'widget_density';
 const String _keyUsePreviewUpdateSource = 'usePreviewUpdateSource';
 const String _keyShowTeacherName = 'showTeacherName';
 const String _keyShowLocation = 'showLocation';
+const String _keyShowCourseWeeks = 'showCourseWeeks';
 const String _keyShowWeekend = 'showWeekend';
 const String _keyShowNonCurrentWeekCourses = 'showNonCurrentWeekCourses';
 const String _keyUseGoogleFonts = 'useGoogleFonts';
 const String _keyCampusGridView = 'campusGridView';
 const String _keyAutoSampleBalanceOnLogin = 'autoSampleBalanceOnLogin';
+const String _keyForceCaptchaForDownload = 'forceCaptchaForDownload';
+const String _keyEnablePageTransitionAnimation =
+    'enablePageTransitionAnimation';
 const Curve appCurve = Curves.easeOutQuart;
 
 enum ThemeColorMode { system, backgroundImage, custom }
@@ -48,7 +56,7 @@ class AppConfigProvider {
   //variable
   final ValueNotifier<Locale?> locale = ValueNotifier<Locale?>(null);
   final ValueNotifier<Duration> cardSizeAnimationDuration =
-      ValueNotifier<Duration>(const Duration(milliseconds: 300));
+      ValueNotifier<Duration>(const Duration(milliseconds: 200));
   final ValueNotifier<Color> themeColor = ValueNotifier<Color>(
     Colors.blueAccent,
   );
@@ -62,6 +70,10 @@ class AppConfigProvider {
   final ValueNotifier<String?> backgroundImagePath = ValueNotifier<String?>(
     null,
   );
+
+  /// 背景图裁剪/显示区域参数；null 表示沿用 BoxFit.cover 居中裁剪（旧行为）。
+  final ValueNotifier<BackgroundCropParams?> backgroundImageCrop =
+      ValueNotifier<BackgroundCropParams?>(null);
   final ValueNotifier<bool> firstLaunchWizardCompleted = ValueNotifier<bool>(
     false,
   );
@@ -72,10 +84,15 @@ class AppConfigProvider {
   final ValueNotifier<ThemeColorMode> themeColorMode =
       ValueNotifier<ThemeColorMode>(ThemeColorMode.system);
   final ValueNotifier<bool> widgetShowTomorrow = ValueNotifier<bool>(false);
+  final ValueNotifier<WidgetColorStyle> widgetColorStyle =
+      ValueNotifier<WidgetColorStyle>(WidgetColorStyle.colorful);
+  final ValueNotifier<WidgetDensity> widgetDensity =
+      ValueNotifier<WidgetDensity>(WidgetDensity.standard);
   final ValueNotifier<bool> usePreviewUpdateSource = ValueNotifier<bool>(false);
   final ValueNotifier<bool> useGoogleFonts = ValueNotifier<bool>(true);
   final ValueNotifier<bool> showTeacherName = ValueNotifier<bool>(true);
   final ValueNotifier<bool> showLocation = ValueNotifier<bool>(true);
+  final ValueNotifier<bool> showCourseWeeks = ValueNotifier<bool>(true);
   final ValueNotifier<bool> showWeekend = ValueNotifier<bool>(false);
   final ValueNotifier<bool> showNonCurrentWeekCourses = ValueNotifier<bool>(
     true,
@@ -84,13 +101,19 @@ class AppConfigProvider {
   final ValueNotifier<bool> autoSampleBalanceOnLogin = ValueNotifier<bool>(
     true,
   );
+  final ValueNotifier<bool> forceCaptchaForDownload = ValueNotifier<bool>(
+    false,
+  );
+  final ValueNotifier<bool> enablePageTransitionAnimation = ValueNotifier<bool>(
+    true,
+  );
 
   Future<void> _loadPreferences() async {
     final localeString = _sharedPreferences.getString(_keyLocale);
     locale.value = parseLocale(localeString);
     cardSizeAnimationDuration.value = Duration(
       milliseconds:
-          _sharedPreferences.getInt(_keyCardSizeAnimationDuration) ?? 300,
+          _sharedPreferences.getInt(_keyCardSizeAnimationDuration) ?? 200,
     );
     themeColor.value = Color(
       _sharedPreferences.getInt(_keyThemeColor) ?? Colors.blueAccent.toARGB32(),
@@ -108,50 +131,37 @@ class AppConfigProvider {
     // Existence will be checked later in the Settings UI when needed.
     final savedPath = _sharedPreferences.getString(_keyBackgroundImagePath);
     backgroundImagePath.value = savedPath;
+    backgroundImageCrop.value = BackgroundCropParams.tryDecode(
+      _sharedPreferences.getString(_keyBackgroundImageCrop),
+    );
     firstLaunchWizardCompleted.value =
         _sharedPreferences.getBool(_keyFirstLaunchWizardCompleted) ??
         kDebugMode;
     hasUpdateNotification.value =
-        !AppPlatform.isHarmony &&
-        (_sharedPreferences.getBool(_keyHasUpdateNotification) ?? false);
-    final persistedDockIds = _sharedPreferences.getStringList(
-      _keyVisibleDockIds,
-    );
-    final availableDockIds = allCampusItems.map((item) => item.id).toSet();
-    final sanitizedDockIds = <String>[];
-    for (final id in persistedDockIds ?? defaultVisibleDockIds) {
-      if (availableDockIds.contains(id) && !sanitizedDockIds.contains(id)) {
-        sanitizedDockIds.add(id);
-      }
-    }
-    if (!sanitizedDockIds.contains(campusItemProfile.id)) {
-      sanitizedDockIds.add(campusItemProfile.id);
-    }
-    visibleDockIds.value = sanitizedDockIds;
-    if (persistedDockIds != null &&
-        !listEquals(persistedDockIds, sanitizedDockIds)) {
-      await _sharedPreferences.setStringList(
-        _keyVisibleDockIds,
-        sanitizedDockIds,
-      );
-    }
-    final storedEulaVersion = _sharedPreferences.getInt(
-      _keyAcceptedEulaVersion,
-    );
-    acceptedEulaVersion.value = !kDebugMode && storedEulaVersion == 114514
-        ? 0
-        : storedEulaVersion ??
-              (kDebugMode ? 114514 : 0); // Debug builds skip the EULA gate.
+        _sharedPreferences.getBool(_keyHasUpdateNotification) ?? false;
+    visibleDockIds.value =
+        _sharedPreferences.getStringList(_keyVisibleDockIds) ??
+        List<String>.from(defaultVisibleDockIds);
+    acceptedEulaVersion.value =
+        _sharedPreferences.getInt(_keyAcceptedEulaVersion) ??
+        (kDebugMode ? 114514 : 0); //debug mode default 114514, skip eula check
     final themeColorIndex = _sharedPreferences.getInt(_keyThemeColorMode) ?? 0;
-    final savedThemeColorMode = themeColorIndex < ThemeColorMode.values.length
+    themeColorMode.value = themeColorIndex < ThemeColorMode.values.length
         ? ThemeColorMode.values[themeColorIndex]
         : ThemeColorMode.custom;
-    themeColorMode.value =
-        AppPlatform.isHarmony && savedThemeColorMode == ThemeColorMode.system
-        ? ThemeColorMode.custom
-        : savedThemeColorMode;
     widgetShowTomorrow.value =
         _sharedPreferences.getBool(_keyWidgetShowTomorrow) ?? false;
+    final widgetColorStyleIndex =
+        _sharedPreferences.getInt(_keyWidgetColorStyle) ?? 0;
+    widgetColorStyle.value =
+        widgetColorStyleIndex < WidgetColorStyle.values.length
+        ? WidgetColorStyle.values[widgetColorStyleIndex]
+        : WidgetColorStyle.colorful;
+    final widgetDensityIndex =
+        _sharedPreferences.getInt(_keyWidgetDensity) ?? 0;
+    widgetDensity.value = widgetDensityIndex < WidgetDensity.values.length
+        ? WidgetDensity.values[widgetDensityIndex]
+        : WidgetDensity.standard;
     usePreviewUpdateSource.value =
         _sharedPreferences.getBool(_keyUsePreviewUpdateSource) ?? false;
     useGoogleFonts.value =
@@ -159,6 +169,8 @@ class AppConfigProvider {
     showTeacherName.value =
         _sharedPreferences.getBool(_keyShowTeacherName) ?? true;
     showLocation.value = _sharedPreferences.getBool(_keyShowLocation) ?? true;
+    showCourseWeeks.value =
+        _sharedPreferences.getBool(_keyShowCourseWeeks) ?? true;
     showWeekend.value = _sharedPreferences.getBool(_keyShowWeekend) ?? false;
     showNonCurrentWeekCourses.value =
         _sharedPreferences.getBool(_keyShowNonCurrentWeekCourses) ?? true;
@@ -166,6 +178,10 @@ class AppConfigProvider {
         _sharedPreferences.getBool(_keyCampusGridView) ?? false;
     autoSampleBalanceOnLogin.value =
         _sharedPreferences.getBool(_keyAutoSampleBalanceOnLogin) ?? false;
+    forceCaptchaForDownload.value =
+        _sharedPreferences.getBool(_keyForceCaptchaForDownload) ?? false;
+    enablePageTransitionAnimation.value =
+        _sharedPreferences.getBool(_keyEnablePageTransitionAnimation) ?? true;
   }
 
   void _addSaveCallback() {
@@ -218,6 +234,14 @@ class AppConfigProvider {
         _switchToSystemColor();
       }
     });
+    backgroundImageCrop.addListener(() {
+      final crop = backgroundImageCrop.value;
+      if (crop != null) {
+        _sharedPreferences.setString(_keyBackgroundImageCrop, crop.encode());
+      } else {
+        _sharedPreferences.remove(_keyBackgroundImageCrop);
+      }
+    });
     firstLaunchWizardCompleted.addListener(() {
       _sharedPreferences.setBool(
         _keyFirstLaunchWizardCompleted,
@@ -251,6 +275,15 @@ class AppConfigProvider {
         widgetShowTomorrow.value,
       );
     });
+    widgetColorStyle.addListener(() {
+      _sharedPreferences.setInt(
+        _keyWidgetColorStyle,
+        widgetColorStyle.value.index,
+      );
+    });
+    widgetDensity.addListener(() {
+      _sharedPreferences.setInt(_keyWidgetDensity, widgetDensity.value.index);
+    });
     usePreviewUpdateSource.addListener(() {
       _sharedPreferences.setBool(
         _keyUsePreviewUpdateSource,
@@ -265,6 +298,9 @@ class AppConfigProvider {
     });
     showLocation.addListener(() {
       _sharedPreferences.setBool(_keyShowLocation, showLocation.value);
+    });
+    showCourseWeeks.addListener(() {
+      _sharedPreferences.setBool(_keyShowCourseWeeks, showCourseWeeks.value);
     });
     showWeekend.addListener(() {
       _sharedPreferences.setBool(_keyShowWeekend, showWeekend.value);
@@ -284,6 +320,18 @@ class AppConfigProvider {
         autoSampleBalanceOnLogin.value,
       );
     });
+    forceCaptchaForDownload.addListener(() {
+      _sharedPreferences.setBool(
+        _keyForceCaptchaForDownload,
+        forceCaptchaForDownload.value,
+      );
+    });
+    enablePageTransitionAnimation.addListener(() {
+      _sharedPreferences.setBool(
+        _keyEnablePageTransitionAnimation,
+        enablePageTransitionAnimation.value,
+      );
+    });
   }
 
   void resetDockToDefault() {
@@ -296,11 +344,8 @@ class AppConfigProvider {
   }
 
   Future<void> _switchToSystemColor() async {
-    if (AppPlatform.isHarmony) {
-      themeColorMode.value = ThemeColorMode.custom;
-      return;
-    }
     themeColorMode.value = ThemeColorMode.system;
-    themeColor.value = await loadSystemAccentColor();
+    await SystemTheme.accentColor.load();
+    themeColor.value = SystemTheme.accentColor.accent;
   }
 }

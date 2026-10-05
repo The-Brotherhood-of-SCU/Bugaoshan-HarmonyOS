@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:intl/intl.dart';
 
 import 'package:bugaoshan/models/academic_calendar.dart';
@@ -13,6 +14,7 @@ class InteractiveCalendarView extends StatelessWidget {
   final String? error;
   final ValueChanged<AcademicCalendarSemester> onSemesterChanged;
   final VoidCallback onRetry;
+  final Future<void> Function()? onRefresh;
 
   const InteractiveCalendarView({
     super.key,
@@ -22,6 +24,7 @@ class InteractiveCalendarView extends StatelessWidget {
     this.error,
     required this.onSemesterChanged,
     required this.onRetry,
+    this.onRefresh,
   });
 
   @override
@@ -102,9 +105,9 @@ class InteractiveCalendarView extends StatelessWidget {
       }
     }
 
-    return Card(
+    return StyledCard(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      color: cardColor,
+      backgroundColor: cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -193,30 +196,35 @@ class InteractiveCalendarView extends StatelessWidget {
     final sortedEvents = List<AcademicCalendarEvent>.from(semester.events)
       ..sort((a, b) => a.date.compareTo(b.date));
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-      itemCount: sortedEvents.length,
-      itemBuilder: (context, index) {
-        final event = sortedEvents[index];
-        final isLast = index == sortedEvents.length - 1;
+    return RefreshIndicator(
+      onRefresh: onRefresh ?? () async {},
+      child: ListView.builder(
+        // 内容不足一屏时也允许下拉触发刷新
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        itemCount: sortedEvents.length,
+        itemBuilder: (context, index) {
+          final event = sortedEvents[index];
+          final isLast = index == sortedEvents.length - 1;
 
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Left Column: Dot & Line
-              _buildTimelineIndicator(context, event, isLast, now),
-              // Right Column: Card Content
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 12, bottom: 16),
-                  child: _buildEventCard(context, l10n, event, now),
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Left Column: Dot & Line
+                _buildTimelineIndicator(context, event, isLast, now),
+                // Right Column: Card Content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 12, bottom: 16),
+                    child: _buildEventCard(context, l10n, event, now),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -288,14 +296,8 @@ class InteractiveCalendarView extends StatelessWidget {
         ? '$dateStr - $endDateStr'
         : dateStr;
 
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppShapes.medium),
-        side: isActive
-            ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
-            : BorderSide.none,
-      ),
+    return StyledCard(
+      borderColor: isActive ? theme.colorScheme.primary : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(

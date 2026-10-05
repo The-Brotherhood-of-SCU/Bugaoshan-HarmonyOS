@@ -2,32 +2,24 @@
 
 欢迎提交 Issue 和 Pull Request！
 
-## 📥 下载体验
-
-**前往上游 [Release 页面](https://github.com/The-Brotherhood-of-SCU/Bugaoshan/releases/latest) 下载 Android、Windows 或 Linux 最新版本。HarmonyOS HAP 不在通用 Release 中发布。**
-
----
-
 ## 💻 本地开发
 
 ### 环境要求
 
-- 标准平台：[Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.44、Dart SDK >= 3.11.0；GitHub Actions 使用 Flutter 3.44.6
-- Flatpak：打包清单固定 Flutter 3.44.4
-- HarmonyOS：固定 CPF Flutter 3.41.9 / Dart 3.11.5，并需要 DevEco Studio 6.1.1 Release、Java 17；完整配置见 [HarmonyOS 开发指南](docs/HARMONYOS.md)
-- Windows：[NuGet CLI](https://learn.microsoft.com/en-us/nuget/install-nuget-client-tools?tabs=windows#nugetexe-cli)，供 `flutter_inappwebview` Windows target 构建使用
-
-标准 Flutter SDK 不能用于构建 HarmonyOS HAP；HarmonyOS 开发必须使用指南中固定到具体提交的 CPF Flutter。
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.44（Dart SDK 3.10+）
+- [Dart SDK](https://dart.dev/get-dart) >= 3.10.4
+- [Nuget CLI](https://learn.microsoft.com/en-us/nuget/install-nuget-client-tools?tabs=windows#nugetexe-cli)  required by `flutter_inappwebview` (windows target)
+- Linux 构建需要 GTK 3、WPE WebKit 2.0、WPEBackend-fdo、libwpe、libsecret、libepoxy 和 Wayland 开发包。Linux 发布包动态链接这些系统库，不包含 WPE WebKit 的副本。
 
 ### 安装运行
 
 ```bash
 # 克隆仓库
-git clone git@github.com:The-Brotherhood-of-SCU/Bugaoshan-HarmonyOS.git
+git clone git@github.com:The-Brotherhood-of-SCU/Bugaoshan.git
 # 或
-git clone https://github.com/The-Brotherhood-of-SCU/Bugaoshan-HarmonyOS.git
+git clone https://github.com/The-Brotherhood-of-SCU/Bugaoshan.git
 
-cd Bugaoshan-HarmonyOS
+cd Bugaoshan
 ```
 
 > #### Pre-commit Hook
@@ -46,7 +38,7 @@ cd Bugaoshan-HarmonyOS
 
 > #### 设置镜像源
 >
-> 安装依赖前设置国内镜像源，否则 `pubspec.lock` 会变国际源，导致工作区产生不必要的 diff。
+> 安装依赖前设置国内镜像源：提交的 `pubspec.lock` 锁定 `pub.flutter-io.cn`，CI 的依赖解析与生成物一致性检查均按镜像进行。本地不设置镜像时，`pub get` 会把 lock 切到国际源并可能引起生成格式漂移，导致 pre-flight 的「生成物一致性检查」失败。
 >
 > 持久化设置：
 >
@@ -64,17 +56,25 @@ cd Bugaoshan-HarmonyOS
 # 安装依赖（已设镜像则直接执行）
 flutter pub get
 
-# 运行代码生成（DI / JSON 序列化）
-dart run build_runner build --delete-conflicting-outputs
-
-# build_runner 完成后生成国际化代码
-flutter gen-l10n
+# 运行代码生成（DI & 国际化）
+flutter pub run build_runner build --delete-conflicting-outputs
 
 # 运行 App
 flutter run
 ```
 
----
+### iOS Profile 真机安装
+
+需要以 Profile 模式在已连接的 iPhone 上验证时，使用仓库脚本：
+
+```bash
+tool/install_ios_profile.sh <device>
+```
+
+`<device>` 可以是 `xcrun devicectl list devices` 显示的设备标识、UDID 或设备名。若已经完成 Profile 构建，可用 `--no-build` 复用现有产物。
+
+脚本会先结束旧 App 及 Widget Extension 进程，再覆盖安装并启动新包。请不要直接对正在运行的 App 反复执行 `devicectl device install app`：iOS 可能保留指向旧安装路径的 Runner 进程，表现为安装成功但启动后白屏。若启动在 15 秒内没有完成，脚本会停止等待并提示解锁或重启设备。
+
 
 ## 📁 项目结构
 
@@ -92,38 +92,112 @@ lib/
 └── main.dart             # 入口
 ```
 
----
 
 ## 🛠️ 技术栈
 
 | 类别     | 技术                                                                                                         |
 | -------- | ------------------------------------------------------------------------------------------------------------ |
 | 框架     | [Flutter](https://flutter.dev)                                                                               |
-| 状态管理 | Flutter 内置 `ValueNotifier` / `ChangeNotifier`、`ValueListenableBuilder` / `ListenableBuilder`             |
+| 状态管理 | Provider / ChangeNotifier                                                                                    |
 | 依赖注入 | [GetIt](https://pub.dev/packages/get_it) + [Injectable](https://pub.dev/packages/injectable)                 |
-| 网络请求 | [`package:http`](https://pub.dev/packages/http) + 自定义 `CookieClient`                                      |
+| 网络请求 | [Dio](https://pub.dev/packages/dio) + Cookie Manager                                                         |
 | 本地存储 | [SQLite](https://pub.dev/packages/sqflite)、[SharedPreferences](https://pub.dev/packages/shared_preferences) |
 | 国际化   | Flutter `flutter_localizations`                                                                              |
 | 国密算法 | [dart_sm](https://pub.dev/packages/dart_sm)（SM2/SM3/SM4）                                                   |
 | OCR      | [scu_ocr_lite](https://github.com/The-Brotherhood-of-SCU/scu_ocr_lite_dart)（纯 Dart 实现）                  |
 
----
+
 
 ## 🔄 贡献流程
 
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feature/your-feature`)
-3. 提交更改 (`git commit -m 'feat: add some feature'`)
-4. 推送分支 (`git push origin feature/your-feature`)
-5. 发起 Pull Request
+1. Fork 本仓库（组织成员可直接在仓库建分支）
+2. 从 **`preview`** 分支切出功能分支 (`git checkout -b feat/your-feature preview`)
+3. 提交更改 (`git commit -m 'feat: add some feature'`，pre-commit 会自动执行 `dart format`)
+4. 若变更包含用户可感知的行为，请在 `CHANGELOG.md` 的 `## [Unreleased]` 中补充条目
+5. 推送分支 (`git push origin feat/your-feature`)
+6. 向 **`preview` 分支**发起 Pull Request——门禁全绿且 review 通过后合并，合并会自动发布一轮预览版（无需手动操作）
+
+> [!NOTE]
+> 请勿手动推送 `v*.*.*` tag 或在非 `main` / `preview` 分支上触发发布——手动入口的行为边界见 `docs/architecture/release-pipeline.md`。
+
+
+
+## 🤖 AI Assistant Policy
+
+本项目鼓励使用 AI 工具提升开发效率。我们关心的是代码质量与最终效果，而非内容是否由 AI 生成。
+
+> [!IMPORTANT]  
+> AI 是工具，人是责任主体。请勿直接提交（Pull Request）未经审查的 AI 生成内容。
+
+
+| 原则 | 说明 |
+|------|------|
+| 无需披露 | 使用 AI 时不必声明、不必标注生成来源 |
+| 必须复核 | AI 输出须经人工审查，确认正确、安全、可维护 |
+
+### ✅ 推荐使用 AI 的场景
+- 代码审查（Code Review）与重构建议
+- 编写单元测试、补充注释与文档
+- 撰写 Commit Message、Pull Request 描述
+- 阅读代码、理解业务逻辑
+
+### ⚠️ 需要人工重点审查的场景
+
+- 编写核心业务逻辑
+- 架构设计、技术选型与依赖引入
+- 数据迁移、Schema 变更等不可逆操作
+
+> [!NOTE]  
+> 长程任务中建议全程人工监督，及时纠偏，避免 AI 产生“能跑即止”的妥协实现。
+
+
+
+
+## 🌿 Git 分支模型与流水线 (Branching & Release Pipeline)
+
+本项目采用严格单向流转的 **分级自动化发布流水线**：
+
+```text
+日常开发分支 (feat/*, fix/*, docs/* ...)
+       │
+       ▼ (发起 PR, 触发 Pre-flight 门禁)
+`preview` 分支 ────► 自动触发 release.yml ────► 自动发布 vX.Y.Z-preview 预览版 (Prerelease)
+       │
+       ▼ (仅允许来自 preview 的 PR, 触发 Pre-flight 门禁)
+`main` 分支 ───────► 自动触发 release.yml ────► 自动发布 vX.Y.Z 正式版 (Latest Release & F-Droid)
+```
+
+### 严格流转规则 (Branch Flow Policy)
+- **禁止向 `main` 分支直接推送或提交日常 PR**：`main` 只能接收来自 `preview` 分支的 Pull Request。
+- **所有日常功能与修复**（`feat/*`、`fix/*`、`docs/*` 等）：请统一向 **`preview`** 分支发起 Pull Request。
+
+### 自动化发布与门禁触发
+- **PR 门禁 (`pre-flight.yml`)**：向 `preview`、`main` 发起 PR 时，会自动执行分支合规检查、代码静态分析 (`dart analyze`)、生成文件漂移检测、测试套件 (`flutter test`) 以及发布前预检。
+- **`preview` 分支更新**：当 feature 分支合入 `preview` 后，触发全平台构建并发布 **Preview 预发布版本**；短时间连续合并只保留最新一轮。
+- **`main` 分支更新**：当 `preview` 合入 `main` 后，触发全平台构建、更新 F-Droid 元数据并发布 **Formal 正式版本**。
+- **手动入口边界**：`workflow_dispatch` 仅在 `main` / `preview` 上发布（其他分支仅构建产物）；手动推送 `v*.*.*` tag 仅在指向 `main` / `preview` 顶端时发布。行为细节见 `docs/architecture/release-pipeline.md`。
+
+### 分支规范
+
+| 分支 | 职责 | 触发动作 |
+|---|---|---|
+| `main` | **正式版生产分支**。仅接收来自 `preview` 的 PR（禁止日常直接提交）。 | 合并后自动创建 Tag `vX.Y.Z`，构建并发布 **Formal 正式版** (GitHub Release latest)。 |
+| `preview` | **预览版预发布分支，兼日常集成分支**。所有日常功能、修复 PR 均以 `preview` 为目标分支。 | 合并后自动创建 Tag `vX.Y.Z-preview[.N]`（`/release` 准备期为 `vX.Y.Z-rc[.N]`），构建并发布 **Preview 预览版** (prerelease)。 |
+| `feat/*`, `fix/*` | **特性/修复工作分支**。从 `preview` 分支切出。 | 提交 PR 至 `preview` 时自动触发 Pre-flight 质量门禁检查。 |
+
+### 质量门禁 (Pre-flight Checks)
+
+每次向 `preview` 或 `main` 提交 Pull Request 时，GitHub Actions 会自动运行发布前检查：
+1. `dart analyze --fatal-infos`：严格的 Dart 静态代码检查。
+2. `flutter test`：全套单元与 Widget 测试。
+3. `git status --porcelain`：代码生成物 (`build_runner` / `flutter gen-l10n`) 完整性检查。
+4. Python 自动化发布脚本单元测试与版本格式预检（发布时机类检查在 CI 中为 WARN 级提示）。
 
 ---
 
 ## 团队
 
 **The-Brotherhood-of-SCU** — 一个非官方的四川大学开源组织
-
----
 
 ## 许可证
 

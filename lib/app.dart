@@ -51,6 +51,9 @@ class _MyAppState extends State<MyApp> {
         _appConfig.themeColor,
         _appConfig.themeColorMode,
         _appConfig.useGoogleFonts,
+        // 页面转场时长跟随设置变化，需要重建 MaterialApp 使新主题生效
+        // （「页面切换动画」开关只控制 Dock 栏切换，不进全局主题）
+        _appConfig.cardSizeAnimationDuration,
       ]),
       builder: (context, _) => MaterialApp(
         navigatorKey: navigatorKey,
@@ -58,12 +61,21 @@ class _MyAppState extends State<MyApp> {
         onGenerateTitle: (ctx) => AppLocalizations.of(ctx)!.bugaoshan,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        theme: _buildTheme(Brightness.light),
-        darkTheme: _buildTheme(Brightness.dark),
+        theme: _buildTheme(Brightness.light, context),
+        darkTheme: _buildTheme(Brightness.dark, context),
         themeMode: ThemeMode.system,
-        builder: (context, child) => MouseBackHandler(
-          child: SessionExpiredListener(child: child ?? const SizedBox()),
-        ),
+        builder: (context, child) {
+          final scale = MediaQuery.textScalerOf(context).scale(1.0);
+          final clamped = scale.clamp(1.0, 2.0);
+          return MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(clamped)),
+            child: MouseBackHandler(
+              child: SessionExpiredListener(child: child ?? const SizedBox()),
+            ),
+          );
+        },
         home: ValueListenableBuilder<int>(
           valueListenable: _appConfig.acceptedEulaVersion,
           builder: (_, eulaVersion, _) {
@@ -81,14 +93,17 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
-  ThemeData _buildTheme(Brightness brightness) {
+  ThemeData _buildTheme(Brightness brightness, BuildContext context) {
     final seedColor = _appConfig.themeColorMode.value == ThemeColorMode.system
         ? SystemTheme.accentColor.accent
         : _appConfig.themeColor.value;
+    final textScale = MediaQuery.textScalerOf(context).scale(1.0);
     return buildTheme(
       brightness: brightness,
       seedColor: seedColor,
       useGoogleFonts: _appConfig.useGoogleFonts.value,
+      textScale: textScale,
+      pageTransitionDuration: _appConfig.cardSizeAnimationDuration.value,
     );
   }
 }

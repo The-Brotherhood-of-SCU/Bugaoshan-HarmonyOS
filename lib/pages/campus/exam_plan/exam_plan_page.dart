@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/campus/exam_plan/models/exam_info.dart';
+import 'package:bugaoshan/providers/exam_plan_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
-import 'package:bugaoshan/services/api/zhjw_api_service.dart';
-import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/services/ics_service.dart';
 import 'package:bugaoshan/utils/calendar_export_utils.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 
 class ExamPlanPage extends StatefulWidget {
@@ -20,15 +20,16 @@ class ExamPlanPage extends StatefulWidget {
 }
 
 class _ExamPlanPageState extends State<ExamPlanPage> {
-  List<ExamInfo> _exams = [];
-  bool _loading = false;
-  LoadErrorType? _error;
+  late final ExamPlanProvider _provider;
 
   @override
   void initState() {
     super.initState();
+    _provider = getIt<ExamPlanProvider>();
     getIt<ScuAuthProvider>().addListener(_onAuthChanged);
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _onAuthChanged();
+    });
   }
 
   @override
@@ -39,75 +40,37 @@ class _ExamPlanPageState extends State<ExamPlanPage> {
 
   void _onAuthChanged() {
     final auth = getIt<ScuAuthProvider>();
-    if (auth.isLoggedIn && mounted) {
-      _loadData();
-    } else if (mounted) {
-      setState(() {});
-    }
-  }
-
-  Future<void> _loadData() async {
-    final auth = getIt<ScuAuthProvider>();
-    if (!auth.isLoggedIn) {
-      if (auth.isAutoLoggingIn) return;
-      setState(() => _error = LoadErrorType.notLoggedIn);
-      return;
-    }
-
-    if (_loading) return;
-
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      final api = getIt<ZhjwApiService>();
-      final exams = await api.fetchExamPlan();
-      if (mounted) {
-        setState(() {
-          _exams = exams;
-          _loading = false;
-        });
-      }
-    } on UnauthenticatedException {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = LoadErrorType.notLoggedIn;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = campusNetworkErrorType(LoadErrorType.loadFailed);
-        });
-      }
-    }
+    if (auth.isLoggedIn) _provider.ensureLoaded();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.examPlan),
-        actions: [
-          if (getIt<ScuAuthProvider>().isLoggedIn &&
-              !_loading &&
-              _exams.isNotEmpty)
-            IconButton(
-              tooltip: l10n.exportExamPlan,
-              onPressed: () => _showCalendarActions(l10n),
-              icon: const Icon(Icons.calendar_month_outlined),
-            ),
-          if (getIt<ScuAuthProvider>().isLoggedIn && !_loading)
-            IconButton(onPressed: _loadData, icon: const Icon(Icons.refresh)),
-        ],
+    return ListenableBuilder(
+      listenable: Listenable.merge([_provider, getIt<ScuAuthProvider>()]),
+      builder: (context, _) => Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.examPlan),
+          actions: [
+            if (getIt<ScuAuthProvider>().isLoggedIn &&
+                _provider.state != ExamPlanLoadState.loading &&
+                _provider.exams.isNotEmpty)
+              IconButton(
+                tooltip: l10n.exportExamPlan,
+                onPressed: () => _showCalendarActions(l10n),
+                icon: const Icon(Icons.calendar_month_outlined),
+              ),
+            if (getIt<ScuAuthProvider>().isLoggedIn &&
+                _provider.state != ExamPlanLoadState.loading)
+              IconButton(
+                onPressed: _provider.refresh,
+                icon: const Icon(Icons.refresh),
+              ),
+          ],
+        ),
+        body: _buildBody(l10n),
       ),
-      body: _buildBody(l10n),
     );
   }
 
@@ -118,22 +81,25 @@ class _ExamPlanPageState extends State<ExamPlanPage> {
       return const AutoLoginLoadingWidget();
     }
 
-    if (_loading) {
+    if (_provider.state == ExamPlanLoadState.loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error == LoadErrorType.notLoggedIn) {
+    if (_provider.error == LoadErrorType.notLoggedIn) {
       if (getIt<ScuAuthProvider>().isAutoLoggingIn) {
         return const AutoLoginLoadingWidget();
       }
       return const LoginRequiredWidget();
     }
 
-    if (_error != null) {
-      return RetryableErrorWidget(errorType: _error!, onRetry: _loadData);
+    if (_provider.error != null) {
+      return RetryableErrorWidget(
+        errorType: _provider.error!,
+        onRetry: _provider.refresh,
+      );
     }
 
-    if (_exams.isEmpty) {
+    if (_provider.exams.isEmpty) {
       return Center(
         child: Text(
           l10n.examPlanNoData,
@@ -145,16 +111,17 @@ class _ExamPlanPageState extends State<ExamPlanPage> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadData,
+      onRefresh: _provider.refresh,
       child: ListView.builder(
         padding: const EdgeInsets.all(AppShapes.large),
-        itemCount: _exams.length,
-        itemBuilder: (context, index) => _buildExamCard(_exams[index]),
+        itemCount: _provider.exams.length,
+        itemBuilder: (context, index) => _buildExamCard(_provider.exams[index]),
       ),
     );
   }
 
   Widget _buildExamCard(ExamInfo exam) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     final past = exam.isPast;
     final primary = past ? colorScheme.outline : colorScheme.primary;
@@ -163,13 +130,15 @@ class _ExamPlanPageState extends State<ExamPlanPage> {
     String dateSub = exam.weekday;
     final dm = RegExp(r'(\d{4})-(\d{2})-(\d{2})').firstMatch(exam.date);
     if (dm != null) {
-      dateLabel = '${int.parse(dm.group(2)!)}月${int.parse(dm.group(3)!)}日';
+      dateLabel = l10n.dateMonthDay(
+        int.parse(dm.group(2)!),
+        int.parse(dm.group(3)!),
+      );
     }
 
-    return Card(
+    return StyledCard(
       margin: const EdgeInsets.only(bottom: 14),
-      clipBehavior: Clip.antiAlias,
-      color: past ? colorScheme.surfaceContainerLow : null,
+      backgroundColor: past ? colorScheme.surfaceContainerLow : null,
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -193,7 +162,7 @@ class _ExamPlanPageState extends State<ExamPlanPage> {
                   const SizedBox(height: 2),
                   if (past)
                     Text(
-                      '已结束',
+                      l10n.examEnded,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: colorScheme.outline.withValues(alpha: 0.7),
@@ -368,12 +337,12 @@ class _ExamPlanPageState extends State<ExamPlanPage> {
       l10n: l10n,
       action: action,
       copyToClipboard: () => CalendarExportUtils.copyJsonToClipboard({
-        'exams': _exams.map((exam) => exam.toJson()).toList(),
+        'exams': _provider.exams.map((exam) => exam.toJson()).toList(),
       }, logTag: 'ExamPlanPage'),
       copySuccessMessage: l10n.exportExamPlanAsCopySuccess,
       copyFailedMessage: l10n.exportScheduleAsCopyFailed,
       buildCalendarPayload: () => IcsService.genExamExportPayload(
-        exams: _exams,
+        exams: _provider.exams,
         fileName: '${_examPlanFileName()}.ics',
       ),
       logTag: 'ExamPlanPage',
@@ -382,7 +351,7 @@ class _ExamPlanPageState extends State<ExamPlanPage> {
 
   String _examPlanFileName() {
     final dates =
-        _exams
+        _provider.exams
             .map((exam) => exam.date)
             .where((date) => RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date))
             .toList()

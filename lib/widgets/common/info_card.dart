@@ -1,43 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
 
 /// A card container that groups child widgets with dividers between them.
 ///
-/// Matches the "about page" visual style: surface background, 16px radius,
-/// thin border (alpha 0.08).
+/// 视觉样式委托给 [StyledCard]，本组件只负责"分组 + 分隔线"的内容组织，
+/// 不再自己处理背景/圆角/描边。
 class InfoCard extends StatelessWidget {
   final List<Widget> children;
 
-  const InfoCard({super.key, required this.children});
+  /// 分隔线缩进。默认 56（对齐 leading icon 之后）；
+  /// tile 无 leading icon 时可传 0 使用全宽分隔线。
+  final double indent;
+
+  const InfoCard({super.key, required this.children, this.indent = 56});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final surfaceColor = theme.colorScheme.surface;
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.08)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(AppShapes.largeIncreased),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: _intersperse(children, divider(theme)),
-        ),
+    return StyledCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: _intersperse(children, divider(theme, indent)),
       ),
     );
   }
 
-  /// Standard divider between tiles (indent: 56 to align after icon).
-  static Widget divider(ThemeData theme) {
+  /// Standard divider between tiles (default indent: 56 to align after icon).
+  static Widget divider(ThemeData theme, [double indent = 56]) {
     return Divider(
       height: 1,
-      indent: 56,
+      indent: indent,
       color: theme.dividerColor.withValues(alpha: 0.08),
     );
   }

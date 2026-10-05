@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 
 class BackgroundCacheService {
   final AppConfigProvider _appConfig;
@@ -33,7 +34,9 @@ class BackgroundCacheService {
   void _cleanup() {
     try {
       _bgImageStream?.removeListener(_bgImageListener!);
-    } catch (_) {}
+    } catch (e) {
+      AppLog.w('BackgroundCacheService', 'Cleanup error: $e');
+    }
     _bgImageStream = null;
     _bgImageListener = null;
   }

@@ -7,7 +7,8 @@ import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
-import 'package:bugaoshan/utils/app_shapes.dart';
+import 'package:bugaoshan/widgets/common/styled_card.dart';
+import 'package:bugaoshan/theme_shape.dart';
 
 class PlanCompletionPage extends StatefulWidget {
   const PlanCompletionPage({super.key});
@@ -34,8 +35,25 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
   }
 
   void _onProviderUpdate() {
-    if (_provider.error == LoadErrorType.rateLimited && mounted) {
-      final l10n = AppLocalizations.of(context)!;
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+
+    // 有缓存时刷新失败，provider 保留旧数据并置 state=loaded、error≠null；
+    // 若不提示，用户无法得知看到的是过期缓存（与成绩页保持一致）。
+    if (_provider.state == PlanCompletionLoadState.loaded &&
+        _provider.error != null) {
+      final message = switch (_provider.error!) {
+        LoadErrorType.rateLimited => l10n.planCompletionRateLimited,
+        LoadErrorType.sessionExpired => l10n.sessionExpired,
+        _ => l10n.gradesRefreshFailed,
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+      );
+      return;
+    }
+
+    if (_provider.error == LoadErrorType.rateLimited) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.planCompletionRateLimited),
@@ -103,7 +121,88 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
 
   Widget _buildTree(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final rootNodes = _provider.rootNodes;
+    final plans = _provider.plans;
+
+    if (plans.isEmpty) {
+      return Center(
+        child: Text(
+          l10n.planCompletionNoData,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+
+    // 顶部方案名指示栏 + PageView 承载各方案内容：
+    // - 单方案：只有一页，无法左右滑动（滑动不反应）；
+    // - 多方案：左右滑动切换，顶部指示栏跟随更新。
+    return Column(
+      children: [
+        ListenableBuilder(
+          listenable: _provider,
+          builder: (context, _) {
+            final index = _provider.currentPlanIndex;
+            final name = plans[index].name;
+            final showCount = plans.length > 1;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 多方案时才提示可滑动，单方案不误导。
+                  if (showCount) ...[
+                    Icon(
+                      Icons.swipe,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
+                    child: Text(
+                      name.isNotEmpty ? name : l10n.planCompletionPlanFallback,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  if (showCount) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      '${index + 1}/${plans.length}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+        Expanded(
+          child: PageView.builder(
+            // 方案数量变化（如刷新后多方案缩容为单方案）时强制重建 PageView，
+            // 使视口回到第 0 页——否则内部页面位置仍停在旧索引，
+            // 而 Provider 的 currentPlanIndex 已被重置为 0，两者失配导致空白。
+            key: ValueKey(plans.length),
+            itemCount: plans.length,
+            // 跟随内容而非跳页动画，左右滑动切换方案。
+            onPageChanged: (index) => _provider.selectPlan(index),
+            itemBuilder: (context, index) =>
+                _buildPlanPage(context, plans[index]),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 渲染单份方案的内容（摘要卡 + 根模块树）。
+  Widget _buildPlanPage(BuildContext context, PlanCompletionPlan plan) {
+    final l10n = AppLocalizations.of(context)!;
+    final nodes = plan.nodes;
+    final rootNodes = nodes.where((n) => n.pId == '-1').toList();
 
     if (rootNodes.isEmpty) {
       return Center(
@@ -117,12 +216,7 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
     }
 
     // Build summary card
-    final categoryNodes = _provider.nodes.where((n) => n.isCategory).toList();
-    final totalEarned = categoryNodes.fold<double>(
-      0,
-      (sum, n) => sum + (double.tryParse(n.earnedCredits) ?? 0),
-    );
-    final completedCount = categoryNodes.where((n) => n.completed).length;
+    final stats = computeSummaryStats(nodes);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -130,12 +224,12 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
         _buildSummaryCard(
           context,
           l10n,
-          totalEarned,
-          completedCount,
-          categoryNodes.length,
+          stats.totalEarned,
+          stats.completedCount,
+          stats.moduleCount,
         ),
         const SizedBox(height: 16),
-        ...rootNodes.map((node) => _buildCategoryTile(context, node, 0)),
+        ...rootNodes.map((node) => _buildCategoryTile(context, nodes, node, 0)),
       ],
     );
   }
@@ -147,7 +241,7 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
     int completedCount,
     int totalCount,
   ) {
-    return Card(
+    return StyledCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -191,17 +285,19 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
 
   Widget _buildCategoryTile(
     BuildContext context,
+    List<PlanCompletionNode> nodes,
     PlanCompletionNode node,
     int depth,
   ) {
     final l10n = AppLocalizations.of(context)!;
-    final children = _provider.getChildren(node.id);
+    final children = nodes.where((n) => n.pId == node.id).toList();
 
+    // 无子节点的模块（如美育、创新创业教育、跨学科专业教育）以列表项形式展示，
+    // 与教务处方案层级保持一致。
     if (children.isEmpty && !node.isCourse) {
-      return const SizedBox.shrink();
+      return _buildLeafModuleTile(context, node, depth);
     }
 
-    // If this is a leaf category with no children, skip
     if (node.isCourse) {
       return _buildCourseTile(context, node, depth);
     }
@@ -210,9 +306,8 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
     final required = double.tryParse(node.requiredCredits) ?? 0;
     final progress = required > 0 ? (earned / required).clamp(0.0, 1.0) : 0.0;
 
-    return Card(
+    return StyledCard(
       margin: const EdgeInsets.only(bottom: 8),
-      clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
         leading: Icon(
           node.completed ? Icons.check_circle : Icons.radio_button_unchecked,
@@ -260,7 +355,9 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
           ],
         ),
         children: children
-            .map((child) => _buildCategoryTile(context, child, depth + 1))
+            .map(
+              (child) => _buildCategoryTile(context, nodes, child, depth + 1),
+            )
             .toList(),
       ),
     );
@@ -285,6 +382,72 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
       return '${l10n.planCompletionCourses}: $passed/$total';
     }
     return '';
+  }
+
+  Widget _buildLeafModuleTile(
+    BuildContext context,
+    PlanCompletionNode node,
+    int depth,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final earned = double.tryParse(node.earnedCredits) ?? 0;
+    final required = double.tryParse(node.requiredCredits) ?? 0;
+    final theme = Theme.of(context);
+
+    return StyledCard(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              node.completed
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
+              color: node.completed
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+              size: 22,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _extractCategoryDisplayName(node.name),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${l10n.planCompletionCredits}: ${node.earnedCredits}/${node.requiredCredits}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            SizedBox(
+              width: 64,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppShapes.xs),
+                child: LinearProgressIndicator(
+                  value: required > 0
+                      ? (earned / required).clamp(0.0, 1.0)
+                      : 0.0,
+                  minHeight: 4,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildCourseTile(
@@ -330,19 +493,25 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
             Row(
               children: [
                 if (node.courseCode.isNotEmpty) ...[
-                  Text(
-                    node.courseCode,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  Flexible(
+                    child: Text(
+                      node.courseCode,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                 ],
                 if (node.courseCredits.isNotEmpty)
-                  Text(
-                    '${node.courseCredits}${AppLocalizations.of(context)!.planCompletionCreditsUnit}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  Flexible(
+                    child: Text(
+                      '${node.courseCredits}${AppLocalizations.of(context)!.planCompletionCreditsUnit}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
               ],
@@ -379,4 +548,39 @@ class _PlanCompletionPageState extends State<PlanCompletionPage> {
       ),
     );
   }
+}
+
+/// 摘要卡的统计结果。
+class PlanCompletionSummaryStats {
+  final double totalEarned;
+  final int completedCount;
+  final int moduleCount;
+
+  const PlanCompletionSummaryStats({
+    required this.totalEarned,
+    required this.completedCount,
+    required this.moduleCount,
+  });
+}
+
+/// 计算摘要卡的统计值。
+///
+/// 统计根级模块（pId == '-1'）的完成情况，与教务处方案层级一致。
+/// 根级模块包括 '001' 大类（如公共基础课、学科基础课）和 '002' 课程组
+/// （如选择性思政、通用英语等），不含子层的必修/选修/限选分类节点。
+/// 已获学分取各根级模块自身的 yxxf 之和。
+PlanCompletionSummaryStats computeSummaryStats(List<PlanCompletionNode> nodes) {
+  final rootModuleNodes = nodes
+      .where((n) => n.pId == '-1' && (n.isCategory || n.isSubCategory))
+      .toList();
+  final totalEarned = rootModuleNodes.fold<double>(
+    0,
+    (sum, n) => sum + (double.tryParse(n.earnedCredits) ?? 0),
+  );
+  final completedCount = rootModuleNodes.where((n) => n.completed).length;
+  return PlanCompletionSummaryStats(
+    totalEarned: totalEarned,
+    completedCount: completedCount,
+    moduleCount: rootModuleNodes.length,
+  );
 }
