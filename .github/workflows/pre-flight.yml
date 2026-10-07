@@ -47,6 +47,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Prepare analysis-only HarmonyOS SDK marker
+        run: |
+          mkdir -p "$RUNNER_TEMP/hmos-sdk/hmscore" "$RUNNER_TEMP/hmos-sdk/openharmony"
+          echo "HOS_SDK_HOME=$RUNNER_TEMP/hmos-sdk" >> "$GITHUB_ENV"
+
       - name: Setup Flutter and Environment
         uses: ./.github/actions/setup
 
@@ -70,7 +75,7 @@ jobs:
           python3 -m unittest discover -s .github/scripts/tests/
           python3 -m unittest discover -s .github/scripts/
 
-      - name: Pre-release Metadata & Consistency Check
+      - name: Pre-release Version & Changelog Check
         run: |
           if [ "${{ github.base_ref || github.ref_name }}" = "main" ]; then
             python3 tool/pre_release_check.py --ci

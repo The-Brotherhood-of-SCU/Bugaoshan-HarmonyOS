@@ -27,8 +27,9 @@ runs:
 
     - uses: subosito/flutter-action@v2.18.0
       with:
-        flutter-version: "3.44.9"
-        channel: "stable"
+        channel: master
+        flutter-version: f4ab1955d2004ee5655bd0b4ff75bbce2f1de781
+        git-source: https://gitcode.com/CPF-Flutter/flutter_flutter.git
         cache: true
 
     - name: Mark Flutter SDK as safe for git
@@ -36,13 +37,13 @@ runs:
       shell: bash
 
     - name: Get dependencies
-      run: flutter pub get
+      run: flutter pub get --no-example --enforce-lockfile
       shell: bash
       # 提交的 pubspec.lock 锁定的是国内镜像：不设 PUB_HOSTED_URL 时 pub get 会把
-      # lock 全量翻成 pub.dev，造成「生成物漂移」假失败（三个调用方共用本 action，
-      # 在此统一设置；build-android 自身的 job 级 env 与此处取值相同，保留无妨）。
+      # lock 全量翻成 pub.dev，造成「生成物漂移」假失败。
       env:
         PUB_HOSTED_URL: https://pub.flutter-io.cn
+        GIT_LFS_SKIP_SMUDGE: "1"
 
     - name: Set up Python 3
       uses: actions/setup-python@v3
@@ -58,7 +59,7 @@ runs:
         GITHUB_REF_NAME: ${{ github.ref_name }}
 
     - name: Generate code
-      run: dart run build_runner build --delete-conflicting-outputs || true
+      run: dart run build_runner build --delete-conflicting-outputs
       shell: bash
 
     - name: Generate localizations

@@ -1,43 +1,21 @@
-"""Prepare release files for upload."""
+"""Prepare the HarmonyOS release HAP for upload."""
 
 import os
 import shutil
 from pathlib import Path
 
 
-def _android_asset_suffix(filename):
-    if filename in ("app-release.apk", "app-universal-release.apk"):
-        return "universal"
-    prefix = "app-"
-    suffix = "-release.apk"
-    if filename.startswith(prefix) and filename.endswith(suffix):
-        return filename[len(prefix) : -len(suffix)]
-    return None
-
-
 def prepare_release_files(version, root=Path(".")):
     root = Path(root)
-    version = version.lstrip("v")
-    android_dir = root / "android-apk"
+    version = version.removeprefix("v")
+    haps = sorted((root / "ohos-hap").glob("*-unsigned.hap"))
+    if len(haps) != 1:
+        raise FileNotFoundError(f"Expected one unsigned HarmonyOS HAP, found {len(haps)}")
 
-    universal = android_dir / "app-universal-release.apk"
-    raw_universal = android_dir / "app-release.apk"
-    if not universal.exists() and not raw_universal.exists():
-        raise FileNotFoundError("Missing universal Android updater APK")
-
-    for apk in sorted(android_dir.glob("*.apk")):
-        arch = _android_asset_suffix(apk.name)
-        if arch is None:
-            continue
-        if arch == "universal" and apk == raw_universal and universal.exists():
-            continue
-        dst = root / f"bugaoshan_{version}_{arch}.apk"
-        shutil.copy2(apk, dst)
-        print(f"Copied {apk} -> {dst}")
-
-    windows_src = root / "windows-release" / "windows-release.zip"
-    shutil.copy2(windows_src, root / f"bugaoshan_{version}_windows_x64.zip")
-    print("Copied windows artifact")
+    dst = root / f"bugaoshan_{version}_ohos_unsigned.hap"
+    shutil.copy2(haps[0], dst)
+    print(f"Copied {haps[0]} -> {dst}")
+    return dst
 
 
 def main():
