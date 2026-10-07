@@ -1,5 +1,5 @@
-name: Setup Flutter Build Environment
-description: Common setup steps for all platform builds
+name: Setup CPF Flutter Build Environment
+description: Common setup steps for HarmonyOS CI
 
 inputs:
   version:
@@ -25,12 +25,24 @@ runs:
       run: git fetch --tags --force
       shell: bash
 
-    - uses: subosito/flutter-action@v2.18.0
+    - name: Cache CPF Flutter SDK
+      uses: actions/cache@v4
       with:
-        channel: master
-        flutter-version: f4ab1955d2004ee5655bd0b4ff75bbce2f1de781
-        git-source: https://gitcode.com/CPF-Flutter/flutter_flutter.git
-        cache: true
+        path: ${{ runner.temp }}/cpf-flutter
+        key: cpf-flutter-${{ runner.os }}-${{ runner.arch }}-f4ab1955d2004ee5655bd0b4ff75bbce2f1de781
+
+    - name: Install CPF Flutter SDK
+      shell: bash
+      env:
+        FLUTTER_ROOT: ${{ runner.temp }}/cpf-flutter
+      run: |
+        if [ ! -d "$FLUTTER_ROOT/.git" ]; then
+          git clone --branch oh-3.44.9-dev --single-branch \
+            https://gitcode.com/CPF-Flutter/flutter_flutter.git "$FLUTTER_ROOT"
+        fi
+        git -C "$FLUTTER_ROOT" checkout --detach f4ab1955d2004ee5655bd0b4ff75bbce2f1de781
+        echo "FLUTTER_ROOT=$FLUTTER_ROOT" >> "$GITHUB_ENV"
+        echo "$FLUTTER_ROOT/bin" >> "$GITHUB_PATH"
 
     - name: Mark Flutter SDK as safe for git
       run: git config --global --add safe.directory "$FLUTTER_ROOT"
