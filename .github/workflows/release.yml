@@ -1,180 +1,106 @@
-name: Release Pipeline
+name: Release HarmonyOS
 
 on:
   push:
     branches:
       - main
-      - preview
     tags:
       - "v*.*.*"
+      - "!v*.*.*-*"
   workflow_dispatch:
     inputs:
-      channel:
-        description: "Release channel (auto / formal / preview)"
-        required: false
-        default: "auto"
-        type: choice
-        options:
-          - auto
-          - formal
-          - preview
       version_override:
-        description: "Explicit version or tag (optional, e.g. 2.5.1 or v2.5.1-rc1)"
+        description: "Explicit formal version or tag (optional)"
         required: false
         type: string
 
 concurrency:
   group: release-${{ github.ref }}
-  # 预览轨道只保留最新一轮：连续合并/ dispatch 到 preview 时取消进行中的旧发布；
-  # main 与 tag 事件绝不取消，正式发布必须完整走完。
-  cancel-in-progress: ${{ github.ref_type == 'branch' && github.ref_name == 'preview' }}
+  cancel-in-progress: false
 
 jobs:
   resolve-metadata:
-    name: Resolve Release Metadata
+    name: Resolve release metadata
+    if: github.ref == 'refs/heads/main' || (github.ref_type == 'tag' && !contains(github.ref_name, '-'))
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     outputs:
-      channel: ${{ steps.resolve.outputs.channel }}
       tag: ${{ steps.resolve.outputs.tag }}
-      version_name: ${{ steps.resolve.outputs.version_name }}
-      is_prerelease: ${{ steps.resolve.outputs.is_prerelease }}
-      should_release: ${{ steps.resolve.outputs.should_release }}
-      build_only: ${{ steps.resolve.outputs.build_only }}
-      build_version: ${{ steps.resolve.outputs.build_version }}
-      build_number: ${{ steps.resolve.outputs.build_number }}
       release_title: ${{ steps.resolve.outputs.release_title }}
-      skip_reason: ${{ steps.resolve.outputs.skip_reason }}
+      should_release: ${{ steps.existing-release.outputs.exists == 'true' && 'false' || steps.resolve.outputs.should_release }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: "3.12"
-
-      - name: Resolve Version & Channel
+      - name: Resolve version and channel
         id: resolve
         env:
-          INPUT_CHANNEL: ${{ github.event.inputs.channel || 'auto' }}
           INPUT_VERSION_OVERRIDE: ${{ github.event.inputs.version_override || '' }}
         run: python3 .github/scripts/resolve_release_version.py
 
-      - name: Tag commit in repository (if new branch release)
-        if: steps.resolve.outputs.should_release == 'true' && github.ref_type != 'tag'
+      - name: Reject preview release versions
+        if: steps.resolve.outputs.is_prerelease == 'true'
         run: |
-          TAG="${{ steps.resolve.outputs.tag }}"
-          echo "Applying tag $TAG to HEAD..."
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "$TAG"
-          # 推送失败即终止（tag 被并发 run 抢占或受保护时，继续构建只会在
-          # publish 阶段以更晚、更难排查的方式失败）
-          if ! git push origin "refs/tags/$TAG"; then
-            echo "::error::Failed to push tag $TAG. 另一个发布 run 可能已占用该 tag，请检查 Actions 运行记录。"
-            exit 1
+          echo "::error::Preview releases are disabled. Use a formal version on main."
+          exit 1
+
+      - name: Skip an already published tag
+        id: existing-release
+        if: steps.resolve.outputs.should_release == 'true' && steps.resolve.outputs.is_prerelease != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+        run: |
+          if gh release view "$TAG" --json tagName >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           fi
 
-  build-android:
-    name: Android Build
+  build-ohos:
+    name: Build HarmonyOS HAP
     needs: resolve-metadata
-    if: needs.resolve-metadata.outputs.should_release == 'true' || needs.resolve-metadata.outputs.build_only == 'true'
-    uses: ./.github/workflows/build-android.yml
+    if: needs.resolve-metadata.outputs.should_release == 'true'
+    uses: ./.github/workflows/build-ohos.yml
     with:
       version: ${{ needs.resolve-metadata.outputs.tag }}
-      build_name: ${{ needs.resolve-metadata.outputs.build_version }}
-      build_number: ${{ needs.resolve-metadata.outputs.build_number }}
-    secrets: inherit
-
-  build-windows:
-    name: Windows Build
-    needs: resolve-metadata
-    if: needs.resolve-metadata.outputs.should_release == 'true' || needs.resolve-metadata.outputs.build_only == 'true'
-    uses: ./.github/workflows/build-windows.yml
-    with:
-      version: ${{ needs.resolve-metadata.outputs.tag }}
-      build_name: ${{ needs.resolve-metadata.outputs.build_version }}
-      build_number: ${{ needs.resolve-metadata.outputs.build_number }}
+    permissions:
+      contents: read
 
   publish-release:
-    name: Publish Release
-    needs: [resolve-metadata, build-android, build-windows]
+    name: Publish HarmonyOS release
+    needs: [resolve-metadata, build-ohos]
     if: needs.resolve-metadata.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.resolve-metadata.outputs.tag }}
+      TITLE: ${{ needs.resolve-metadata.outputs.release_title }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Download Android Artifacts
+      - name: Download unsigned HAP
         uses: actions/download-artifact@v4
         with:
-          name: android-apk
-          path: android-apk
-
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-release
-          path: windows-release
+          name: bugaoshan-ohos-unsigned-hap
+          path: ohos-hap
 
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
           python-version: "3.12"
 
-      - name: Install Python dependencies
-        run: |
-          pip install pyyaml deep-translator argostranslate
-
-      - name: Cache Argos Translate model
-        uses: actions/cache@v4
-        id: cache-argos
-        with:
-          path: ~/.local/share/argos-translate
-          key: argos-translate-zh-en-v1
-
-      - name: Download Argos Translate zh->en model
-        if: steps.cache-argos.outputs.cache-hit != 'true'
-        run: |
-          python -c "
-          import argostranslate.package
-          argostranslate.package.update_package_index()
-          available = argostranslate.package.get_available_packages()
-          zh_en = next(p for p in available if p.from_code == 'zh' and p.to_code == 'en')
-          argostranslate.package.install_from_path(zh_en.download())
-          "
-
-      - name: Resolve release tag & range
+      - name: Resolve release tag and range
         id: vars
         run: python .github/scripts/release_tags.py
         env:
           VERSION: ${{ needs.resolve-metadata.outputs.tag }}
-
-      - name: Generate metadata changelogs (formal releases only)
-        if: needs.resolve-metadata.outputs.is_prerelease != 'true'
-        run: python .github/scripts/metadata_changelog.py --skip-existing
-
-      - name: Commit & push metadata changelogs (safety net)
-        if: needs.resolve-metadata.outputs.is_prerelease != 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git status --porcelain
-          if [ -n "$(git status --porcelain metadata/*/changelogs/)" ]; then
-            git add metadata/*/changelogs/*.txt
-            git commit -m "chore: update F-Droid metadata changelogs for ${{ steps.vars.outputs.tag }}"
-            git pull --rebase origin main || { git rebase --abort || true; echo "rebase failed, continuing"; }
-            git push origin HEAD:main || echo "safety-net push failed (main moved on), continuing"
-          else
-            echo "No metadata changelog changes to commit."
-          fi
 
       - name: Extract changelog
         id: changelog
@@ -191,40 +117,43 @@ jobs:
           CHANGELOG: ${{ steps.changelog.outputs.changelog }}
           PREV: ${{ steps.vars.outputs.prev }}
 
-      - name: Prepare release files
+      - name: Prepare release HAP
         run: python .github/scripts/release_prepare.py
         env:
           VERSION: ${{ steps.vars.outputs.tag }}
 
-      - name: Create Release and Upload Assets
+      - name: Tag successful build
+        shell: bash
         run: |
-          set -euo pipefail
-
-          TAG="${{ steps.vars.outputs.tag }}"
-          IS_PRERELEASE="${{ needs.resolve-metadata.outputs.is_prerelease }}"
-          TITLE="${{ needs.resolve-metadata.outputs.release_title }}"
-
-          GOPTS=()
-          if [ "$IS_PRERELEASE" = "true" ]; then
-            GOPTS+=(--prerelease)
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            exit 0
           fi
+          if git rev-parse --verify "refs/tags/$TAG^{commit}" >/dev/null 2>&1; then
+            tagged_commit="$(git rev-parse "refs/tags/$TAG^{commit}")"
+            if [[ "$tagged_commit" != "$GITHUB_SHA" ]]; then
+              echo "::error::Tag $TAG points to a different commit"
+              exit 1
+            fi
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
 
-          # 创建 Draft Release -> 上传制品 -> 发布（确保与不可变 Release 策略完全兼容）
+      - name: Create draft release and upload HAP
+        shell: bash
+        env:
+          BODY: ${{ steps.release_body.outputs.body }}
+        run: |
           printf "%s\n" "$BODY" > notes.md
-
           gh release create "$TAG" \
+            --verify-tag \
             --title "$TITLE" \
             --notes-file notes.md \
-            --draft \
-            "${GOPTS[@]}"
+            --draft
+          gh release upload "$TAG" "bugaoshan_${TAG#v}_ohos_unsigned.hap"
 
-          gh release upload "$TAG" bugaoshan_*.apk bugaoshan_*.zip
-
-          if [ "$IS_PRERELEASE" = "true" ]; then
-            gh release edit "$TAG" --draft=false --prerelease
-          else
-            gh release edit "$TAG" --draft=false --latest
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BODY: ${{ steps.release_body.outputs.body }}
+      - name: Publish release
+        shell: bash
+        run: gh release edit "$TAG" --draft=false --latest

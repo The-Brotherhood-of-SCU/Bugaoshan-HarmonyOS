@@ -2,23 +2,28 @@
 
 import os
 
-def main():
-    version = os.environ.get("VERSION", "").lstrip("v")
-    repo = os.environ.get("REPO", "")
-    changelog = os.environ.get("CHANGELOG", "")
-    prev = os.environ.get("PREV", "").lstrip("v")
 
-    body = f"""## ⬇️ 下载 (Downloads)
-- Android: [arm64-Apk]({repo}/releases/download/v{version}/bugaoshan_{version}_arm64-v8a.apk)
-- Windows: [x64 Zip]({repo}/releases/download/v{version}/bugaoshan_{version}_windows_x64.zip)
-- macOS (Apple Silicon): [dmg](https://github.com/Visio-Vanitas/Bugaoshan/releases/download/v{version}/bugaoshan_{version}_macos_arm64.dmg)
-- iOS: 未发布正式版，可安装testflight后点击链接进行邀测: https://testflight.apple.com/join/Vyenb6gC ；另提供 [ipa](https://github.com/Visio-Vanitas/Bugaoshan/releases/download/v{version}/bugaoshan_{version}_ios_unsigned.ipa)（ipa仅供理解有关技术的同学测试使用，非技术背景同学请勿下载）
+def build_release_body(version, repo, changelog, prev):
+    version = version.removeprefix("v")
+    previous_ref = prev.split(" ", 1)[0]
+    body = f"""## 下载
+- HarmonyOS: [无签名 HAP]({repo}/releases/download/v{version}/bugaoshan_{version}_ohos_unsigned.hap)
 
-> 💡 **Note**: 当前项目优先保障 Android 端的稳定与体验。 Windows 版本可能存在部分兼容性或体验问题。
+> 此 HAP 未签名，安装前需要自行签名。
 
 {changelog}
 
-**Full diff:** {repo}/compare/v{prev}...v{version}"""
+**Full diff:** {repo}/compare/{previous_ref}...v{version}"""
+    return body
+
+
+def main():
+    body = build_release_body(
+        os.environ.get("VERSION", ""),
+        os.environ.get("REPO", ""),
+        os.environ.get("CHANGELOG", ""),
+        os.environ.get("PREV", ""),
+    )
 
     output = os.environ.get("GITHUB_OUTPUT", "")
     if output:

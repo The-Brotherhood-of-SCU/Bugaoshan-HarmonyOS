@@ -1,0 +1,99 @@
+name: Build HarmonyOS
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Release tag for in-app git metadata
+        type: string
+        required: false
+        default: ""
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-ohos-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-hap:
+    name: Build unsigned HAP
+    if: github.ref != 'refs/heads/preview'
+    runs-on: [self-hosted, macOS, harmonyos-api-26]
+    env:
+      PUB_HOSTED_URL: https://pub.flutter-io.cn
+      FLUTTER_STORAGE_BASE_URL: https://storage.flutter-io.cn
+      GIT_LFS_SKIP_SMUDGE: "1"
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Expose DevEco tools and HarmonyOS SDK
+        shell: bash
+        run: |
+          : "${DEVECO_SDK_HOME:?Set DEVECO_SDK_HOME to the DevEco Studio 26 Contents/sdk directory on the runner}"
+          tool_home="$(dirname "$DEVECO_SDK_HOME")"
+          for tool_dir in \
+            "$tool_home/tools/ohpm/bin" \
+            "$tool_home/tools/hvigor/bin" \
+            "$tool_home/tools/node/bin" \
+            "$DEVECO_SDK_HOME/default/openharmony/toolchains"; do
+            if [ ! -d "$tool_dir" ]; then
+              echo "::error::Required DevEco directory not found: $tool_dir"
+              exit 1
+            fi
+            echo "$tool_dir" >> "$GITHUB_PATH"
+          done
+          echo "HOS_SDK_HOME=$DEVECO_SDK_HOME" >> "$GITHUB_ENV"
+          echo "OHOS_SDK_HOME=$DEVECO_SDK_HOME" >> "$GITHUB_ENV"
+          echo "NODE_HOME=$tool_home/tools/node" >> "$GITHUB_ENV"
+
+      - name: Check HarmonyOS API 26 SDK
+        shell: bash
+        run: |
+          python3 - "$DEVECO_SDK_HOME" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          sdk = Path(sys.argv[1]) / "default" / "openharmony"
+          for component in ("ets", "native"):
+              metadata = sdk / component / "oh-uni-package.json"
+              data = json.loads(metadata.read_text(encoding="utf-8"))
+              if str(data.get("apiVersion")) != "26":
+                  raise SystemExit(
+                      f"{metadata} must be HarmonyOS API 26, "
+                      f"found API {data.get('apiVersion')}"
+                  )
+              print(f"Validated {component}: API {data['apiVersion']}")
+          PY
+
+      - name: Setup CPF Flutter and generate sources
+        id: setup
+        uses: ./.github/actions/setup
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Configure HarmonyOS SDK
+        shell: bash
+        run: flutter config --ohos-sdk "$DEVECO_SDK_HOME"
+
+      - name: Build unsigned release HAP
+        shell: bash
+        run: |
+          flutter build hap --release --no-codesign --no-pub \
+            --dart-define=GIT_TAG=${{ steps.setup.outputs.GIT_TAG }} \
+            --dart-define=GIT_COMMIT=${{ steps.setup.outputs.GIT_COMMIT }} \
+            --dart-define=GIT_COMMIT_DATE=${{ steps.setup.outputs.GIT_COMMIT_DATE }}
+
+      - name: Upload unsigned HAP
+        uses: actions/upload-artifact@v4
+        with:
+          name: bugaoshan-ohos-unsigned-hap
+          path: build/ohos/hap/*-unsigned.hap
+          if-no-files-found: error
+          retention-days: 7

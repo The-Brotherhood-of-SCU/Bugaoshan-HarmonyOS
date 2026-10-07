@@ -24,10 +24,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# 与 android/app/build.gradle.kts 的 ABI override / F-Droid VercodeOperation 一致
-ABI_CODES = (1, 2, 4)
-METADATA_LANGS = ("en-US", "zh-CN")
-
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
 _COLORS = {
     OK: "\033[32m",
@@ -251,7 +247,7 @@ class Checker:
         if pub_name != self.version:
             issues.append(f"版本名应为 {self.version}，实际为 {pub_name}")
         if not sep:
-            issues.append("缺少 +buildNumber（Android versionCode）")
+            issues.append("缺少 +buildNumber")
         elif expected_build is not None and pub_build != str(expected_build):
             issues.append(f"buildNumber 应为 {expected_build}（X.Y.Z → 主*10000+次*100+修订），实际为 {pub_build}")
         if pub_tuple is None:
@@ -260,7 +256,7 @@ class Checker:
         if issues:
             self.record(FAIL, name, "；".join(issues))
         else:
-            self.record(OK, name, f"version: {raw}（versionCode {pub_build}）")
+            self.record(OK, name, f"version: {raw}（buildNumber {pub_build}）")
 
     def check_changelog(self):
         name = "CHANGELOG.md"
@@ -341,55 +337,6 @@ class Checker:
             else:
                 self.record(OK, "Unreleased 占位符", "已清空")
 
-    def check_metadata_yml(self):
-        name = "F-Droid metadata/*.yml"
-        if self.is_prerelease:
-            self.record(OK, name, "预览版无需更新 metadata/*.yml")
-            return
-        ymls = list(ROOT.glob("metadata/*.yml"))
-        if not ymls:
-            self.record(FAIL, name, "未找到 metadata/*.yml")
-            return
-        base = self.base_version_code(self.version)
-        expected_codes = [base * 10 + abi for abi in ABI_CODES]
-        text = "\n".join(p.read_text(encoding="utf-8") for p in ymls)
-        issues = []
-        if not re.search(r"versionName:\s*['\"]?" + re.escape(self.version) + r"['\"]?", text):
-            issues.append(f"versionName 未包含 {self.version}")
-        for code in expected_codes:
-            if f"versionCode: {code}" not in text:
-                issues.append(f"缺少 versionCode: {code}")
-        if issues:
-            self.record(FAIL, name, "；".join(issues) + "（需更新 metadata/*.yml 的 Builds）")
-        else:
-            self.record(OK, name, f"versionName={self.version}，versionCode={expected_codes}")
-
-    def check_metadata_changelogs(self):
-        name = "F-Droid metadata changelogs"
-        if self.is_prerelease:
-            self.record(OK, name, "预览版不生成 metadata changelogs（CI 会跳过）")
-            return
-        base = self.base_version_code(self.version)
-        expected = [base * 10 + abi for abi in ABI_CODES]
-        missing = []
-        empty = []
-        for lang in METADATA_LANGS:
-            for code in expected:
-                p = ROOT / "metadata" / lang / "changelogs" / f"{code}.txt"
-                if not p.exists():
-                    missing.append(str(p.relative_to(ROOT)))
-                elif p.read_text(encoding="utf-8").strip() == "":
-                    empty.append(str(p.relative_to(ROOT)))
-        if missing or empty:
-            self.record(
-                FAIL,
-                name,
-                "缺少文件: " + ", ".join(missing + empty)
-                + "。运行 python .github/scripts/metadata_changelog.py 生成",
-            )
-        else:
-            self.record(OK, name, f"{len(expected) * len(METADATA_LANGS)} 个文件齐全（{METADATA_LANGS} × {expected}）")
-
     # ---- 汇总 ----
 
     def run_all(self):
@@ -405,8 +352,6 @@ class Checker:
             self.check_version_monotonic,
             self.check_pubspec,
             self.check_changelog,
-            self.check_metadata_yml,
-            self.check_metadata_changelogs,
         ]
         for fn in checks:
             fn()
@@ -459,7 +404,8 @@ def main(argv=None):
         "--ci",
         action="store_true",
         help="CI 门禁模式：自动从 pubspec.yaml 读取版本号，发布时机类检查"
-             "（版本递增 / tag 冲突 / Unreleased 空置）降级为 WARN，其余检查未通过时退出码为 1",
+             "（版本递增 / tag 冲突 / Unreleased 空置）降级为 WARN，"
+             "其余检查未通过时退出码为 1",
     )
     args = parser.parse_args(argv)
 

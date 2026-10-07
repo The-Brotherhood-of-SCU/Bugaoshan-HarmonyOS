@@ -47,18 +47,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Prepare analysis-only HarmonyOS SDK marker
+        run: |
+          mkdir -p "$RUNNER_TEMP/hmos-sdk/hmscore" "$RUNNER_TEMP/hmos-sdk/openharmony"
+          echo "HOS_SDK_HOME=$RUNNER_TEMP/hmos-sdk" >> "$GITHUB_ENV"
+
       - name: Setup Flutter and Environment
         uses: ./.github/actions/setup
 
       - name: Static Analysis
         run: dart analyze --fatal-infos
 
-      - name: Verify Clean Working Tree after Code Generation
+      - name: Verify HarmonyOS Sources after Code Generation
         run: |
-          git status --porcelain
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error::Generated code drift detected! Please run 'dart run build_runner build --delete-conflicting-outputs' and 'flutter gen-l10n', then commit the updated files."
-            git diff
+          git status --porcelain -- lib/ ohos/ pubspec.lock
+          if [ -n "$(git status --porcelain -- lib/ ohos/ pubspec.lock)" ]; then
+            echo "::error::HarmonyOS source or dependency lockfile drift detected! Regenerate and commit the updated files."
+            git diff -- lib/ ohos/ pubspec.lock
             exit 1
           fi
 
@@ -70,7 +75,7 @@ jobs:
           python3 -m unittest discover -s .github/scripts/tests/
           python3 -m unittest discover -s .github/scripts/
 
-      - name: Pre-release Metadata & Consistency Check
+      - name: Pre-release Version & Changelog Check
         run: |
           if [ "${{ github.base_ref || github.ref_name }}" = "main" ]; then
             python3 tool/pre_release_check.py --ci
