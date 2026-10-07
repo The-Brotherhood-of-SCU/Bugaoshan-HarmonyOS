@@ -48,13 +48,14 @@ runs:
       run: git config --global --add safe.directory "$FLUTTER_ROOT"
       shell: bash
 
+    - name: Configure Pub mirror
+      run: echo "PUB_HOSTED_URL=https://pub.flutter-io.cn" >> "$GITHUB_ENV"
+      shell: bash
+
     - name: Get dependencies
       run: flutter pub get --no-example --enforce-lockfile
       shell: bash
-      # 提交的 pubspec.lock 锁定的是国内镜像：不设 PUB_HOSTED_URL 时 pub get 会把
-      # lock 全量翻成 pub.dev，造成「生成物漂移」假失败。
       env:
-        PUB_HOSTED_URL: https://pub.flutter-io.cn
         GIT_LFS_SKIP_SMUDGE: "1"
 
     - name: Set up Python 3
