@@ -127,14 +127,14 @@ class WidgetUpdateService {
     }
   }
 
-  /// Syncs the visual style used by the iOS WidgetKit extension.
+  /// Syncs the visual style used by the iOS and macOS WidgetKit extension.
   Future<void> syncWidgetAppearance({
     required WidgetColorStyle colorStyle,
     required WidgetDensity density,
   }) async {
     if (!_platformChecker() ||
-        isOhos ||
-        defaultTargetPlatform != TargetPlatform.iOS) {
+        (defaultTargetPlatform != TargetPlatform.iOS &&
+            defaultTargetPlatform != TargetPlatform.macOS)) {
       return;
     }
     try {
