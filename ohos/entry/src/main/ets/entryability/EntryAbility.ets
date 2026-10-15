@@ -12,6 +12,7 @@ import { GeneratedPluginRegistrant } from '../plugins/GeneratedPluginRegistrant'
 import { DynamicIconChannel } from '../platform/DynamicIconChannel';
 import { EnvironmentInfoChannel } from '../platform/EnvironmentInfoChannel';
 import { CourseCardChannel } from '../cards/CourseCardChannel';
+import { NativeUiPlugin } from '../platform/native_ui/NativeUiPlugin';
 
 const CHANNEL = 'bugaoshan/update';
 
@@ -26,6 +27,11 @@ export default class EntryAbility extends FlutterAbility {
   configureFlutterEngine(flutterEngine: FlutterEngine) {
     super.configureFlutterEngine(flutterEngine);
     GeneratedPluginRegistrant.registerWith(flutterEngine);
+    // App-owned platform views are engine plugins; generated files stay untouched.
+    const plugins = flutterEngine.getPlugins();
+    if (plugins !== null && !plugins.has(NativeUiPlugin.NAME)) {
+      plugins.add(new NativeUiPlugin());
+    }
 
     const icons = new DynamicIconChannel();
     this.iconChannel = new MethodChannel(flutterEngine.getDartExecutor(), 'bugaoshan/dynamic_icon');

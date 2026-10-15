@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/widgets/adaptive/adaptive_glass_controls.dart';
 
 /// Flutter 保留导航状态；原生侧只负责显示和发送稳定的 destination id。
 class HomeDockDestination {
@@ -37,7 +38,7 @@ class HomeDockDestination {
   };
 }
 
-/// iOS 26+ 使用系统 UITabBarController；其余环境保留 Material 导航。
+/// iOS 26+ 使用 UITabBarController，OHOS 使用 ArkUI Tabs。
 /// 仅承载一个原生视图，避免为每个按钮创建平台视图和通信通道。
 class AdaptiveHomeDock extends StatefulWidget {
   const AdaptiveHomeDock({
@@ -47,6 +48,7 @@ class AdaptiveHomeDock extends StatefulWidget {
     required this.onDestinationSelected,
     this.reduceMotion = false,
     this.onNativeModeChanged,
+    this.onContentOverlapChanged,
     this.moreLabel,
     this.cancelLabel,
   }) : assert(destinations.length >= 2),
@@ -57,6 +59,9 @@ class AdaptiveHomeDock extends StatefulWidget {
   final ValueChanged<int> onDestinationSelected;
   final bool reduceMotion;
   final ValueChanged<bool>? onNativeModeChanged;
+
+  /// 原生栏可以是普通栏；只有悬浮栏才让页面内容延伸到栏后。
+  final ValueChanged<bool>? onContentOverlapChanged;
   final String? moreLabel;
   final String? cancelLabel;
 
@@ -70,18 +75,31 @@ class _AdaptiveHomeDockState extends State<AdaptiveHomeDock> {
   static const _channelTimeout = Duration(seconds: 2);
 
   bool _supported = false;
+  OhosNativeUiCapabilities _ohos = const OhosNativeUiCapabilities();
   bool _updateScheduled = false;
   MethodChannel? _viewChannel;
 
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+    if (usesOhosNativeUi ||
+        (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS)) {
       unawaited(_checkSupport());
     }
   }
 
   Future<void> _checkSupport() async {
+    if (usesOhosNativeUi) {
+      final capabilities = await OhosNativeUiCapabilities.load();
+      if (!mounted) return;
+      setState(() {
+        _ohos = capabilities;
+        _supported = capabilities.dock;
+      });
+      widget.onNativeModeChanged?.call(capabilities.dock);
+      widget.onContentOverlapChanged?.call(capabilities.floatingDock);
+      return;
+    }
     try {
       final supported = await _capabilities
           .invokeMethod<bool>('isSupported')
@@ -90,10 +108,12 @@ class _AdaptiveHomeDockState extends State<AdaptiveHomeDock> {
       final native = supported == true;
       setState(() => _supported = native);
       widget.onNativeModeChanged?.call(native);
+      widget.onContentOverlapChanged?.call(native);
     } catch (e) {
       // 旧 Runner / 测试没有注册原生桥时仍可正常导航。
       AppLog.w('AdaptiveHomeDock', 'Native glass unavailable: $e');
       if (mounted) widget.onNativeModeChanged?.call(false);
+      if (mounted) widget.onContentOverlapChanged?.call(false);
     }
   }
 
@@ -124,6 +144,8 @@ class _AdaptiveHomeDockState extends State<AdaptiveHomeDock> {
       'highContrast': MediaQuery.highContrastOf(context),
       'textScale': _textScale,
       'direction': Directionality.of(context).name,
+      if (usesOhosNativeUi)
+        'bottomInset': MediaQuery.viewPaddingOf(context).bottom,
       if (widget.moreLabel != null) 'moreLabel': widget.moreLabel!,
       if (widget.cancelLabel != null) 'cancelLabel': widget.cancelLabel!,
     };
@@ -139,7 +161,10 @@ class _AdaptiveHomeDockState extends State<AdaptiveHomeDock> {
   }
 
   Future<void> _handleNativeCall(MethodCall call) async {
-    if (!mounted || call.method != 'select' || call.arguments is! String) {
+    if (!mounted ||
+        !_supported ||
+        call.method != 'select' ||
+        call.arguments is! String) {
       return;
     }
     final index = widget.destinations.indexWhere(
@@ -174,6 +199,7 @@ class _AdaptiveHomeDockState extends State<AdaptiveHomeDock> {
         _viewChannel = null;
         setState(() => _supported = false);
         widget.onNativeModeChanged?.call(false);
+        widget.onContentOverlapChanged?.call(false);
       }
     }
   }
@@ -208,17 +234,29 @@ class _AdaptiveHomeDockState extends State<AdaptiveHomeDock> {
       );
     }
 
-    // 平台视图覆盖到底边，让 UIKit 自己处理浮动 TabBar 的边距与安全区。
-    // Flutter SafeArea/圆角裁剪会截断系统玻璃的取景区域。
+    // iOS 由 UIKit 处理底部安全区；OHOS 将 inset 传给原生栏，避免重复避让。
+    // 悬浮栏的取景与阴影区域不再由 Flutter 外层 SafeArea/圆角裁剪。
+    final parameters = _parameters();
+    final layoutDirection = Directionality.of(context);
     return SizedBox(
-      height: 88 + MediaQuery.viewPaddingOf(context).bottom,
-      child: UiKitView(
-        viewType: _viewType,
-        layoutDirection: Directionality.of(context),
-        creationParams: _parameters(),
-        creationParamsCodec: const StandardMessageCodec(),
-        onPlatformViewCreated: _onPlatformViewCreated,
-      ),
+      height: (usesOhosNativeUi ? _ohos.dockHeight : 88) +
+          MediaQuery.viewPaddingOf(context).bottom,
+      child: usesOhosNativeUi
+          ? OhosView(
+              viewType: _viewType,
+              layoutDirection: layoutDirection,
+              creationParams: parameters,
+              creationParamsCodec: const StandardMessageCodec(),
+              onPlatformViewCreated: _onPlatformViewCreated,
+              clipBehavior: Clip.none,
+            )
+          : UiKitView(
+              viewType: _viewType,
+              layoutDirection: layoutDirection,
+              creationParams: parameters,
+              creationParamsCodec: const StandardMessageCodec(),
+              onPlatformViewCreated: _onPlatformViewCreated,
+            ),
     );
   }
 }

@@ -30,6 +30,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _currentIndex = 0;
   bool _nativeDock = false;
+  bool _dockOverlapsContent = false;
 
   @override
   void initState() {
@@ -139,7 +140,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         visibleIds.length >= 2 &&
                         (!_nativeDock ||
                             MediaQuery.viewInsetsOf(context).bottom == 0);
-                    final extendBehindDock = showBar && _nativeDock;
+                    final extendBehindDock = showBar && _dockOverlapsContent;
                     final pageContent = ListenableBuilder(
                       listenable: Listenable.merge([
                         appConfig.cardSizeAnimationDuration,
@@ -212,6 +213,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                     onNativeModeChanged: (native) {
                                       if (_nativeDock != native) {
                                         setState(() => _nativeDock = native);
+                                      }
+                                    },
+                                    onContentOverlapChanged: (overlaps) {
+                                      if (_dockOverlapsContent != overlaps) {
+                                        setState(
+                                          () => _dockOverlapsContent = overlaps,
+                                        );
                                       }
                                     },
                                     onDestinationSelected: (index) {

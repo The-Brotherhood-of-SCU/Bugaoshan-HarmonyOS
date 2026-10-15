@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- 鸿蒙端复用现有自适应组件，接入原生底部导航、开关与已适配的操作按钮；API 26 支持悬浮底栏与系统沉浸光感开关，较早系统使用普通原生控件，桥接不可用时保留原有界面
+
 ## [2.5.3] - 2026-10-09
 
 ### Added

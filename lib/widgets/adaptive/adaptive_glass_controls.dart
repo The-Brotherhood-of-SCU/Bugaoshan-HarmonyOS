@@ -2,10 +2,100 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/utils/platform_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+/// 测试可单独覆盖原生 UI 后端，不修改 Flutter 的目标平台。
+@visibleForTesting
+bool? debugOhosNativeUiOverride;
+
+/// 生产环境统一通过现有平台工具识别 OHOS。
+bool get usesOhosNativeUi =>
+    kDebugMode ? debugOhosNativeUiOverride ?? isOhos : isOhos;
+
+/// Dock 和控件共用 OHOS 能力查询；原生控件与材质是独立能力。
+class OhosNativeUiCapabilities {
+  const OhosNativeUiCapabilities({
+    this.dock = false,
+    this.button = false,
+    this.toggle = false,
+    this.floatingDock = false,
+    this.immersiveDock = false,
+    this.immersiveSwitch = false,
+    this.dockHeight = 64,
+    this.switchWidth = 64,
+    this.switchHeight = 48,
+  });
+
+  final bool dock;
+  final bool button;
+  final bool toggle;
+  final bool floatingDock;
+  final bool immersiveDock;
+  final bool immersiveSwitch;
+  final double dockHeight;
+  final double switchWidth;
+  final double switchHeight;
+
+  factory OhosNativeUiCapabilities.fromMap(Map<Object?, Object?> values) {
+    if (values['version'] != 1 || values['backend'] != 'ohos') {
+      return const OhosNativeUiCapabilities();
+    }
+    final dock = values['dock'] == true;
+    final toggle = values['switch'] == true;
+    final floating = dock && values['floatingDock'] == true;
+    double metric(String key, double fallback, double min, double max) {
+      final value = values[key];
+      return value is num && value.isFinite
+          ? value.toDouble().clamp(min, max).toDouble()
+          : fallback;
+    }
+
+    return OhosNativeUiCapabilities(
+      dock: dock,
+      button: values['button'] == true,
+      toggle: toggle,
+      floatingDock: floating,
+      immersiveDock: floating && values['immersiveDock'] == true,
+      immersiveSwitch: toggle && values['immersiveSwitch'] == true,
+      dockHeight: metric('dockHeight', floating ? 88 : 64, 48, 160),
+      switchWidth: metric('switchWidth', 64, 48, 96),
+      switchHeight: metric('switchHeight', 48, 44, 80),
+    );
+  }
+
+  static const _channel = MethodChannel('bugaoshan/liquid_glass');
+  static Future<OhosNativeUiCapabilities>? _pending;
+
+  static Future<OhosNativeUiCapabilities> load() {
+    if (!usesOhosNativeUi) {
+      return SynchronousFuture(const OhosNativeUiCapabilities());
+    }
+    return _pending ??= _load();
+  }
+
+  static Future<OhosNativeUiCapabilities> _load() async {
+    try {
+      final values = await _channel
+          .invokeMapMethod<Object?, Object?>('getCapabilities')
+          .timeout(const Duration(seconds: 2));
+      return values == null
+          ? const OhosNativeUiCapabilities()
+          : OhosNativeUiCapabilities.fromMap(values);
+    } catch (error) {
+      AppLog.w('OhosNativeUi', 'Native UI unavailable: $error');
+      return const OhosNativeUiCapabilities();
+    }
+  }
+
+  @visibleForTesting
+  static void resetForTesting() {
+    _pending = null;
+  }
+}
 
 /// 所有自适应控件共用一次能力查询，包括同时创建的设置列表项。
 class LiquidGlassCapabilities {
@@ -15,6 +105,11 @@ class LiquidGlassCapabilities {
   static Future<bool>? _supported;
 
   static Future<bool> isSupported() {
+    if (usesOhosNativeUi) {
+      return OhosNativeUiCapabilities.load().then(
+        (capabilities) => capabilities.button || capabilities.toggle,
+      );
+    }
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
       return SynchronousFuture(false);
     }
@@ -36,10 +131,11 @@ class LiquidGlassCapabilities {
   @visibleForTesting
   static void resetForTesting() {
     _supported = null;
+    OhosNativeUiCapabilities.resetForTesting();
   }
 }
 
-/// iOS 26+ 原生玻璃按钮，其余环境保留调用方提供的 Material 按钮。
+/// iOS 26+ UIKit 按钮 / OHOS ArkUI 按钮；不可用时保留 Material 按钮。
 ///
 /// [fallback] 同时用于测量尺寸，调用方应为其提供相同的动作和禁用状态。
 class AdaptiveGlassButton extends StatelessWidget {
@@ -83,7 +179,7 @@ class AdaptiveGlassButton extends StatelessWidget {
   );
 }
 
-/// iOS 原生 UISwitch；选中值和回调始终由 Flutter 的当前状态提供。
+/// UIKit / ArkUI 原生开关；选中值和回调始终由 Flutter 的当前状态提供。
 class AdaptiveGlassSwitch extends StatelessWidget {
   const AdaptiveGlassSwitch({
     super.key,
@@ -233,6 +329,7 @@ class _AdaptiveGlassControl extends StatefulWidget {
 class _AdaptiveGlassControlState extends State<_AdaptiveGlassControl> {
   static const _viewType = 'bugaoshan/liquid_glass_control';
   bool _supported = false;
+  OhosNativeUiCapabilities _ohos = const OhosNativeUiCapabilities();
   bool _updateScheduled = false;
   MethodChannel? _viewChannel;
 
@@ -243,6 +340,17 @@ class _AdaptiveGlassControlState extends State<_AdaptiveGlassControl> {
   }
 
   Future<void> _checkSupport() async {
+    if (usesOhosNativeUi) {
+      final capabilities = await OhosNativeUiCapabilities.load();
+      if (!mounted) return;
+      setState(() {
+        _ohos = capabilities;
+        _supported = widget.kind == _GlassControlKind.button
+            ? capabilities.button
+            : capabilities.toggle;
+      });
+      return;
+    }
     final supported = await LiquidGlassCapabilities.isSupported();
     if (mounted && supported) setState(() => _supported = true);
   }
@@ -265,10 +373,12 @@ class _AdaptiveGlassControlState extends State<_AdaptiveGlassControl> {
   BoxConstraints _buttonConstraints() {
     // UIKit 按钮使用 17pt semibold，不能只依赖 Material 的 14pt 度量。
     // 这些最小值补齐原生内容空间，fallback 仍可要求更大的布局尺寸。
+    final fontSize = usesOhosNativeUi ? 16.0 : 17.0;
+    final minSize = usesOhosNativeUi ? 48.0 : 44.0;
     final labelPainter = TextPainter(
       text: TextSpan(
         text: widget.label,
-        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w600),
       ),
       textDirection: Directionality.of(context),
       textScaler: TextScaler.linear(_textScale),
@@ -277,10 +387,10 @@ class _AdaptiveGlassControlState extends State<_AdaptiveGlassControl> {
     final iconSpace = widget.symbol != null || widget.loading ? 32.0 : 0.0;
     final constraints = BoxConstraints(
       minWidth: math
-          .max(44, labelPainter.width + iconSpace + 24)
+          .max(minSize, labelPainter.width + iconSpace + 24)
           .ceilToDouble(),
       minHeight: math
-          .max(44, math.max(17 * _textScale, labelPainter.height) + 16)
+          .max(minSize, math.max(fontSize * _textScale, labelPainter.height) + 16)
           .ceilToDouble(),
     );
     labelPainter.dispose();
@@ -368,25 +478,42 @@ class _AdaptiveGlassControlState extends State<_AdaptiveGlassControl> {
   Widget build(BuildContext context) {
     if (!_supported) return widget.fallback;
 
-    final nativeView = UiKitView(
-      viewType: _viewType,
-      layoutDirection: Directionality.of(context),
-      creationParams: _parameters(),
-      creationParamsCodec: const StandardMessageCodec(),
-      onPlatformViewCreated: _onPlatformViewCreated,
-      // 控件区域内的点击交给 UIKit，避免父 ListTile 同时翻转开关。
-      // 纵向拖动仍参与外层 Flutter 列表的手势竞争。
-      gestureRecognizers: {
-        Factory<TapGestureRecognizer>(TapGestureRecognizer.new),
-        if (widget.kind == _GlassControlKind.toggle)
-          Factory<HorizontalDragGestureRecognizer>(
-            HorizontalDragGestureRecognizer.new,
-          ),
-      },
-    );
+    // 控件区域内的点击交给原生侧，避免父 ListTile 同时翻转开关。
+    // 纵向拖动仍参与外层 Flutter 列表的手势竞争。
+    final gestureRecognizers = <Factory<OneSequenceGestureRecognizer>>{
+      Factory<TapGestureRecognizer>(TapGestureRecognizer.new),
+      if (widget.kind == _GlassControlKind.toggle)
+        Factory<HorizontalDragGestureRecognizer>(
+          HorizontalDragGestureRecognizer.new,
+        ),
+    };
+    final parameters = _parameters();
+    final layoutDirection = Directionality.of(context);
+    final nativeView = usesOhosNativeUi
+        ? OhosView(
+            viewType: _viewType,
+            layoutDirection: layoutDirection,
+            creationParams: parameters,
+            creationParamsCodec: const StandardMessageCodec(),
+            onPlatformViewCreated: _onPlatformViewCreated,
+            gestureRecognizers: gestureRecognizers,
+            clipBehavior: Clip.none,
+          )
+        : UiKitView(
+            viewType: _viewType,
+            layoutDirection: layoutDirection,
+            creationParams: parameters,
+            creationParamsCodec: const StandardMessageCodec(),
+            onPlatformViewCreated: _onPlatformViewCreated,
+            gestureRecognizers: gestureRecognizers,
+          );
     final Widget control;
     if (widget.kind == _GlassControlKind.toggle) {
-      control = SizedBox(width: 64, height: 44, child: nativeView);
+      control = SizedBox(
+        width: usesOhosNativeUi ? _ohos.switchWidth : 64,
+        height: usesOhosNativeUi ? _ohos.switchHeight : 44,
+        child: nativeView,
+      );
     } else {
       control = ConstrainedBox(
         constraints: _buttonConstraints(),
